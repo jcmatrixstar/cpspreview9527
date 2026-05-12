@@ -24,15 +24,13 @@
         <div id="header-area" class="bg-white px-5 pt-12 pb-0 shadow-sm z-20 transition-custom">
             <div class="flex justify-between items-center mb-6">
                 <h1 id="page-title" class="text-2xl font-black text-gray-900 tracking-tight">社交中心</h1>
-                <button class="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-400">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                </button>
+                <!-- 右上角按鈕已移除 -->
             </div>
 
             <!-- Tab 切換器 (搜尋時會隱藏) -->
             <div id="tab-container" class="flex relative border-b border-gray-100 transition-custom">
-                <button id="tab-friends" onclick="switchTab('friends')" class="flex-1 py-4 text-base font-bold transition-all relative z-10 text-blue-600">好友列表 (5)</button>
-                <button id="tab-blacklist" onclick="switchTab('blacklist')" class="flex-1 py-4 text-base font-bold transition-all relative z-10 text-gray-400">黑名單 (5)</button>
+                <button id="tab-friends" onclick="switchTab('friends')" class="flex-1 py-4 text-base font-bold transition-all relative z-10 text-blue-600 uppercase">Friends (5)</button>
+                <button id="tab-blacklist" onclick="switchTab('blacklist')" class="flex-1 py-4 text-base font-bold transition-all relative z-10 text-gray-400 uppercase">Blocked (5)</button>
                 <div id="tab-indicator" class="absolute bottom-0 h-1 bg-blue-600 transition-all duration-300 ease-out rounded-t-full left-0 w-1/2"></div>
             </div>
         </div>
@@ -43,7 +41,7 @@
                 <div class="absolute left-4 top-4 text-gray-400 w-4 h-4">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </div>
-                <input id="search-input" type="text" placeholder="搜尋好友/全部玩家" oninput="onSearchChange(this.value)" class="w-full bg-white border border-gray-200 rounded-2xl py-3.5 pl-12 pr-10 text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all">
+                <input id="search-input" type="text" placeholder="搜尋好友/全部玩家" oninput="onSearchChange(this.value)" class="w-full bg-white border border-gray-200 rounded-2xl py-3.5 pl-12 pr-10 text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-gray-300">
                 <button id="clear-search" onclick="clearSearch()" class="absolute right-4 top-4 text-gray-300 hidden hover:text-gray-500">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
@@ -53,102 +51,95 @@
         <!-- 主要列表區 -->
         <div class="flex-1 overflow-y-auto px-4 pb-24">
             
-            <!-- 好友分頁內容 -->
+            <!-- [視圖 A] 好友列表內容 -->
             <div id="friends-view">
                 <div id="list-friends" class="space-y-4 pt-2 block">
-                    <!-- 好友 1：老王 -->
+                    <!-- 預設5筆資料 -->
+                    <!-- 1. 老王 -->
                     <div onclick="openCard('老王', '1', 'bg-blue-500', true)" class="flex items-center p-5 bg-white rounded-[28px] shadow-sm active-scale transition-custom cursor-pointer border border-transparent">
                         <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-blue-500 font-bold text-xl shadow-lg shadow-blue-100">老</div>
                         <div class="flex-1 ml-4 flex items-center">
-                            <span class="text-lg font-bold text-gray-800">老王</span>
-                            <div class="bg-gray-100 text-gray-400 text-[10px] px-2 py-0.5 rounded-md font-black italic ml-2">VIP1</div>
+                            <span class="text-lg font-bold text-gray-800 tracking-tight">老王</span>
+                            <div class="bg-gray-100 text-gray-400 text-[10px] px-2 py-0.5 rounded-md font-black italic shadow-sm ml-2">VIP1</div>
                         </div>
                         <div class="text-gray-200"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
                     </div>
-                    <!-- 好友 2 -->
+                    <!-- 2. 全場我最旺 -->
                     <div onclick="openCard('全場我最旺', '10', 'bg-orange-500', true)" class="flex items-center p-5 bg-white rounded-[28px] shadow-sm active-scale transition-custom cursor-pointer">
                         <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-orange-500 font-bold text-xl shadow-lg shadow-orange-100">全</div>
                         <div class="flex-1 ml-4 flex items-center">
-                            <span class="text-lg font-bold text-gray-800">全場我最旺</span>
+                            <span class="text-lg font-bold text-gray-800 tracking-tight">全場我最旺</span>
                             <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] px-2 py-0.5 rounded-md font-black italic shadow-sm ml-2">VIP10</div>
                         </div>
                         <div class="text-gray-200"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
                     </div>
-                    <!-- 好友 3 -->
+                    <!-- 3. 機台破壞者 -->
                     <div onclick="openCard('機台破壞者', '8', 'bg-indigo-500', true)" class="flex items-center p-5 bg-white rounded-[28px] shadow-sm active-scale transition-custom cursor-pointer">
                         <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-indigo-500 font-bold text-xl shadow-lg shadow-indigo-100">機</div>
                         <div class="flex-1 ml-4 flex items-center">
-                            <span class="text-lg font-bold text-gray-800">機台破壞者</span>
+                            <span class="text-lg font-bold text-gray-800 tracking-tight">機台破壞者</span>
                             <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] px-2 py-0.5 rounded-md font-black italic shadow-sm ml-2">VIP8</div>
                         </div>
                         <div class="text-gray-200"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
                     </div>
-                    <!-- 好友 4 -->
+                    <!-- 4. 財神爺敲門 -->
                     <div onclick="openCard('財神爺敲門', '6', 'bg-red-500', true)" class="flex items-center p-5 bg-white rounded-[28px] shadow-sm active-scale transition-custom cursor-pointer">
                         <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-red-500 font-bold text-xl shadow-lg shadow-red-100">財</div>
                         <div class="flex-1 ml-4 flex items-center">
-                            <span class="text-lg font-bold text-gray-800">財神爺敲門</span>
+                            <span class="text-lg font-bold text-gray-800 tracking-tight">財神爺敲門</span>
                             <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] px-2 py-0.5 rounded-md font-black italic shadow-sm ml-2">VIP6</div>
                         </div>
                         <div class="text-gray-200"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
                     </div>
-                    <!-- 好友 5 -->
+                    <!-- 5. 幸運草小萌 -->
                     <div onclick="openCard('幸運草小萌', '2', 'bg-green-500', true)" class="flex items-center p-5 bg-white rounded-[28px] shadow-sm active-scale transition-custom cursor-pointer">
                         <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-green-500 font-bold text-xl shadow-lg shadow-green-100">幸</div>
                         <div class="flex-1 ml-4 flex items-center">
-                            <span class="text-lg font-bold text-gray-800">幸運草小萌</span>
+                            <span class="text-lg font-bold text-gray-800 tracking-tight">幸運草小萌</span>
                             <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] px-2 py-0.5 rounded-md font-black italic shadow-sm ml-2">VIP2</div>
                         </div>
                         <div class="text-gray-200"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg></div>
                     </div>
                 </div>
 
-                <!-- 搜尋結果 (好友分頁下) -->
+                <!-- 好友分頁下的全域搜尋結果 -->
                 <div id="friends-search-results" class="hidden space-y-4 pt-2 fade-in">
                     <p class="text-[10px] font-bold text-gray-400 tracking-widest px-2 mb-2 uppercase">全伺服器搜尋結果 (4)</p>
                     <!-- 老王 (已是好友) -->
                     <div class="flex items-center p-5 bg-white rounded-[28px] shadow-sm border border-blue-50">
                         <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-blue-500 font-bold text-xl shadow-sm">老</div>
                         <div class="flex-1 ml-4 flex items-center gap-2">
-                            <span class="text-lg font-bold text-gray-800">老王</span>
+                            <span class="text-lg font-bold text-gray-800 tracking-tight">老王</span>
                         </div>
-                        <!-- 已是好友圖示 -->
-                        <div class="flex items-center gap-1.5 px-3 py-2 bg-gray-100 rounded-xl text-gray-400 text-xs font-bold border border-gray-200 opacity-60">
+                        <div class="flex items-center gap-1.5 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-gray-300 text-[11px] font-bold">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             已是好友
                         </div>
                     </div>
                     <!-- 老王爺 (陌生人) -->
-                    <div class="flex items-center p-5 bg-white rounded-[28px] shadow-sm">
+                    <div class="flex items-center p-5 bg-white rounded-[28px] shadow-sm active-scale transition-custom cursor-pointer" onclick="openCard('老王爺', '3', 'bg-purple-500', false)">
                         <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-purple-500 font-bold text-xl">爺</div>
                         <div class="flex-1 ml-4 flex items-center gap-2">
-                            <span class="text-lg font-bold text-gray-800">老王爺</span>
-                            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] px-2 py-0.5 rounded-md font-black italic shadow-sm">VIP3</div>
+                            <span class="text-lg font-bold text-gray-800 tracking-tight">老王爺</span>
+                            <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] px-2 py-0.5 rounded-md font-black italic shadow-sm ml-1">VIP3</div>
                         </div>
-                        <!-- 加好友按鈕 -->
-                        <button class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-100 active-scale">
-                            加好友
-                        </button>
+                        <button class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-100 transition-transform active:scale-90">加好友</button>
                     </div>
                     <!-- 老王有快遞 (陌生人) -->
-                    <div class="flex items-center p-5 bg-white rounded-[28px] shadow-sm">
-                        <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-green-500 font-bold text-xl">遞</div>
+                    <div class="flex items-center p-5 bg-white rounded-[28px] shadow-sm active-scale transition-custom cursor-pointer" onclick="openCard('老王有快遞', '0', 'bg-gray-400', false)">
+                        <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-gray-400 font-bold text-xl">遞</div>
                         <div class="flex-1 ml-4 flex items-center gap-2">
-                            <span class="text-lg font-bold text-gray-800">老王有快遞</span>
+                            <span class="text-lg font-bold text-gray-800 tracking-tight">老王有快遞</span>
                         </div>
-                        <button class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-100 active-scale">
-                            加好友
-                        </button>
+                        <button class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-100 transition-transform active:scale-90">加好友</button>
                     </div>
                     <!-- 老王有塊地 (陌生人) -->
-                    <div class="flex items-center p-5 bg-white rounded-[28px] shadow-sm">
+                    <div class="flex items-center p-5 bg-white rounded-[28px] shadow-sm active-scale transition-custom cursor-pointer" onclick="openCard('老王有塊地', '0', 'bg-amber-600', false)">
                         <div class="w-14 h-14 rounded-full flex items-center justify-center text-white bg-amber-600 font-bold text-xl">地</div>
                         <div class="flex-1 ml-4 flex items-center gap-2">
-                            <span class="text-lg font-bold text-gray-800">老王有塊地</span>
+                            <span class="text-lg font-bold text-gray-800 tracking-tight">老王有塊地</span>
                         </div>
-                        <button class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-100 active-scale">
-                            加好友
-                        </button>
+                        <button class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-100 transition-transform active:scale-90">加好友</button>
                     </div>
                 </div>
             </div>
@@ -198,50 +189,54 @@
 
         <!-- 底部選單 -->
         <div class="bg-white/95 border-t border-gray-100 flex justify-around items-center py-6 absolute bottom-0 w-full px-6 z-10">
-            <div class="flex flex-col items-center gap-1 opacity-20"><div class="w-6 h-6 bg-gray-500 rounded-md"></div><span class="text-[10px] font-bold">大廳</span></div>
-            <div class="flex flex-col items-center gap-1 text-blue-600 font-black"><div class="w-8 h-8 bg-blue-600 rounded-xl shadow-lg flex items-center justify-center text-white italic text-xs">FC</div><span class="text-[10px] tracking-widest uppercase">Social</span></div>
-            <div class="flex flex-col items-center gap-1 opacity-20"><div class="w-6 h-6 bg-gray-500 rounded-md"></div><span class="text-[10px] font-bold">設定</span></div>
+            <div class="flex flex-col items-center gap-1 opacity-20"><div class="w-6 h-6 bg-gray-500 rounded-md shadow-sm"></div><span class="text-[10px] font-bold">大廳</span></div>
+            <div class="flex flex-col items-center gap-1 text-blue-600 font-black"><div class="w-8 h-8 bg-blue-600 rounded-xl shadow-lg flex items-center justify-center text-white italic text-[10px]">FC</div><span class="text-[10px] tracking-widest uppercase tracking-tighter">Social</span></div>
+            <div class="flex flex-col items-center gap-1 opacity-20"><div class="w-6 h-6 bg-gray-500 rounded-md shadow-sm"></div><span class="text-[10px] font-bold">設定</span></div>
         </div>
 
-        <!-- 個人名片彈窗 (全功能解鎖版) -->
+        <!-- 個人名片彈窗 (名片功能全面整合) -->
         <div id="modal-overlay" class="fixed inset-0 z-50 flex items-end justify-center hidden" style="position: absolute;">
-            <div onclick="closeCard()" class="absolute inset-0 bg-gray-900/60 backdrop-blur-[4px] fade-in"></div>
+            <div onclick="closeCard()" class="absolute inset-0 bg-gray-900/60 backdrop-blur-[4.5px] fade-in"></div>
             <div class="bg-white w-full rounded-t-[45px] overflow-hidden relative shadow-2xl slide-up z-10 text-center px-8 pb-12">
-                <div class="h-32 -mx-8 bg-gradient-to-br from-blue-600 to-indigo-700 mb-0">
-                    <button onclick="closeCard()" class="absolute right-6 top-6 bg-white/20 hover:bg-white/40 rounded-full p-2 text-white">
+                <div class="h-32 -mx-8 bg-gradient-to-br from-blue-600 to-indigo-700 mb-0 relative">
+                    <button onclick="closeCard()" class="absolute right-6 top-6 bg-white/20 hover:bg-white/40 rounded-full p-2 text-white transition-colors">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
-                <div id="modal-avatar" class="w-32 h-32 mx-auto -mt-16 mb-6 border-[8px] border-white rounded-full shadow-2xl flex items-center justify-center text-white font-bold text-4xl shadow-blue-200"></div>
+                <div id="modal-avatar" class="w-32 h-32 mx-auto -mt-16 mb-6 border-[8px] border-white rounded-full shadow-2xl flex items-center justify-center text-white font-bold text-4xl shadow-blue-100 transition-all"></div>
                 <div class="mb-8 text-gray-900">
                     <div class="flex items-center justify-center gap-3 mb-2">
                         <h2 id="modal-name" class="text-3xl font-black tracking-tight"></h2>
                         <div id="modal-vip" class="bg-amber-400 text-amber-900 text-xs px-2.5 py-1 rounded-md font-black italic shadow-sm"></div>
                     </div>
-                    <p class="text-gray-400 font-bold text-[10px] tracking-[0.2em] uppercase italic opacity-60">Social Casino Elite Member</p>
+                    <p class="text-gray-400 font-bold text-[10px] tracking-[0.2em] uppercase italic opacity-60 uppercase">Social Casino Elite Member</p>
                 </div>
 
-                <!-- 核心互動按鈕網格 -->
+                <!-- 核心互動 2x2 網格 -->
                 <div class="grid grid-cols-2 gap-3 mb-8">
-                    <button class="flex flex-col items-center py-4 bg-blue-50 border border-blue-100 rounded-[30px] active-scale transition-all">
+                    <!-- 聊天 -->
+                    <button class="flex flex-col items-center py-5 bg-blue-50 border border-blue-100 rounded-[30px] active-scale transition-all hover:bg-blue-100">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2.5" class="mb-1"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-                        <span class="text-xs font-black text-blue-800 tracking-tighter">聊天</span>
+                        <span class="text-xs font-black text-blue-800 tracking-tighter">私訊聊天</span>
                     </button>
-                    <button class="flex flex-col items-center py-4 bg-purple-50 border border-purple-100 rounded-[30px] active-scale transition-all">
+                    <!-- 贈禮 -->
+                    <button class="flex flex-col items-center py-5 bg-purple-50 border border-purple-100 rounded-[30px] active-scale transition-all hover:bg-purple-100">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6B21A8" stroke-width="2.5" class="mb-1"><rect x="2" y="7" width="20" height="5"></rect><path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
-                        <span class="text-xs font-black text-purple-800 tracking-tighter">贈禮</span>
+                        <span class="text-xs font-black text-purple-800 tracking-tighter">贈送禮物</span>
                     </button>
-                    <button id="modal-friend-action" class="flex flex-col items-center py-4 bg-gray-50 border border-gray-200 rounded-[30px] active-scale transition-all">
+                    <!-- 好友動作 (動態切換：加好友/解除好友) -->
+                    <button id="modal-friend-action" class="flex flex-col items-center py-5 rounded-[30px] active-scale transition-all border">
                         <span id="modal-friend-icon"></span>
-                        <span id="modal-friend-text" class="text-xs font-black text-gray-700 tracking-tighter"></span>
+                        <span id="modal-friend-text" class="text-xs font-black tracking-tighter"></span>
                     </button>
-                    <button class="flex flex-col items-center py-4 bg-red-50 border border-red-100 rounded-[30px] active-scale transition-all group">
+                    <!-- 封鎖 -->
+                    <button class="flex flex-col items-center py-5 bg-red-50 border border-red-100 rounded-[30px] active-scale transition-all group hover:bg-red-100">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="2.5" class="mb-1 transition-transform group-hover:rotate-12"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-                        <span class="text-xs font-black text-red-800 tracking-tighter">封鎖</span>
+                        <span class="text-xs font-black text-red-800 tracking-tighter">封鎖玩家</span>
                     </button>
                 </div>
                 
-                <button onclick="closeCard()" class="text-gray-300 font-bold text-sm active-scale transition-colors hover:text-gray-500">關閉名片</button>
+                <button onclick="closeCard()" class="text-gray-300 font-bold text-xs active-scale transition-colors hover:text-gray-500 uppercase tracking-widest">Close Profile</button>
             </div>
         </div>
     </div>
@@ -261,7 +256,6 @@
             const input = document.getElementById('search-input');
 
             if (tab === 'friends') {
-                fTab.innerText = "好友列表 (5)";
                 fTab.classList.replace('text-gray-400', 'text-blue-600');
                 bTab.classList.replace('text-blue-600', 'text-gray-400');
                 ind.style.left = '0';
@@ -327,12 +321,12 @@
             if (isFriend) {
                 friendIcon.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5" class="mb-1"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="18" y1="8" x2="23" y2="13"></line><line x1="23" y1="8" x2="18" y2="13"></line></svg>`;
                 friendText.innerText = "解除好友";
-                actionBtn.className = "flex flex-col items-center py-4 bg-gray-50 border border-gray-200 rounded-[30px] active-scale transition-all";
-                friendText.className = "text-xs font-black text-gray-700 tracking-tighter";
+                actionBtn.className = "flex flex-col items-center py-5 bg-gray-50 border border-gray-200 rounded-[30px] active-scale transition-all";
+                friendText.className = "text-xs font-black text-gray-700 tracking-<a href="friendList.html" title="friendList"></a>tighter";
             } else {
                 friendIcon.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2.5" class="mb-1"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="17" y1="11" x2="23" y2="11"></line></svg>`;
                 friendText.innerText = "加好友";
-                actionBtn.className = "flex flex-col items-center py-4 bg-blue-50 border border-blue-100 rounded-[30px] active-scale transition-all";
+                actionBtn.className = "flex flex-col items-center py-5 bg-blue-50 border border-blue-100 rounded-[30px] active-scale transition-all";
                 friendText.className = "text-xs font-black text-blue-700 tracking-tighter";
             }
 
