@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社交系統管理後台 - 互動原型 (MVP)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #F1F5F9; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        .tab-active { border-color: #2563EB; color: #2563EB; background-color: #EFF6FF; }
+        .fade-in { animation: fadeIn 0.2s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col">
+
+    <!-- 頂部導航列 -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white text-sm shadow-md shadow-blue-500/20">FC</div>
+          <div>
+            <h1 class="text-base font-black tracking-wider text-slate-100">社交關係管理控制台</h1>
+            <p class="text-[11px] text-slate-400 font-medium">底層邏輯：純單向有向圖 (Directed Graph) 架構</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-semibold text-slate-400">
+          <span>營運權限：<span class="text-blue-400 font-bold">高級管理員 (風控/客服)</span></span>
+          <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+        </div>
+    </header>
+
+    <!-- 主體內容區 -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- 左側：參數配置與功能安全限流 (移除實時日誌後更加清爽) -->
+        <section class="w-80 bg-slate-800/50 border-r border-slate-700/60 p-5 flex flex-col gap-6 overflow-y-auto">
+            
+            <!-- 區塊 1：全域社交參數配置 -->
+            <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 shadow-sm">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-700 pb-2">
+                    <span class="text-base">⚙️</span>
+                    <h2 class="text-sm font-bold text-slate-200">全域引數配置 (System Config)</h2>
+                </div>
+                <div class="space-y-4 text-xs">
+                    <div>
+                        <div class="flex justify-between text-slate-400 mb-1 font-medium">
+                            <span>最大主動追蹤上限</span>
+                            <span id="val-follow" class="text-blue-400 font-bold">500 人</span>
+                        </div>
+                        <input type="range" min="100" max="2000" step="50" value="500" oninput="document.getElementById('val-follow').innerText = this.value + ' 人'" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-slate-400 mb-1 font-medium">
+                            <span>最大主動封鎖上限</span>
+                            <span id="val-block" class="text-red-400 font-bold">200 人</span>
+                        </div>
+                        <input type="range" min="50" max="1000" step="10" value="200" oninput="document.getElementById('val-block').innerText = this.value + ' 人'" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-slate-400 mb-1 font-medium">
+                            <span>單向追蹤頻率冷卻</span>
+                            <span id="val-cd" class="text-amber-400 font-bold">10 次/分</span>
+                        </div>
+                        <input type="range" min="5" max="60" step="5" value="10" oninput="document.getElementById('val-cd').innerText = this.value + ' 次/分'" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                    </div>
+                    <button onclick="alert('全域社交引數已成功下發至伺服器叢集，即時生效。')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all text-center block mt-2 shadow-md shadow-blue-600/10">保存配置</button>
+                </div>
+            </div>
+
+            <!-- 區塊 2：風控特殊停權機制 -->
+            <div class="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 shadow-sm">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-700 pb-2">
+                    <span class="text-base">🛡️</span>
+                    <h2 class="text-sm font-bold text-slate-200">功能安全限流 (Sanctions)</h2>
+                </div>
+                <div class="space-y-3 text-xs">
+                    <div class="bg-slate-900/50 p-3 rounded-xl border border-slate-700/40">
+                        <p class="font-bold text-slate-300 mb-1">目標對象：<span id="sanction-target" class="text-blue-400">老王 (UID: 10001)</span></p>
+                        <p class="text-[10px] text-slate-500 mb-3">限流懲罰即時反映至前端客端</p>
+                        <div class="space-y-2.5">
+                            <label class="flex items-center justify-between cursor-pointer">
+                                <span class="text-slate-400 font-medium">禁止主動追蹤他人</span>
+                                <input type="checkbox" class="sr-only peer" onchange="showStatus('追蹤禁令')">
+                                <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:bg-slate-300 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600 relative"></div>
+                            </label>
+                            <label class="flex items-center justify-between cursor-pointer">
+                                <span class="text-slate-400 font-medium">設定全站搜尋隱形</span>
+                                <input type="checkbox" class="sr-only peer" onchange="showStatus('搜尋隱形')">
+                                <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:bg-slate-300 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600 relative"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右側：主工作面板 (包含檢索欄及改版後的 5 個關係頁籤) -->
+        <section class="flex-1 bg-slate-900 p-6 flex flex-col gap-6 overflow-y-auto">
+            
+            <!-- 搜尋檢索欄 -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-md flex gap-4 items-end flex-shrink-0">
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">玩家雙向有向圖關係精確檢索 (客服/風控專用)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-3.5 text-slate-500">🔍</span>
+                        <input id="target-search" type="text" value="老王" placeholder="請輸入玩家 UID 或 精確暱稱..." class="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-sm font-semibold text-slate-100 outline-none focus:border-blue-500 transition-colors">
+                    </div>
+                </div>
+                <button onclick="searchPlayer()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-sm transition-all shadow-md shadow-blue-600/10 active-scale">解算關係鏈</button>
+                <button onclick="resetSearch()" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold px-4 py-3 rounded-xl text-sm transition-all active-scale">重設</button>
+            </div>
+
+            <!-- 客服與風控核心工作台 -->
+            <div class="flex-1 flex flex-col bg-slate-800 border border-slate-700 rounded-2xl shadow-md overflow-hidden">
+                
+                <!-- 5 頁籤導航列：新增第五個實時關係日誌 (Logs) -->
+                <div class="bg-slate-800/80 border-b border-slate-700 px-4 flex gap-1 flex-shrink-0 overflow-x-auto">
+                    <button id="tab-btn-following" onclick="switchBackTab('following')" class="px-5 py-4 text-xs font-bold border-b-2 border-transparent text-blue-500 border-blue-500 bg-slate-900/40 whitespace-nowrap">好友名單 <span class="ml-1 bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded-full font-mono" id="count-following">5</span></button>
+                    <button id="tab-btn-followers" onclick="switchBackTab('followers')" class="px-5 py-4 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">誰加我好友 <span class="ml-1 bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded-full font-mono">14</span> <span class="text-[9px] text-amber-500 font-medium">(客端不公開)</span></button>
+                    <button id="tab-btn-blocked" onclick="switchBackTab('blocked')" class="px-5 py-4 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">黑名單<span class="ml-1 bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded-full font-mono" id="count-blocked">5</span></button>
+                    <button id="tab-btn-blockedby" onclick="switchBackTab('blockedby')" class="px-5 py-4 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">誰封鎖我<span class="ml-1 bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded-full font-mono">2</span> <span class="text-[9px] text-red-400 font-medium">(客服查糾紛專用)</span></button>
+                    <button id="tab-btn-logs" onclick="switchBackTab('logs')" class="px-5 py-4 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap">關係異動日誌 (Logs) <span class="ml-1 bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded-full font-mono" id="count-logs">3</span></button>
+                </div>
+
+                <!-- 關係展示與操作清單 -->
+                <div class="flex-1 overflow-y-auto p-5">
+                    
+                    <!-- 分頁 1: 主動追蹤 (Following) -->
+                    <div id="sub-view-following" class="space-y-3 fade-in block">
+                        <div class="bg-slate-900/40 text-slate-400 text-xs px-3 py-2 rounded-xl flex items-center gap-2 border border-slate-800"><span class="text-amber-500">💡</span> 下方為 <b>老王 (UID: 10001)</b> 單向建立追蹤的名單（即該玩家客端的好友列表）。客服有權在此直接「強制斷開」單向關係。</div>
+                        
+                        <!-- 追蹤對象 1 -->
+                        <div class="flex items-center justify-between p-4 bg-slate-900 border border-slate-700/60 rounded-xl hover:border-slate-600 transition-colors" id="row-f-1">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center font-bold text-white shadow-md">全</div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-200 text-sm">全場我最旺</span>
+                                        <span class="text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black italic px-1.5 py-0.5 rounded">VIP10</span>
+                                        <span class="text-[9px] text-slate-500 font-mono">UID: 10008</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 font-medium mt-0.5">追蹤時間：2026-05-10 14:22 | 客端相對狀態：<span class="text-slate-400 font-semibold">3 小時前登入</span></p>
+                                </div>
+                            </div>
+                            <button onclick="forceAction('row-f-1', '強制取消追蹤', '全場我最旺', 'following')" class="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-900 rounded-lg text-xs font-bold transition-all active-scale">解除好友</button>
+                        </div>
+
+                        <!-- 追蹤對象 2 (同設備/IP風控警示) -->
+                        <div class="flex items-center justify-between p-4 bg-slate-900/90 border border-red-900/60 rounded-xl relative" id="row-f-2">
+                            <div class="absolute -top-2 left-4 bg-red-900/80 border border-red-700 text-red-200 text-[9px] font-mono px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span>⚠️</span> 風控高危：互為追蹤 + 24H內同設備登入 (工作室洗幣嫌疑)
+                            </div>
+                            <div class="flex items-center gap-4 mt-1">
+                                <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white">機</div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-200 text-sm">機台破壞者</span>
+                                        <span class="text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black italic px-1.5 py-0.5 rounded">VIP8</span>
+                                        <span class="text-[9px] text-slate-500 font-mono">UID: 10005</span>
+                                    </div>
+                                    <p class="text-[11px] text-red-400/80 font-medium mt-0.5">命中關聯：雙方曾於同台裝置 <span class="font-mono text-slate-300">iOS_K12a</span> 登入 | 相對狀態：<span class="text-slate-400">2 天前登入</span></p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="alert('已下發風控審查，該兩名玩家間的未來的贈禮與交易功能已暫時凍結！')" class="px-3 py-1.5 bg-red-950/40 border border-red-900 text-red-400 hover:bg-red-900 hover:text-white rounded-lg text-xs font-bold transition-all active-scale">風控凍結</button>
+                                <button onclick="forceAction('row-f-2', '強制取消追蹤', '機台破壞者', 'following')" class="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 rounded-lg text-xs font-bold transition-all active-scale">解除好友</button>
+                            </div>
+                        </div>
+
+                        <!-- 追蹤對象 3 -->
+                        <div class="flex items-center justify-between p-4 bg-slate-900 border border-slate-700/60 rounded-xl hover:border-slate-600 transition-colors" id="row-f-3">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center font-bold text-white shadow-md">財</div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-200 text-sm">財神爺敲門</span>
+                                        <span class="text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black italic px-1.5 py-0.5 rounded">VIP6</span>
+                                        <span class="text-[9px] text-slate-500 font-mono">UID: 10006</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 font-medium mt-0.5">追蹤時間：2026-04-12 09:11 | 客端相對狀態：<span class="text-slate-400 font-semibold">超過 30 天前登入</span></p>
+                                </div>
+                            </div>
+                            <button onclick="forceAction('row-f-3', '強制取消追蹤', '財神爺敲門', 'following')" class="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-400 hover:text-red-400 rounded-lg text-xs font-bold transition-all active-scale">解除好友</button>
+                        </div>
+                    </div>
+
+                    <!-- 分頁 2: 被動追蹤者 (Followers) -->
+                    <div id="sub-view-followers" class="space-y-3 fade-in hidden">
+                        <div class="bg-slate-900/40 text-slate-400 text-xs px-3 py-2 rounded-xl flex items-center gap-2 border border-slate-800"><span class="text-blue-400">🕵️‍♂️</span> <b>風控監控：</b> 以下是有誰單向加了老王。<b>此名單在客端完全不對外公開</b>。若短時間湧入大量低VIP粉絲，即可能為腳本爬蟲帳號。</div>
+                        
+                        <div class="flex items-center justify-between p-4 bg-slate-900 border border-slate-700/60 rounded-xl">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-200">G</div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-200 text-sm">Guest_55123</span>
+                                        <span class="text-[10px] bg-slate-700 text-slate-400 font-bold px-1.5 py-0.5 rounded">VIP0</span>
+                                        <span class="text-[9px] text-slate-500 font-mono">UID: 18852</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 font-medium mt-0.5">對方單向追蹤時間：2026-05-19 16:11 | 發起IP：<span class="text-slate-400 font-mono">61.220.x.x</span></p>
+                                </div>
+                            </div>
+                            <span class="text-xs text-amber-500 font-semibold bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20">單向追蹤中 (無通知)</span>
+                        </div>
+                    </div>
+
+                    <!-- 分頁 3: 主動封鎖 (Blocked) -->
+                    <div id="sub-view-blocked" class="space-y-3 fade-in hidden">
+                        <div class="bg-slate-900/40 text-slate-400 text-xs px-3 py-2 rounded-xl flex items-center gap-2 border border-slate-800"><span class="text-red-500">🚫</span> 下方為 <b>老王 (UID: 10001)</b> 主動封鎖的名單（即該玩家客端的黑名單）。管理員可在此強制協助解封。</div>
+                        
+                        <!-- 封鎖對象 1 -->
+                        <div class="flex items-center justify-between p-4 bg-slate-900 border border-slate-700/60 rounded-xl" id="row-b-1">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-400">🚫</div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-200 text-sm">惡意洗版魔人</span>
+                                        <span class="text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black italic px-1.5 py-0.5 rounded">VIP1</span>
+                                        <span class="text-[9px] text-slate-500 font-mono">UID: 99901</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 font-medium mt-0.5">封鎖時間：2026-05-18 10:22 | 對方登入狀態：<span class="text-red-400 font-semibold">18 小時前登入</span></p>
+                                </div>
+                            </div>
+                            <button onclick="forceAction('row-b-1', '強制解除封鎖', '惡意洗版魔人', 'blocked')" class="px-5 py-2.5 bg-red-600/10 border border-red-500/30 text-red-400 hover:bg-red-600 hover:text-white rounded-xl text-xs font-black transition-all active-scale">解除封鎖</button>
+                        </div>
+                    </div>
+
+                    <!-- 分頁 4: 被封鎖狀態 (Blocked By) -->
+                    <div id="sub-view-blockedby" class="space-y-3 fade-in hidden">
+                        <div class="bg-slate-900/40 text-slate-400 text-xs px-3 py-2 rounded-xl flex items-center gap-2 border border-slate-800"><span class="text-red-400">🚨</span> <b>客服糾紛查詢專用：</b> 下方顯示「有誰封鎖了老王」。當玩家投訴「為什麼我無法加某人好友或無法傳訊息」時，客服可在此快速核對是否已被對方單向斷開。</div>
+                        
+                        <div class="flex items-center justify-between p-4 bg-slate-900 border border-red-950/30 rounded-xl">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full bg-slate-800 border border-red-900 text-red-500 flex items-center justify-center font-bold text-xl">🔒</div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-200 text-sm">高冷大老虎</span>
+                                        <span class="text-[10px] bg-gradient-to-r from-amber-400 to-orange-500 text-white font-black italic px-1.5 py-0.5 rounded">VIP12</span>
+                                        <span class="text-[9px] text-slate-500 font-mono">UID: 20002</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 font-medium mt-0.5">對方針對老王施加封鎖時間：2026-05-01 11:22</p>
+                                </div>
+                            </div>
+                            <span class="text-xs text-red-400 font-bold bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">已被對方封鎖</span>
+                        </div>
+                    </div>
+
+                    <!-- 新分頁 5: 關係異動日誌 (Logs) -->
+                    <div id="sub-view-logs" class="space-y-3 fade-in hidden">
+                        <div class="bg-slate-900/40 text-slate-400 text-xs px-3 py-2 rounded-xl flex items-center gap-2 border border-slate-800"><span class="text-blue-400">📋</span> <b>實時單向關係日誌 (Logs)：</b> 詳盡紀錄目標玩家於全伺服器底層發生的所有追蹤、取消追蹤、封鎖及管理員干預等異動事件。</div>
+                        <div class="bg-slate-900 border border-slate-700/60 rounded-xl p-5 overflow-hidden">
+                            <div class="space-y-3 text-xs font-mono text-slate-300 max-h-[450px] overflow-y-auto pr-2" id="log-container">
+                                <p class="border-b border-slate-700/40 pb-2"><span class="text-emerald-400">[FOLLOW]</span> 16:50:22<br>UID 10001 → 10009 <br><span class="text-slate-500">IP: 211.75.x.x | Dev: iOS_A39f</span></p>
+                                <p class="border-b border-slate-700/40 pb-2"><span class="text-red-400">[BLOCK]</span> 16:48:10<br>UID 10008 → 99901 <br><span class="text-slate-500">IP: 114.32.x.x | Dev: And_m82h</span></p>
+                                <p class="border-b border-slate-700/40 pb-2"><span class="text-slate-500">[UNFOLLOW]</span> 16:41:05<br>UID 10005 → 10012 <br><span class="text-slate-500">IP: 42.73.x.x | Dev: iOS_K12a</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let currentBackTab = 'following';
+        let followCount = 3;
+        let blockedCount = 1;
+        let logCount = 3;
+
+        // 分頁切換 (更新包含 'logs' 分頁)
+        function switchBackTab(tab) {
+            currentBackTab = tab;
+            const tabs = ['following', 'followers', 'blocked', 'blockedby', 'logs'];
+            
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const view = document.getElementById(`sub-view-${t}`);
+                
+                if (t === tab) {
+                    btn.className = "px-5 py-4 text-xs font-bold border-b-2 border-blue-500 text-blue-500 bg-slate-900/40 whitespace-nowrap";
+                    view.classList.replace('hidden', 'block');
+                } else {
+                    btn.className = "px-5 py-4 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap";
+                    view.classList.replace('block', 'hidden');
+                }
+            });
+        }
+
+        // 客服強制干預動作
+        function forceAction(rowId, actionText, playerName, type) {
+            if (confirm(`【操作警告】您正在執行管理員強制權限：確定要對玩家「${playerName}」進行 [${actionText}] 嗎？此操作將直接改寫資料庫關係鏈。`)) {
+                document.getElementById(rowId).style.display = 'none';
+                
+                // 動態更新計數器
+                if (type === 'following') {
+                    followCount--;
+                    document.getElementById('count-following').innerText = followCount;
+                } else if (type === 'blocked') {
+                    blockedCount--;
+                    document.getElementById('count-blocked').innerText = blockedCount;
+                }
+
+                // 寫入實時日誌系統 (更新 Logs 頁籤的計數徽章)
+                const logContainer = document.getElementById('log-container');
+                const now = new Date().toLocaleTimeString();
+                const newLog = document.createElement('p');
+                newLog.className = "border-b border-slate-700/40 pb-2 text-blue-400 animate-pulse";
+                newLog.innerHTML = `<span>[ADMIN_ACTION]</span> ${now}<br>管理員強制執行：${actionText} (${playerName})<br><span class="text-slate-500">操作覆核碼: AUTH_SYS_MVP</span>`;
+                logContainer.insertBefore(newLog, logContainer.firstChild);
+
+                logCount++;
+                document.getElementById('count-logs').innerText = logCount;
+            }
+        }
+
+        // 搜尋解算模擬
+        function searchPlayer() {
+            const inputVal = document.getElementById('target-search').value;
+            if (inputVal.trim() === "") {
+                alert("請輸入檢索關鍵字！");
+                return;
+            }
+            document.getElementById('sanction-target').innerText = `${inputVal} (UID: 10001)`;
+            alert(`【有向圖關聯解算成功】已成功調取並解碼「${inputVal}」的全站單向追蹤、被動粉絲、主動封鎖、被動封鎖與關聯日誌這 5 層有向矩陣網格。`);
+        }
+
+        function resetSearch() {
+            document.getElementById('target-search').value = "老王";
+            document.getElementById('sanction-target').innerText = "老王 (UID: 10001)";
+            switchBackTab('following');
+        }
+
+        // 停權狀態提示
+        function showStatus(feature) {
+            const now = new Date().toLocaleTimeString();
+            const logContainer = document.getElementById('log-container');
+            const newLog = document.createElement('p');
+            newLog.className = "border-b border-slate-700/40 pb-2 text-amber-400";
+            newLog.innerHTML = `<span>[SANCTION_TOGGLE]</span> ${now}<br>變更老王社交狀態：[${feature}] 開關已變更。<br><span class="text-slate-500">客端即時限制已生效</span>`;
+            logContainer.insertBefore(newLog, logContainer.firstChild);
+
+            logCount++;
+            document.getElementById('count-logs').innerText = logCount;
+        }
+    </script>
+</body>
+</html>
