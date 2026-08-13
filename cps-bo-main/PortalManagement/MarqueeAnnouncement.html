@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 跑馬燈公告</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { primary: { DEFAULT: '#2088ea', hover: '#1a7acb' }, dark: { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' } } } }
+        }
+    </script>
+    <link rel="stylesheet" href="../_shared/styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden"
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()"
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <!-- Modals Container -->
+    <div x-data="modalData()"
+         @open-marquee-detail.window="openDetail($event.detail)"
+         @open-add-marquee.window="openAdd($event.detail)"
+         @trigger-delete.window="triggerDelete($event.detail)"
+         @sync-category-list.window="categoryList = $event.detail"
+         @sync-category-colors.window="categoryColors = $event.detail"
+         @open-user-detail.window="currentOperator = $event.detail; userDetailOpen = true">
+
+        <!-- 刪除確認彈窗 -->
+        <div x-show="showDeleteConfirm" style="display: none;" class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50" x-transition.opacity>
+            <div class="bg-gray-100 rounded-xl shadow-xl w-[320px] overflow-hidden flex flex-col">
+                <div class="px-5 py-4 flex items-baseline gap-2">
+                    <span class="text-lg font-bold">提示</span>
+                    <span class="text-xs text-gray-400 font-mono" x-text="deleteTargetName"></span>
+                </div>
+                <div class="px-5 py-8 bg-white/50 border-y border-gray-200 text-center">
+                    <p class="text-gray-800 font-bold">【 <span x-text="deleteTargetName"></span> 】 確認刪除？</p>
+                </div>
+                <div class="p-4 bg-gray-100 flex justify-end gap-3">
+                    <button @click="showDeleteConfirm = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">取消</button>
+                    <button @click="confirmDelete()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 shadow-sm text-sm font-medium">確認</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 詳細/新增 彈窗 -->
+        <div x-show="detailOpen" style="display: none;" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/30 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-[#f8fafc] rounded-lg shadow-2xl w-full max-w-5xl mx-4 overflow-hidden flex flex-col max-h-[92vh]" @click.outside="!isAddMode && !userDetailOpen && (detailOpen = false)">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white flex-shrink-0">
+                    <h3 class="text-lg font-bold text-gray-700 flex items-center gap-2">
+                        <span>跑馬燈公告</span>
+                        <span class="text-gray-400 font-normal text-sm" x-text="isAddMode ? '新增' : (editForm.nameTw || editForm.name || '')"></span>
+                    </h3>
+                </div>
+
+                <div class="overflow-y-auto custom-scroll flex-1 p-6 space-y-4">
+                    <!-- 狀態資訊 (僅詳細顯示) -->
+                    <template x-if="!isAddMode">
+                        <div class="bg-[#dfe3e8] border border-[#cbd5e1] rounded-lg p-5 grid grid-cols-2 gap-y-4 text-sm">
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">狀態</p><span class="px-2.5 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold border border-green-200">進行中</span></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">建立時間</p><div class="text-gray-700 font-medium">2026/01/26 17:19:09</div></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">最後異動時間</p><div class="text-gray-700 font-medium">2026/01/28 13:17:58</div></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">操作者</p><button @click="$dispatch('open-user-detail', editForm.operator)" class="text-primary hover:underline font-medium" x-text="editForm.operator || 'System'"></button></div>
+                        </div>
+                    </template>
+
+                    <!-- 基本 -->
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white border-b border-gray-100 flex justify-between items-center font-bold text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-2"><i class="ph-fill ph-identification-badge"></i> 基本</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" class="p-6 grid grid-cols-2 gap-x-8 gap-y-5">
+                            <!-- 醒目 -->
+                            <div class="space-y-2">
+                                <div class="relative group/hlTip inline-flex items-center cursor-help">
+                                    <span class="text-xs font-bold text-gray-500 border-b border-dotted border-gray-400">醒目</span>
+                                    <div class="absolute bottom-full left-0 mb-1.5 bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/hlTip:opacity-100 pointer-events-none transition-opacity z-50">[客端] 置頂著重顯示</div>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <label class="relative inline-flex items-center"
+                                           :class="isEditing && !(editForm.highlighted === false && highlightedCount >= 2) ? 'cursor-pointer' : 'cursor-default opacity-60'">
+                                        <input type="checkbox" x-model="editForm.highlighted" class="sr-only peer"
+                                               :disabled="!isEditing || (editForm.highlighted === false && highlightedCount >= 2)"
+                                               @change="if(editForm.highlighted && highlightedCount >= 2 && !originalHighlighted) { editForm.highlighted = false; $dispatch('notify', { message: '醒目最多只能設定 2 筆，請先取消其他設定' }); }">
+                                        <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                                    </label>
+                                    <span x-show="!originalHighlighted && highlightedCount >= 2 && isEditing" class="text-[11px] text-orange-500">已達上限（2/2）</span>
+                                </div>
+                            </div>
+                            <!-- 排序（僅設定醒目時可編輯） -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-gray-500">排序</label>
+                                <template x-if="!isEditing">
+                                    <div class="text-sm text-gray-800" x-text="editForm.highlighted ? (editForm.sortOrder || '-') : '-'"></div>
+                                </template>
+                                <template x-if="isEditing">
+                                    <input type="number" min="1" max="2"
+                                           class="w-24 border border-gray-200 rounded px-2 py-1 text-sm bg-white transition-opacity"
+                                           :class="!editForm.highlighted ? 'opacity-40 cursor-not-allowed' : ''"
+                                           :disabled="!editForm.highlighted"
+                                           x-model.number="editForm.sortOrder"
+                                           placeholder="1">
+                                </template>
+                            </div>
+                            <!-- 分類 -->
+                            <div class="space-y-2">
+                                <template x-if="isEditing">
+                                    <div class="space-y-2.5">
+                                        <div class="flex items-center justify-between">
+                                            <label class="text-xs font-bold text-gray-500">分類</label>
+                                            <button type="button" @click="toggleAllCategories()" class="text-xs text-primary hover:underline font-medium">全選</button>
+                                        </div>
+                                        <div class="flex flex-wrap gap-x-6 gap-y-2.5">
+                                            <template x-for="cat in categoryList" :key="cat">
+                                                <label class="flex items-center gap-2 cursor-pointer">
+                                                    <input type="checkbox" class="checkbox-custom" :value="cat" x-model="editForm.categories">
+                                                    <span class="text-sm text-gray-700" x-text="cat"></span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                                <!-- 詳細模式：顯示已選 chips -->
+                                <template x-if="!isEditing">
+                                    <div class="space-y-2">
+                                        <label class="text-xs font-bold text-gray-500">分類</label>
+                                        <div class="flex flex-wrap gap-2">
+                                            <template x-if="!editForm.categories || editForm.categories.length === 0">
+                                                <span class="text-sm text-gray-400">（未設定）</span>
+                                            </template>
+                                            <template x-for="cat in (editForm.categories || [])" :key="cat">
+                                                <span class="px-2.5 py-0.5 rounded text-xs font-bold border"
+                                                      :style="categoryColors[cat] ? `background-color:${categoryColors[cat]}22;color:${categoryColors[cat]};border-color:${categoryColors[cat]}55` : ''"
+                                                      :class="!categoryColors[cat] ? 'bg-blue-50 text-blue-700 border-blue-200' : ''"
+                                                      x-text="cat"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            <!-- 名稱（可切換語系） -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                    <span class="text-red-500 mr-1" x-show="isAddMode">*</span>名稱
+                                </label>
+                                <!-- 詳細模式：純文字顯示 + 語系切換 -->
+                                <template x-if="!isEditing">
+                                    <div class="flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-100">
+                                        <button type="button"
+                                                @click="currentNameLang = currentNameLang === 'tw' ? 'en' : 'tw'"
+                                                class="flex-shrink-0 transition-opacity hover:opacity-70" title="點擊切換語系">
+                                            <img x-show="currentNameLang === 'tw'" src="https://flagcdn.com/w20/tw.png" alt="TW" style="width:20px;height:auto;border-radius:2px">
+                                            <img x-show="currentNameLang === 'en'" src="https://flagcdn.com/w20/us.png" alt="EN" style="width:20px;height:auto;border-radius:2px">
+                                        </button>
+                                        <div class="w-full text-sm text-gray-800" x-text="(currentNameLang === 'tw' ? editForm.nameTw : editForm.nameEn) || '-'"></div>
+                                    </div>
+                                </template>
+                                <!-- 編輯/新增模式：input 匡 + 語系切換 -->
+                                <template x-if="isEditing">
+                                    <div class="flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-100">
+                                        <button type="button"
+                                                @click="currentNameLang = currentNameLang === 'tw' ? 'en' : 'tw'"
+                                                class="flex-shrink-0 transition-opacity hover:opacity-70" title="點擊切換語系">
+                                            <img x-show="currentNameLang === 'tw'" src="https://flagcdn.com/w20/tw.png" alt="TW" style="width:20px;height:auto;border-radius:2px">
+                                            <img x-show="currentNameLang === 'en'" src="https://flagcdn.com/w20/us.png" alt="EN" style="width:20px;height:auto;border-radius:2px">
+                                        </button>
+                                        <input x-show="currentNameLang === 'tw'" type="text"
+                                               class="bg-transparent w-full outline-none text-sm"
+                                               x-model="editForm.nameTw" placeholder="繁體中文名稱">
+                                        <input x-show="currentNameLang === 'en'" type="text"
+                                               class="bg-transparent w-full outline-none text-sm"
+                                               x-model="editForm.nameEn" placeholder="English name">
+                                    </div>
+                                </template>
+                            </div>
+                            <!-- 顯示時間 -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>顯示時間</label>
+                                <template x-if="!isEditing">
+                                    <div class="text-sm text-gray-800" x-text="editForm.startTime + ' ~ ' + editForm.endTime"></div>
+                                </template>
+                                <template x-if="isEditing">
+                                    <div class="flex items-center gap-4 text-sm">
+                                        <input type="text" class="border border-gray-200 rounded px-2 py-1 w-48 bg-white text-sm" x-model="editForm.startTime">
+                                        <span class="text-gray-400">~</span>
+                                        <input type="text" class="border border-gray-200 rounded px-2 py-1 w-48 bg-white text-sm" x-model="editForm.endTime">
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 設定 -->
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white border-b border-gray-100 flex justify-between items-center font-bold text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-2"><i class="ph-fill ph-briefcase"></i> 設定</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" class="p-6 space-y-6">
+                            <!-- 對象 -->
+                            <div class="space-y-2">
+                                <!-- 新增/編輯：攤平顯示全部選項 -->
+                                <template x-if="isEditing">
+                                    <div class="space-y-2.5">
+                                        <div class="flex items-center justify-between">
+                                            <label class="text-xs font-bold text-gray-500">對象</label>
+                                            <button type="button" @click="toggleAllAudience()" class="text-xs text-primary hover:underline font-medium">全選</button>
+                                        </div>
+                                        <div class="grid grid-cols-4 gap-x-6 gap-y-2.5">
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" class="checkbox-custom" value="訪客" x-model="editForm.audience">
+                                                <span class="text-sm text-gray-700">訪客</span>
+                                            </label>
+                                            <template x-for="vipIdx in 11" :key="vipIdx">
+                                                <label class="flex items-center gap-2 cursor-pointer">
+                                                    <input type="checkbox" class="checkbox-custom" :value="'VIP ' + (vipIdx - 1)" x-model="editForm.audience">
+                                                    <span class="text-sm text-gray-700" x-text="'VIP ' + (vipIdx - 1)"></span>
+                                                </label>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                                <!-- 詳細：攤平顯示已勾選的對象 -->
+                                <template x-if="!isEditing">
+                                    <div class="space-y-2">
+                                        <label class="text-xs font-bold text-gray-500">對象</label>
+                                        <div class="flex flex-wrap gap-2">
+                                            <template x-if="!editForm.audience || editForm.audience.length === 0">
+                                                <span class="text-sm text-gray-400">（未設定）</span>
+                                            </template>
+                                            <template x-for="a in (editForm.audience || [])" :key="a">
+                                                <span class="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-medium" x-text="a"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            <!-- 內容 -->
+                            <div class="space-y-4">
+                                <label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>內容</label>
+                                <div class="flex gap-2">
+                                    <button @click="currentLang = 'tw'" :class="currentLang === 'tw' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'" class="px-4 py-1.5 rounded text-sm font-bold flex items-center gap-2 transition-colors"><img src="https://flagcdn.com/w20/tw.png" alt="TW" style="width:20px;height:auto;border-radius:2px"> 繁中</button>
+                                    <button @click="currentLang = 'en'" :class="currentLang === 'en' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'" class="px-4 py-1.5 rounded text-sm font-bold flex items-center gap-2 transition-colors"><img src="https://flagcdn.com/w20/us.png" alt="US" style="width:20px;height:auto;border-radius:2px"> 英文</button>
+                                </div>
+                                <div class="border border-gray-200 rounded overflow-hidden">
+                                    <textarea class="w-full p-6 min-h-[160px] text-sm text-gray-700 leading-relaxed outline-none resize-none bg-white" :readonly="!isEditing" x-model="editForm.content"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 其他 -->
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white border-b border-gray-100 flex justify-between items-center font-bold text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-2"><i class="ph-fill ph-archive"></i> 其他</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" class="p-6">
+                            <label class="text-xs font-bold text-gray-500 block mb-2">備註</label>
+                            <textarea class="w-full border border-gray-200 rounded p-4 text-sm min-h-[100px] outline-none focus:border-blue-500 transition-colors bg-white resize-none" :readonly="!isEditing" x-model="editForm.remark" placeholder="(無)"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-gray-200 bg-[#e2e8f0] flex justify-end gap-3 flex-shrink-0">
+                    <!-- 關閉（一律顯示，最左） -->
+                    <button @click="detailOpen = false" class="px-6 py-2 bg-[#94a3b8] text-white rounded hover:bg-slate-500 shadow-sm text-sm font-bold transition-colors">關閉</button>
+
+                    <!-- 詳細模式（!isAddMode && !isEditing） -->
+                    <template x-if="!isAddMode && !isEditing">
+                        <div class="flex gap-3">
+                            <button @click="triggerImport()" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold">匯入</button>
+                            <button @click="notifyExport()" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold">匯出</button>
+                            <button @click="triggerDelete(editForm)" class="px-6 py-2 bg-[#ef4444] text-white rounded hover:bg-red-600 shadow-sm text-sm font-bold">刪除</button>
+                            <button @click="copyMarquee()" class="px-6 py-2 bg-teal-50 border border-teal-200 text-teal-700 rounded hover:bg-teal-100 shadow-sm text-sm font-bold">複製</button>
+                            <button @click="isEditing = true" class="px-6 py-2 bg-[#f59e0b] text-white rounded hover:bg-amber-600 shadow-sm text-sm font-bold">編輯</button>
+                        </div>
+                    </template>
+
+                    <!-- 編輯模式（!isAddMode && isEditing）：關閉 ｜ 刪除 ｜ 預覽 ｜ 複製 ｜ 取消 ｜ 確認 -->
+                    <template x-if="!isAddMode && isEditing">
+                        <div class="flex gap-3">
+                            <button @click="triggerDelete(editForm)" class="px-6 py-2 bg-[#ef4444] text-white rounded hover:bg-red-600 shadow-sm text-sm font-bold">刪除</button>
+                            <button @click="$dispatch('notify',{message:'預覽功能開發中'})" class="px-6 py-2 bg-blue-50 border border-blue-200 text-blue-600 rounded hover:bg-blue-100 shadow-sm text-sm font-bold transition-colors">預覽</button>
+                            <button @click="copyMarquee()" class="px-6 py-2 bg-teal-50 border border-teal-200 text-teal-700 rounded hover:bg-teal-100 shadow-sm text-sm font-bold">複製</button>
+                            <button @click="isEditing = false" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold">取消</button>
+                            <button @click="$dispatch('notify',{message:'儲存成功'}); isEditing = false" class="px-6 py-2 bg-[#2088ea] text-white rounded hover:bg-blue-600 shadow-sm text-sm font-bold">確認</button>
+                        </div>
+                    </template>
+
+                    <!-- 新增模式（isAddMode） -->
+                    <template x-if="isAddMode">
+                        <button @click="saveNewMarquee()" class="px-6 py-2 bg-[#2088ea] text-white rounded hover:bg-blue-600 shadow-sm text-sm font-bold">儲存</button>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full bg-[#f3f4f6]" x-data="marqueePage()" @open-user-detail.window="currentOperator = $event.detail; userDetailOpen = true">
+        <div id="layout-header"></div>
+
+        <div class="flex-1 overflow-auto relative h-full flex flex-col p-4 md:p-6">
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+
+                <!-- 頂部導覽 + 工具按鈕 -->
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="text-gray-500">客端管理</span>
+                        <i class="ph ph-caret-right text-gray-300 text-xs"></i>
+                        <span class="font-semibold text-primary">跑馬燈公告</span>
+                    </nav>
+                    <div class="flex items-center gap-2">
+                        <!-- 說明 -->
+                        <div class="relative group" x-data="{ showHelp: false }">
+                            <button @click="showHelp = !showHelp" class="w-8 h-8 rounded-full bg-yellow-400 text-white hover:bg-yellow-500 flex items-center justify-center shadow-sm"><i class="ph-fill ph-lightbulb text-lg"></i></button>
+                            <span class="btn-tip">說明</span>
+                            <div x-show="showHelp" @click.outside="showHelp = false" class="absolute right-0 top-full mt-2 w-80 p-4 bg-[#fff9db] shadow-xl rounded-lg z-[120] border border-yellow-200 text-xs text-yellow-900" x-cloak>
+                                <ul class="list-disc pl-4 space-y-2">
+                                    <li><span class="font-bold">[客端] 跑馬燈：</span>僅在「未登入」顯示"名稱"，依據「顯示時間：起始」降冪顯示</li>
+                                    <li><span class="font-bold">醒目：</span>固定顯示於列表前 2 筆，最多設定 2 筆</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <!-- 資料交換 -->
+                        <div class="relative group" x-data="{ syncDropdown: false }">
+                            <button @click="syncDropdown = !syncDropdown" class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center border border-gray-200 shadow-sm transition-colors"><i class="ph-bold ph-arrows-clockwise text-lg"></i></button>
+                            <span class="btn-tip" style="bottom:auto;top:calc(100% + 5px);z-index:200">資料交換</span>
+                            <div x-show="syncDropdown" @click.outside="syncDropdown = false" class="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl border border-gray-100 py-1 z-[150]" x-cloak>
+                                <button @click="triggerImport(); syncDropdown = false" class="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 text-gray-700">匯入</button>
+                                <button @click="notifyExport(selectedIds); syncDropdown = false" class="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 text-gray-700">匯出</button>
+                            </div>
+                        </div>
+                        <!-- 設定 -->
+                        <div class="relative group" x-data="{ settingDropdown: false }">
+                            <button @click="settingDropdown = !settingDropdown" class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center border border-gray-200 shadow-sm transition-colors"><i class="ph-bold ph-gear text-lg"></i></button>
+                            <span class="btn-tip" style="bottom:auto;top:calc(100% + 5px);z-index:200">設定</span>
+                            <div x-show="settingDropdown" @click.outside="settingDropdown = false" class="absolute right-0 mt-2 w-36 bg-white rounded-lg shadow-xl border border-gray-100 py-1 z-[150]" x-cloak>
+                                <button @click="openCategorySettings(); settingDropdown = false" class="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 text-gray-700">分類</button>
+                                <button @click="isBatchOpen = true; settingDropdown = false" class="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 text-gray-700">批次處理</button>
+                            </div>
+                        </div>
+                        <!-- 新增 -->
+                        <div class="relative group">
+                            <button @click="$dispatch('open-add-marquee', { _hCount: dataList.filter(r=>r.highlighted).length })" class="w-8 h-8 rounded-full bg-blue-500 text-white hover:bg-blue-600 flex items-center justify-center shadow-sm transition-colors"><i class="ph-bold ph-plus text-lg"></i></button>
+                            <span class="btn-tip" style="bottom:auto;top:calc(100% + 5px);z-index:200">新增</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 手機版：搜尋觸發按鈕（lg 以下顯示） -->
+                <div class="lg:hidden flex-shrink-0">
+                    <div @click="openSearchModal()" class="bg-white border border-gray-200 rounded-lg shadow-sm p-3 flex items-center justify-between cursor-pointer active:bg-gray-50">
+                        <div class="flex items-center gap-2 text-gray-600 font-bold"><i class="ph ph-magnifying-glass text-lg"></i> 搜尋</div>
+                        <i class="ph ph-caret-right text-gray-400"></i>
+                    </div>
+                </div>
+
+                <!-- 查詢條件 -->
+                <div :class="{ 'fixed inset-0 z-[150] bg-white flex flex-col': isMobile && searchOpen, 'bg-white border border-gray-200 rounded-lg shadow-sm flex-shrink-0 lg:block p-5': !isMobile || !searchOpen, 'hidden': isMobile && !searchOpen }">
+                    <!-- 手機版標題列 -->
+                    <div class="lg:hidden px-4 py-3 border-b border-gray-100 flex justify-between items-center mb-4 flex-shrink-0" x-show="isMobile">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-lg text-gray-800">跑馬燈公告</span>
+                            <span class="text-gray-400 font-normal text-sm">搜尋</span>
+                        </div>
+                        <button @click="searchOpen = false" class="text-gray-500 hover:text-gray-700 p-1"><i class="ph ph-x text-2xl"></i></button>
+                    </div>
+
+                    <!-- 所有查詢欄位（一般 + 進階）放在同一個可捲動 grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-end px-4 lg:px-0 pt-6 lg:pt-0" :class="{'pb-24 overflow-y-auto h-[calc(100vh-140px)] block': isMobile}">
+
+                        <!-- 名稱/單號（icon 切換型） -->
+                        <div class="floating-input-group" :class="{'mb-5': isMobile}">
+                            <label class="floating-label z-10" x-text="query.searchType === '名稱' ? '名稱' : '單號'"></label>
+                            <div class="flex relative">
+                                <button @click="query.searchType = query.searchType === '名稱' ? '單號' : '名稱'"
+                                        class="flex items-center justify-center w-12 bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg hover:bg-gray-100 transition-colors" title="點擊切換類型">
+                                    <i class="ph text-xl text-gray-500" :class="query.searchType === '名稱' ? 'ph-text-aa' : 'ph-hash'"></i>
+                                </button>
+                                <input type="text" x-model="query.searchText" class="floating-input rounded-l-none bg-input-base focus:bg-white" placeholder="">
+                            </div>
+                        </div>
+
+                        <!-- 狀態（複選下拉） -->
+                        <div class="floating-input-group relative" :class="{'mb-5': isMobile}" x-data="{ open: false }">
+                            <label class="floating-label">狀態</label>
+                            <button @click="open = !open" @click.outside="open = false"
+                                    class="floating-input bg-input-base text-left flex justify-between items-center">
+                                <span class="truncate" x-text="query.status.length > 0 ? '已選 ' + query.status.length + ' 項' : '全部'"></span>
+                                <i class="ph ph-caret-down text-gray-400"></i>
+                            </button>
+                            <div x-show="open" class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 shadow-lg rounded z-[110] p-2">
+                                <template x-for="s in ['進行中','未開始','已逾期']" :key="s">
+                                    <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded">
+                                        <input type="checkbox" class="checkbox-item" :value="s" x-model="query.status">
+                                        <span class="text-sm" x-text="s"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- 顯示時間（起訖區間） -->
+                        <div class="floating-input-group" :class="{'mb-5': isMobile}">
+                            <label class="floating-label">顯示時間</label>
+                            <div class="flex items-center">
+                                <input type="text" x-model="query.displayTimeStart" class="floating-input rounded-r-none border-r-0 text-center text-xs bg-input-base focus:bg-white" placeholder="起">
+                                <div class="px-1 border-y border-gray-200 bg-input-base h-[42px] flex items-center text-gray-400">~</div>
+                                <input type="text" x-model="query.displayTimeEnd" class="floating-input rounded-l-none border-l-0 text-center text-xs bg-input-base focus:bg-white" placeholder="訖">
+                            </div>
+                        </div>
+
+                        <!-- 對象（複選下拉） -->
+                        <div class="floating-input-group relative" :class="{'mb-5': isMobile}" x-data="{ open: false }">
+                            <label class="floating-label">對象</label>
+                            <button @click="open = !open" @click.outside="open = false"
+                                    class="floating-input bg-input-base text-left flex justify-between items-center">
+                                <span class="truncate" x-text="query.audience.length > 0 ? '已選 ' + query.audience.length + ' 項' : '全部'"></span>
+                                <i class="ph ph-caret-down text-gray-400"></i>
+                            </button>
+                            <div x-show="open" class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 shadow-lg rounded z-[110] p-2 max-h-48 overflow-y-auto">
+                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded">
+                                    <input type="checkbox" value="訪客" x-model="query.audience" class="checkbox-item">
+                                    <span class="text-sm">訪客</span>
+                                </label>
+                                <template x-for="i in 11" :key="i">
+                                    <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded">
+                                        <input type="checkbox" :value="'VIP ' + (i - 1)" x-model="query.audience" class="checkbox-item">
+                                        <span class="text-sm" x-text="'VIP ' + (i - 1)"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- 進階欄位（桌面展開時 or 手機版一律顯示） -->
+                        <template x-if="advancedOpen || isMobile">
+                            <div class="contents">
+                                <!-- 分類（複選下拉） -->
+                                <div class="floating-input-group relative" :class="{'mb-5': isMobile}" x-data="{ open: false }">
+                                    <label class="floating-label">分類</label>
+                                    <button @click="open = !open" @click.outside="open = false"
+                                            class="floating-input bg-input-base text-left flex justify-between items-center">
+                                        <span class="truncate" x-text="query.categories.length > 0 ? '已選 ' + query.categories.length + ' 項' : '全部'"></span>
+                                        <i class="ph ph-caret-down text-gray-400"></i>
+                                    </button>
+                                    <div x-show="open" class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 shadow-lg rounded z-[110] p-2 max-h-48 overflow-y-auto">
+                                        <template x-for="cat in categoryList" :key="cat">
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded">
+                                                <input type="checkbox" class="checkbox-item" :value="cat" x-model="query.categories">
+                                                <span class="text-sm" x-text="cat"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+                                <!-- 最後異動時間（起訖區間） -->
+                                <div class="floating-input-group" :class="{'mb-5': isMobile}">
+                                    <label class="floating-label">最後異動時間</label>
+                                    <div class="flex items-center">
+                                        <input type="text" x-model="query.lastModifiedStart" class="floating-input rounded-r-none border-r-0 text-center text-xs bg-input-base focus:bg-white" placeholder="起">
+                                        <div class="px-1 border-y border-gray-200 bg-input-base h-[42px] flex items-center text-gray-400">~</div>
+                                        <input type="text" x-model="query.lastModifiedEnd" class="floating-input rounded-l-none border-l-0 text-center text-xs bg-input-base focus:bg-white" placeholder="訖">
+                                    </div>
+                                </div>
+                                <!-- 操作者 -->
+                                <div class="floating-input-group" :class="{'mb-5': isMobile}">
+                                    <label class="floating-label">操作者</label>
+                                    <input type="text" x-model="query.operator" class="floating-input bg-input-base focus:bg-white" placeholder="">
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- 底部列：進階切換 + 搜尋 -->
+                    <div class="flex items-center justify-between mt-4 px-4 lg:px-0 lg:flex-row flex-col-reverse gap-4 lg:gap-0"
+                         :class="{'fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-[130]': isMobile}">
+                        <button @click="advancedOpen = !advancedOpen"
+                                class="text-sm text-gray-500 hover:text-primary items-center gap-1 hidden lg:flex font-medium transition-colors">
+                            <span x-text="advancedOpen ? '隱藏條件' : '進階'"></span>
+                            <i class="ph" :class="advancedOpen ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </button>
+                        <button @click="searchOpen = false" class="lg:w-10 lg:h-10 w-full h-11 bg-primary hover:bg-blue-600 text-white rounded-lg shadow flex items-center justify-center transition-colors gap-2">
+                            <span class="lg:hidden font-bold">搜尋</span><i class="ph ph-magnifying-glass text-lg font-bold"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 列表卡片 -->
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col flex-1 min-h-0 relative">
+                    <!-- 資訊列 -->
+                    <div class="bg-gray-100 p-3 border-b border-gray-200 flex-shrink-0 flex items-center justify-between px-4">
+                        <div class="flex items-center gap-3">
+                            <span x-show="selectedIds.length > 0" class="text-sm font-bold text-primary" x-cloak>
+                                共 <span x-text="selectedIds.length"></span> 筆已選
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="flex flex-col text-right">
+                                <span class="text-xs text-gray-500 font-bold uppercase">筆數</span>
+                                <span class="text-sm font-bold text-gray-800" x-text="dataList.length"></span>
+                            </div>
+                            <!-- 篩選顯示欄位（icon only，同活動遊戲紀錄） -->
+                            <button @click="openColumnModal()" class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center shadow-sm transition-colors" title="欄位顯示">
+                                <i class="ph ph-columns text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 表格 -->
+                    <div class="flex-1 overflow-auto custom-scroll relative z-0 h-full">
+                        <table class="w-full text-left border-collapse min-w-[1400px]">
+                            <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+                                <tr>
+                                    <!-- 勾選欄（凍結 left-0） -->
+                                    <th class="px-3 py-3 w-16 text-right pr-4 sticky left-0 z-[31] bg-gray-50">
+                                        <input type="checkbox" class="checkbox-custom" @change="toggleAll()" :checked="selectedIds.length === dataList.length && dataList.length > 0">
+                                    </th>
+                                    <!-- 名稱（凍結 left-16，手機版固定 80px，桌面至少 180px） -->
+                                    <th class="px-4 py-3 w-[80px] min-w-[80px] lg:w-auto lg:min-w-[180px] sticky left-16 z-[31] bg-gray-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                                        <div class="relative group/nameTip inline-flex items-center gap-0.5 cursor-help">
+                                            <span class="border-b border-dotted border-gray-400 leading-tight">名稱</span>
+                                            <div class="absolute top-full left-0 mt-1 bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/nameTip:opacity-100 pointer-events-none transition-opacity z-[100]">名稱 / 單號</div>
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-3 whitespace-nowrap" :class="{'hidden': !visibleCols.status}">狀態</th>
+                                    <th class="px-4 py-3 whitespace-nowrap" :class="{'hidden': !visibleCols.displayTime}">顯示時間</th>
+                                    <th class="px-4 py-3 whitespace-nowrap" :class="{'hidden': !visibleCols.audience}">對象</th>
+                                    <th class="px-4 py-3 whitespace-nowrap" :class="{'hidden': !visibleCols.categories}">
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="relative group/catTip inline-flex items-center gap-0.5 cursor-help">
+                                                <span class="border-b border-dotted border-gray-400 leading-tight">分類</span>
+                                                <div class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/catTip:opacity-100 pointer-events-none transition-opacity z-[100]">[客端] 標籤</div>
+                                            </div>
+                                            <button @click="catAllExpanded = !catAllExpanded; pagedList.forEach(r => { catExpandedMap[r.id] = catAllExpanded }); catExpandedMap = {...catExpandedMap}"
+                                                    class="w-4 h-4 rounded flex items-center justify-center hover:bg-gray-200 text-gray-400 hover:text-primary transition-colors flex-shrink-0"
+                                                    :title="catAllExpanded ? '全部收合' : '全部展開'">
+                                                <i class="ph text-xs" :class="catAllExpanded ? 'ph-arrows-in-simple' : 'ph-arrows-out-simple'"></i>
+                                            </button>
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-3 whitespace-nowrap" :class="{'hidden': !visibleCols.lastModified}">最後異動時間</th>
+                                    <th class="px-4 py-3 whitespace-nowrap" :class="{'hidden': !visibleCols.operator}">操作者</th>
+                                    <th class="px-4 py-3 whitespace-nowrap" :class="{'hidden': !visibleCols.remark}">備註</th>
+                                    <th class="px-4 py-3 table-cell-nowrap bg-gray-50 text-center sticky right-0 z-[31] shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-gray-600 divide-y divide-gray-100 bg-white">
+                                <template x-for="row in pagedList" :key="row.id">
+                                    <tr class="hover:bg-blue-50/50 transition-colors group/row" :class="row.highlighted ? 'bg-amber-50/40' : ''">
+                                        <!-- 勾選 + pin（凍結 left-0） -->
+                                        <td class="px-3 py-5 text-right pr-4 sticky left-0 bg-white group-hover/row:bg-blue-50 transition-colors" :class="{ '!bg-amber-50': row.highlighted }">
+                                            <div class="flex items-center justify-end gap-1.5">
+                                                <div class="relative group/pin" x-show="row.highlighted">
+                                                    <i class="ph-fill ph-push-pin text-amber-500 text-sm"></i>
+                                                    <span class="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover/pin:opacity-100 pointer-events-none whitespace-nowrap">醒目</span>
+                                                </div>
+                                                <input type="checkbox" class="checkbox-custom" :value="row.id" x-model="selectedIds">
+                                            </div>
+                                        </td>
+                                        <!-- 名稱（凍結 left-16，帶右側陰影） -->
+                                        <td class="px-4 py-5 sticky left-16 bg-white group-hover/row:bg-blue-50 transition-colors shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)] max-w-[80px] lg:max-w-none overflow-hidden" :class="{ '!bg-amber-50': row.highlighted }">
+                                            <div class="flex flex-col">
+                                                <span class="font-bold text-gray-700 truncate" x-text="row.nameTw || row.name"></span>
+                                                <span class="text-xs text-gray-400 font-mono" x-text="'#' + String(row.id).padStart(4, '0')"></span>
+                                            </div>
+                                        </td>
+                                        <!-- 狀態 -->
+                                        <td class="px-4 py-5 whitespace-nowrap" :class="{'hidden': !visibleCols.status}">
+                                            <span class="px-2 py-0.5 rounded text-[11px] font-bold border"
+                                                  :class="{
+                                                    'bg-green-100 text-green-700 border-green-200': row.status === '進行中',
+                                                    'bg-blue-100 text-blue-700 border-blue-200': row.status === '未開始',
+                                                    'bg-slate-100 text-slate-500 border-slate-200': row.status === '已逾期'
+                                                  }"
+                                                  x-text="row.status"></span>
+                                        </td>
+                                        <!-- 顯示時間 -->
+                                        <td class="px-4 py-5 text-xs font-medium text-gray-500 whitespace-nowrap" :class="{'hidden': !visibleCols.displayTime}" x-text="row.displayTime"></td>
+                                        <!-- 對象 -->
+                                        <td class="px-4 py-5 whitespace-nowrap" :class="{'hidden': !visibleCols.audience}">
+                                            <template x-if="!row.audience || row.audience.length === 0">
+                                                <span class="text-gray-300">—</span>
+                                            </template>
+                                            <template x-if="row.audience && row.audience.length > 0">
+                                                <span class="px-2 py-0.5 rounded text-[11px] font-bold border"
+                                                      :class="row.audience.length >= 12 ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'"
+                                                      x-text="row.audience.length >= 12 ? '全部' : (row.audience.includes('訪客') && row.audience.length > 1 ? '訪客 + VIP' : row.audience[0])">
+                                                </span>
+                                            </template>
+                                        </td>
+                                        <!-- 分類（全局 catExpandedMap 控制） -->
+                                        <td class="px-4 py-5" :class="{'hidden': !visibleCols.categories}">
+                                            <button x-show="!catExpandedMap[row.id]" @click.stop="catExpandedMap[row.id] = true; catExpandedMap = {...catExpandedMap}"
+                                                    class="flex items-center gap-1 text-sm text-gray-600 hover:text-primary transition-colors">
+                                                <span class="font-medium" x-text="(row.categories || []).length"></span>
+                                                <i class="ph ph-caret-down text-xs text-gray-400" x-show="(row.categories||[]).length > 0"></i>
+                                                <span x-show="(row.categories||[]).length === 0" class="text-gray-300 font-normal">—</span>
+                                            </button>
+                                            <div x-show="catExpandedMap[row.id]" class="flex flex-wrap gap-1 items-center min-w-[120px]">
+                                                <template x-if="(row.categories||[]).length === 0">
+                                                    <span class="text-gray-300 text-xs">—</span>
+                                                </template>
+                                                <template x-for="cat in (row.categories||[])" :key="cat">
+                                                    <span class="px-1.5 py-0.5 rounded text-[11px] font-bold border"
+                                                          :style="categoryColors[cat] ? `background-color:${categoryColors[cat]}22;color:${categoryColors[cat]};border-color:${categoryColors[cat]}55` : ''"
+                                                          :class="!categoryColors[cat] ? 'bg-blue-100 text-blue-700 border-blue-100' : ''"
+                                                          x-text="cat"></span>
+                                                </template>
+                                                <button @click.stop="catExpandedMap[row.id] = false; catExpandedMap = {...catExpandedMap}" class="text-gray-300 hover:text-gray-500 ml-0.5">
+                                                    <i class="ph ph-caret-up text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <!-- 最後異動時間 -->
+                                        <td class="px-4 py-5 text-xs font-medium text-gray-500 whitespace-nowrap" :class="{'hidden': !visibleCols.lastModified}" x-text="row.lastModified"></td>
+                                        <!-- 操作者（超連結開啟用戶詳細） -->
+                                        <td class="px-4 py-5" :class="{'hidden': !visibleCols.operator}">
+                                            <div class="flex items-center gap-1.5">
+                                                <i class="ph-fill ph-user-circle-gear text-gray-400"></i>
+                                                <button @click="$dispatch('open-user-detail', row.operator)" class="text-primary hover:underline text-sm font-medium" x-text="row.operator"></button>
+                                            </div>
+                                        </td>
+                                        <!-- 備註 -->
+                                        <td class="px-4 py-5 text-gray-400 text-xs" :class="{'hidden': !visibleCols.remark}" x-text="row.remark"></td>
+                                        <!-- 操作 -->
+                                        <td class="px-4 py-5 text-center sticky right-0 bg-white group-hover/row:bg-blue-50 transition-colors shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]"
+                                            x-data="{ opOpen: false }"
+                                            :class="{ '!bg-amber-50': row.highlighted, '!z-[50]': opOpen }">
+                                            <div class="hidden lg:flex items-center justify-center gap-3">
+                                                <button @click="$dispatch('open-marquee-detail', { ...row, _hCount: dataList.filter(r=>r.highlighted).length })"
+                                                        class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors" data-tip="檢視">
+                                                    <i class="ph ph-caret-right text-lg"></i>
+                                                </button>
+                                                <div class="relative group/del">
+                                                    <button @click="$dispatch('trigger-delete', row)" class="text-red-500 hover:text-red-700 transition-colors"><i class="ph-bold ph-trash text-lg"></i></button>
+                                                    <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/del:opacity-100 pointer-events-none whitespace-nowrap">刪除</span>
+                                                </div>
+                                            </div>
+                                            <div class="lg:hidden relative flex items-center justify-center">
+                                                <button @click.stop="opOpen = !opOpen" class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 flex items-center justify-center"><i class="ph ph-list text-lg"></i></button>
+                                                <div x-show="opOpen" @click.outside="opOpen = false" class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-[200] min-w-[120px] text-left" x-cloak>
+                                                    <button @click="$dispatch('open-marquee-detail', { ...row, _hCount: dataList.filter(r=>r.highlighted).length }); opOpen = false" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 flex items-center gap-2"><i class="ph ph-caret-right"></i>檢視</button>
+                                                    <button @click="$dispatch('trigger-delete', row); opOpen = false" class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-gray-700 flex items-center gap-2"><i class="ph ph-trash text-red-500"></i>刪除</button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="px-6 py-4 border-t border-gray-200 bg-white flex items-center justify-end gap-4 flex-shrink-0">
+                        <div class="flex items-center gap-2 text-gray-400">
+                            <button @click="currentPage = 1" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-back text-sm"></i></button>
+                            <button @click="currentPage > 1 && currentPage--" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-left text-sm"></i></button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <template x-for="p in totalPages" :key="p">
+                                <button @click="currentPage = p" class="w-8 h-8 rounded-full text-sm font-medium flex items-center justify-center transition-colors"
+                                        :class="currentPage === p ? 'bg-primary text-white shadow-sm' : 'hover:bg-gray-100 text-gray-600'" x-text="p"></button>
+                            </template>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-400">
+                            <button @click="currentPage < totalPages && currentPage++" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-right text-sm"></i></button>
+                            <button @click="currentPage = totalPages" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-forward text-sm"></i></button>
+                        </div>
+                        <div class="text-xs text-gray-400 font-medium" x-text="`${(currentPage-1)*pageSize+1} - ${Math.min(currentPage*pageSize, dataList.length)} 共 ${dataList.length}`"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 選取顯示欄位 modal -->
+        <div x-show="isColumnModalOpen" style="display: none;" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white flex-shrink-0">
+                    <h3 class="text-lg font-bold text-gray-800">選擇顯示欄位</h3>
+                    <div class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-bold font-mono">
+                        <span x-text="Object.values(tempVisibleCols).filter(Boolean).length"></span>
+                        /
+                        <span x-text="Object.values(tempVisibleCols).length"></span>
+                    </div>
+                </div>
+                <div class="p-6 overflow-y-auto custom-scroll space-y-4 bg-gray-50 flex-1">
+                    <!-- 全選 -->
+                    <div class="flex items-center gap-3 cursor-pointer select-none mb-2 w-fit" @click="toggleAllColumns()">
+                        <div class="w-5 h-5 rounded flex items-center justify-center transition-colors shadow-sm border-2"
+                             :class="isAllColumnsChecked() || isAllColumnsIndeterminate() ? 'bg-primary border-primary' : 'bg-white border-gray-300'">
+                            <i class="ph-bold text-white text-sm"
+                               :class="isAllColumnsChecked() ? 'ph-check' : (isAllColumnsIndeterminate() ? 'ph-minus' : 'hidden')"></i>
+                        </div>
+                        <span class="font-bold text-gray-800">全選</span>
+                    </div>
+                    <!-- 欄位群組 -->
+                    <template x-for="(groupKeys, groupKey) in columnGroups" :key="groupKey">
+                        <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                            <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleColumnGroup(groupKey)">
+                                <div class="w-5 h-5 rounded flex items-center justify-center transition-colors border-2"
+                                     :class="isColumnGroupChecked(groupKey) || isColumnGroupIndeterminate(groupKey) ? 'bg-primary border-primary' : 'bg-white border-gray-300'">
+                                    <i class="ph-bold text-white text-sm"
+                                       :class="isColumnGroupChecked(groupKey) ? 'ph-check' : (isColumnGroupIndeterminate(groupKey) ? 'ph-minus' : 'hidden')"></i>
+                                </div>
+                                <span class="font-bold text-gray-800" x-text="columnGroupLabels[groupKey]"></span>
+                            </div>
+                            <div class="pl-2 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2">
+                                <template x-for="colKey in groupKeys" :key="colKey">
+                                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                                        <div class="w-5 h-5 rounded flex items-center justify-center transition-colors border-2"
+                                             :class="tempVisibleCols[colKey] ? 'bg-primary border-primary' : 'bg-white border-gray-300'">
+                                            <i class="ph-bold ph-check text-white text-sm" x-show="tempVisibleCols[colKey]"></i>
+                                        </div>
+                                        <input type="checkbox" x-model="tempVisibleCols[colKey]" class="hidden">
+                                        <span class="text-sm text-gray-700" x-text="colNames[colKey]"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 rounded-b-lg flex-shrink-0">
+                    <button @click="isColumnModalOpen = false" class="px-6 py-2 bg-[#f1f5f9] text-[#475569] rounded hover:bg-[#e2e8f0] shadow-sm text-sm font-bold transition-colors">取消</button>
+                    <button @click="confirmColumnModal()" class="px-6 py-2 bg-[#3b82f6] text-white rounded hover:bg-[#2563eb] shadow-sm text-sm font-bold transition-colors">確定</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分類 modal -->
+        <div x-show="isCategorySettingsOpen" style="display: none;" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden flex flex-col max-h-[90vh]" @click.outside="isCategorySettingsOpen = false">
+                <div class="px-5 py-4 flex items-baseline gap-2">
+                    <span class="text-lg font-bold">跑馬燈公告</span>
+                    <span class="text-xs text-gray-400">分類</span>
+                </div>
+                <div class="overflow-y-auto custom-scroll p-4 bg-gray-50" style="min-height:200px;max-height:420px">
+                    <div class="space-y-2">
+                        <template x-for="(item, index) in editCategoryList" :key="index">
+                            <div class="flex gap-2 items-center" draggable="true" @dragstart="catDragStart(index)" @dragover.prevent @drop="catDrop(index)">
+                                <div class="cursor-grab text-gray-400 px-1"><i class="ph-bold ph-dots-six-vertical"></i></div>
+                                <!-- 色碼 picker（同角色權限樣式） -->
+                                <div class="relative w-10 h-[42px] flex-shrink-0 border border-gray-300 rounded overflow-hidden cursor-pointer">
+                                    <input type="color" x-model="editCategoryList[index].color" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                    <div class="absolute inset-0 pointer-events-none" :style="`background-color:${editCategoryList[index].color}`"></div>
+                                </div>
+                                <input type="text" x-model="editCategoryList[index].name" class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary outline-none bg-white h-[42px]" placeholder="分類名稱">
+                                <button @click="removeCategoryItem(index)" class="w-10 h-[42px] flex items-center justify-center text-gray-400 hover:text-red-500 bg-white border border-gray-300 rounded hover:bg-red-50">
+                                    <i class="ph ph-trash"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                    <button @click="addCategoryItem()" class="mt-4 w-full py-2 border border-dashed border-gray-300 rounded text-gray-500 hover:border-primary hover:text-primary text-sm font-medium transition-colors bg-white">+ 新增項目</button>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end gap-3">
+                    <button @click="isCategorySettingsOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">取消</button>
+                    <button @click="saveCategorySettings()" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600 shadow-sm text-sm font-medium">儲存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批次處理 modal -->
+        <div x-show="isBatchOpen" style="display: none;" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-gray-100 rounded-xl shadow-xl w-[360px] overflow-hidden flex flex-col" @click.outside="isBatchOpen = false">
+                <div class="px-5 py-4 flex items-baseline gap-2">
+                    <span class="text-lg font-bold">批次處理</span>
+                    <span class="text-xs text-gray-400">刪除</span>
+                </div>
+                <div class="px-5 py-6 bg-white/50 border-y border-gray-200">
+                    <template x-if="selectedIds.length === 0">
+                        <p class="text-gray-500 text-sm text-center py-4">請先在列表勾選要刪除的項目</p>
+                    </template>
+                    <template x-if="selectedIds.length > 0">
+                        <div>
+                            <p class="text-sm text-gray-600 mb-3">確認刪除以下 <span class="font-bold text-red-500" x-text="selectedIds.length"></span> 筆資料？</p>
+                            <div class="space-y-1 max-h-[200px] overflow-y-auto custom-scroll">
+                                <template x-for="id in selectedIds" :key="id">
+                                    <div class="text-sm text-gray-700 px-3 py-1.5 bg-white rounded border border-gray-100" x-text="dataList.find(r=>r.id===id)?.nameTw || dataList.find(r=>r.id===id)?.name"></div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="p-4 bg-gray-100 flex justify-end gap-3">
+                    <button @click="isBatchOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">取消</button>
+                    <button @click="confirmBatchDelete()" :disabled="selectedIds.length === 0" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 shadow-sm text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">刪除</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用戶詳細 modal -->
+        <div x-show="userDetailOpen" style="display:none;" class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 overflow-hidden" @click.outside="userDetailOpen = false">
+                <div class="px-5 py-4 flex items-baseline gap-2 border-b border-gray-100">
+                    <span class="text-lg font-bold">用戶詳細</span>
+                    <span class="text-xs text-gray-400" x-text="currentOperator"></span>
+                </div>
+                <div class="px-5 py-6 space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <i class="ph-fill ph-user-circle-gear text-2xl text-primary"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-800" x-text="currentOperator"></div>
+                            <div class="text-xs text-gray-400">後台管理員</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div><span class="text-xs text-gray-400">部門</span><div class="font-medium text-gray-700">客端管理</div></div>
+                        <div><span class="text-xs text-gray-400">帳號狀態</span><div class="font-medium text-green-600">啟用中</div></div>
+                    </div>
+                </div>
+                <div class="px-5 py-4 border-t border-gray-100 flex justify-end">
+                    <button @click="userDetailOpen = false" class="px-5 py-2 bg-[#94a3b8] text-white rounded hover:bg-slate-500 text-sm font-bold">關閉</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = { title: '跑馬燈公告', parent: '客端管理' };
+    </script>
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+    <script>
+        const ALL_VIP = Array.from({ length: 11 }, (_, i) => 'VIP ' + i);
+        const ALL_AUDIENCE = ['訪客', ...ALL_VIP];
+
+        function modalData() {
+            return {
+                detailOpen: false, isAddMode: false, isEditing: false,
+                currentLang: 'tw', currentNameLang: 'tw',
+                editForm: {}, showDeleteConfirm: false, deleteTargetName: '',
+                categoryList: ['系統', '遊戲', '商城', '維護', '活動'],
+                categoryColors: { '系統': '#6b7280', '遊戲': '#2088ea', '商城': '#f59e0b', '維護': '#ef4444', '活動': '#10b981' },
+                userDetailOpen: false, currentOperator: '',
+                highlightedCount: 0, originalHighlighted: false,
+
+                openDetail(data) {
+                    this.isAddMode = false; this.isEditing = false;
+                    this.currentNameLang = 'tw'; this.currentLang = 'tw';
+                    this.highlightedCount = data._hCount || 0;
+                    this.originalHighlighted = data.highlighted || false;
+                    this.editForm = {
+                        ...data,
+                        nameTw: data.nameTw || data.name || '',
+                        nameEn: data.nameEn || '',
+                        startTime: data.startTime || '2026/01/26 17:05:40',
+                        endTime: data.endTime || '2026/02/21 23:59:59',
+                        content: data.content || '春節禮包大放送，最高加贈星幣 30% ！',
+                        highlighted: data.highlighted || false,
+                        sortOrder: data.sortOrder || null,
+                        audience: data.audience || ALL_AUDIENCE,
+                        categories: data.categories || ['系統'],
+                        remark: data.remark || ''
+                    };
+                    this.detailOpen = true;
+                },
+                openAdd(data) {
+                    this.isAddMode = true; this.isEditing = true;
+                    this.currentNameLang = 'tw'; this.currentLang = 'tw';
+                    this.highlightedCount = data?._hCount || 0;
+                    this.originalHighlighted = false;
+                    this.editForm = { nameTw: '', nameEn: '', startTime: '', endTime: '', content: '', remark: '', highlighted: false, sortOrder: null, audience: [], categories: [] };
+                    this.detailOpen = true;
+                },
+                saveNewMarquee() {
+                    this.$dispatch('notify', { message: `【 ${this.editForm.nameTw || '新項目'} 】新增成功` });
+                    this.detailOpen = false;
+                },
+                toggleAllAudience() {
+                    this.editForm.audience = this.editForm.audience.length === ALL_AUDIENCE.length ? [] : [...ALL_AUDIENCE];
+                },
+                toggleAllCategories() {
+                    this.editForm.categories = this.editForm.categories.length === this.categoryList.length ? [] : [...this.categoryList];
+                },
+                triggerDelete(row) { this.deleteTargetName = row.nameTw || row.name; this.showDeleteConfirm = true; },
+                confirmDelete() {
+                    this.$dispatch('notify', { message: `【 ${this.deleteTargetName} 】已成功刪除` });
+                    this.showDeleteConfirm = false; this.detailOpen = false;
+                },
+                copyMarquee() {
+                    const src = this.editForm;
+                    this.isAddMode = true;
+                    this.isEditing = true;
+                    this.currentNameLang = 'tw';
+                    this.currentLang = 'tw';
+                    this.originalHighlighted = false;
+                    this.editForm = {
+                        nameTw: src.nameTw || '',
+                        nameEn: src.nameEn || '',
+                        startTime: '',
+                        endTime: '',
+                        content: src.content || '',
+                        remark: src.remark || '',
+                        highlighted: false,
+                        sortOrder: null,
+                        audience: [...(src.audience || [])],
+                        categories: [...(src.categories || [])]
+                    };
+                }
+            }
+        }
+
+        function marqueePage() {
+            return {
+                selectedIds: [], currentPage: 1, pageSize: 10,
+                categoryList: ['系統', '遊戲', '商城', '維護', '活動'],
+                categoryColors: { '系統': '#6b7280', '遊戲': '#2088ea', '商城': '#f59e0b', '維護': '#ef4444', '活動': '#10b981' },
+                editCategoryList: [],
+                isCategorySettingsOpen: false,
+                isBatchOpen: false,
+                catDragIndex: null,
+                advancedOpen: false,
+                isMobile: window.innerWidth < 1024,
+                searchOpen: false,
+                catAllExpanded: false,
+                catExpandedMap: {},
+                userDetailOpen: false,
+                currentOperator: '',
+                query: {
+                    searchType: '名稱', searchText: '',
+                    status: [],
+                    displayTimeStart: '', displayTimeEnd: '',
+                    audience: [],
+                    categories: [],
+                    lastModifiedStart: '', lastModifiedEnd: '',
+                    operator: ''
+                },
+                isColumnModalOpen: false,
+                tempVisibleCols: {},
+                columnGroups: {
+                    info: ['status', 'lastModified', 'operator'],
+                    basic: ['categories', 'displayTime'],
+                    setting: ['audience'],
+                    other: ['remark']
+                },
+                columnGroupLabels: { basic: '基本', setting: '設定', info: '資訊', other: '其他' },
+                colNames: {
+                    displayTime: '顯示時間',
+                    audience: '對象', categories: '分類',
+                    status: '狀態', lastModified: '最後異動時間', operator: '操作者',
+                    remark: '備註'
+                },
+                visibleCols: {
+                    status: true, displayTime: true,
+                    audience: true, categories: true,
+                    lastModified: true, operator: true, remark: true
+                },
+
+                dataList: [
+                    { id: 1,  status: '進行中', highlighted: true,  sortOrder: 1, nameTw: '全新開站！提供最豐盛的遊戲饗宴',            nameEn: 'Grand Opening! The most lavish gaming feast!', audience: ALL_AUDIENCE,                    categories: ['系統'],          displayTime: '2026/01/26 00:00:00 ~ 永遠',                    lastModified: '2026/01/26 17:49:22', operator: 'System', remark: '' },
+                    { id: 2,  status: '進行中', highlighted: false, sortOrder: null, nameTw: '反詐騙！拒絕非法交易！',                 nameEn: 'Anti-fraud! Refuse illegal transactions!',    audience: ALL_AUDIENCE,                    categories: ['系統'],          displayTime: '2026/01/26 00:00:00 ~ 永遠',                    lastModified: '2026/01/26 17:53:53', operator: 'System', remark: '' },
+                    { id: 3,  status: '已逾期', highlighted: true,  sortOrder: 2, nameTw: '春節禮包大放送，最高加贈星幣 30%！',        nameEn: 'CNY gift packs, up to 30% bonus!',            audience: ['訪客'],                        categories: ['遊戲', '商城'],    displayTime: '2026/01/28 00:00:00 ~ 2026/02/15 23:59:59',    lastModified: '2026/01/27 10:00:00', operator: 'yvonne', remark: '春節活動' },
+                    { id: 4,  status: '已逾期', highlighted: false, sortOrder: null, nameTw: '限時優惠！儲值滿千送百！',               nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['商城'],          displayTime: '2026/02/01 00:00:00 ~ 2026/02/07 23:59:59',    lastModified: '2026/01/30 09:30:00', operator: 'Admin',  remark: '' },
+                    { id: 5,  status: '進行中', highlighted: false, sortOrder: null, nameTw: '新遊戲上線：魔龍傳奇！立即體驗！',       nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['遊戲'],          displayTime: '2026/02/05 00:00:00 ~ 永遠',                    lastModified: '2026/02/04 14:00:00', operator: 'System', remark: '遊戲推廣' },
+                    { id: 6,  status: '已逾期', highlighted: false, sortOrder: null, nameTw: '週末加碼活動，每筆儲值享 15% 回饋！',    nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: [],               displayTime: '2026/02/07 00:00:00 ~ 2026/02/08 23:59:59',    lastModified: '2026/02/06 11:00:00', operator: 'yvonne', remark: '' },
+                    { id: 7,  status: '已逾期', highlighted: false, sortOrder: null, nameTw: '平台系統將於今晚 23:00 進行維護。',      nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['維護'],          displayTime: '2026/02/08 20:00:00 ~ 2026/02/08 23:00:00',    lastModified: '2026/02/08 15:00:00', operator: 'System', remark: '維護公告' },
+                    { id: 8,  status: '已逾期', highlighted: false, sortOrder: null, nameTw: '會員回饋日！登入即得 888 點星幣！',      nameEn: '',                                            audience: ['VIP 0','VIP 1','VIP 2','VIP 3','VIP 4','VIP 5','VIP 6','VIP 7','VIP 8','VIP 9','VIP 10'], categories: ['商城'], displayTime: '2026/02/10 00:00:00 ~ 2026/02/10 23:59:59', lastModified: '2026/02/09 08:00:00', operator: 'Admin',  remark: '' },
+                    { id: 9,  status: '已逾期', highlighted: false, sortOrder: null, nameTw: '3月周年慶特惠，限量禮包等你搶！',        nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['商城', '遊戲'],   displayTime: '2026/03/01 00:00:00 ~ 2026/03/31 23:59:59',    lastModified: '2026/02/20 10:00:00', operator: 'yvonne', remark: '周年慶' },
+                    { id: 10, status: '進行中', highlighted: false, sortOrder: null, nameTw: '安全提醒：請勿向任何人透露帳號密碼！',   nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['系統'],          displayTime: '2026/01/01 00:00:00 ~ 永遠',                    lastModified: '2026/01/01 00:00:00', operator: 'System', remark: '安全公告' },
+                    { id: 11, status: '進行中', highlighted: false, sortOrder: null, nameTw: '推薦好友加入，雙方各得 500 星幣！',      nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: [],               displayTime: '2026/02/15 00:00:00 ~ 永遠',                    lastModified: '2026/02/14 16:00:00', operator: 'Admin',  remark: '' },
+                    { id: 12, status: '進行中', highlighted: false, sortOrder: null, nameTw: '首儲禮：首次儲值享 20% 加碼！',          nameEn: '',                                            audience: ['訪客'],                        categories: ['商城'],          displayTime: '2026/01/26 00:00:00 ~ 永遠',                    lastModified: '2026/01/26 18:00:00', operator: 'System', remark: '' },
+                    { id: 13, status: '進行中', highlighted: false, sortOrder: null, nameTw: '每日簽到領獎勵，連續 7 天雙倍！',        nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: [],               displayTime: '2026/02/01 00:00:00 ~ 永遠',                    lastModified: '2026/02/01 00:00:00', operator: 'System', remark: '' },
+                    { id: 14, status: '已逾期', highlighted: false, sortOrder: null, nameTw: '高爾夫球賽直播中！投注享額外獎勵！',     nameEn: '',                                            audience: ['VIP 3','VIP 4','VIP 5','VIP 6','VIP 7','VIP 8','VIP 9','VIP 10'], categories: ['遊戲'], displayTime: '2026/02/20 10:00:00 ~ 2026/02/20 22:00:00', lastModified: '2026/02/19 12:00:00', operator: 'jared',  remark: '體育活動' },
+                    { id: 15, status: '已逾期', highlighted: false, sortOrder: null, nameTw: '【重要】API 服務商更換通知。',           nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['系統', '維護'],   displayTime: '2026/02/22 00:00:00 ~ 2026/02/28 23:59:59',    lastModified: '2026/02/21 09:00:00', operator: 'Admin',  remark: '系統公告' },
+                    { id: 16, status: '未開始', highlighted: false, sortOrder: null, nameTw: 'VIP 會員暑期專屬禮包，即將上線！',       nameEn: '',                                            audience: ['VIP 5','VIP 6','VIP 7','VIP 8','VIP 9','VIP 10'], categories: ['商城'], displayTime: '2026/07/05 00:00:00 ~ 2026/07/05 23:59:59', lastModified: '2026/06/20 14:00:00', operator: 'System', remark: '' },
+                    { id: 17, status: '已逾期', highlighted: false, sortOrder: null, nameTw: '清明連假特別活動，天天好禮等你拿！',     nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: [],               displayTime: '2026/04/02 00:00:00 ~ 2026/04/05 23:59:59',    lastModified: '2026/03/30 10:00:00', operator: 'yvonne', remark: '節慶活動' },
+                    { id: 18, status: '進行中', highlighted: false, sortOrder: null, nameTw: '棋牌新遊上市：德州撲克豪華版！',         nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['遊戲'],          displayTime: '2026/03/10 00:00:00 ~ 永遠',                    lastModified: '2026/03/09 16:00:00', operator: 'System', remark: '遊戲推廣' },
+                    { id: 19, status: '進行中', highlighted: false, sortOrder: null, nameTw: '請遵守平台使用規範，違規帳號將停用。',   nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['系統'],          displayTime: '2026/01/01 00:00:00 ~ 永遠',                    lastModified: '2026/01/01 00:00:00', operator: 'System', remark: '規範公告' },
+                    { id: 20, status: '已逾期', highlighted: false, sortOrder: null, nameTw: '月底大回饋：儲值返利高達 50%！',         nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['商城'],          displayTime: '2026/03/29 00:00:00 ~ 2026/03/31 23:59:59',    lastModified: '2026/03/28 08:00:00', operator: 'Admin',  remark: '' },
+                    { id: 21, status: '未開始', highlighted: false, sortOrder: null, nameTw: '暑假限定！每日登入抽獎活動開跑！',       nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['系統'],          displayTime: '2026/07/01 00:00:00 ~ 2026/08/31 23:59:59',    lastModified: '2026/06/18 18:00:00', operator: 'System', remark: '節日公告' },
+                    { id: 22, status: '未開始', highlighted: false, sortOrder: null, nameTw: '新版 APP 上線！更新享雙倍星幣！',        nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: [],               displayTime: '2026/07/15 00:00:00 ~ 永遠',                    lastModified: '2026/06/15 10:00:00', operator: 'jared',  remark: 'APP 推廣' },
+                    { id: 23, status: '進行中', highlighted: false, sortOrder: null, nameTw: '即時客服上線時間：09:00 ~ 23:00',        nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['系統'],          displayTime: '2026/01/01 00:00:00 ~ 永遠',                    lastModified: '2026/01/01 00:00:00', operator: 'System', remark: '客服公告' },
+                    { id: 24, status: '已逾期', highlighted: false, sortOrder: null, nameTw: '週三神秘活動，限定獎品等你發現！',       nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: [],               displayTime: '2026/04/22 00:00:00 ~ 2026/04/22 23:59:59',    lastModified: '2026/04/21 12:00:00', operator: 'yvonne', remark: '' },
+                    { id: 25, status: '進行中', highlighted: false, sortOrder: null, nameTw: '存款手續費調整公告，詳情請見公告頁面。', nameEn: '',                                            audience: ALL_AUDIENCE,                    categories: ['系統'],          displayTime: '2026/05/01 00:00:00 ~ 永遠',                    lastModified: '2026/04/25 09:00:00', operator: 'Admin',  remark: '費率公告' }
+                ],
+
+                get sortedList() {
+                    const hl = this.dataList.filter(r => r.highlighted).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99));
+                    const normal = this.dataList.filter(r => !r.highlighted);
+                    return [...hl, ...normal];
+                },
+                get totalPages() { return Math.max(1, Math.ceil(this.sortedList.length / this.pageSize)); },
+                get pagedList() {
+                    const start = (this.currentPage - 1) * this.pageSize;
+                    return this.sortedList.slice(start, start + parseInt(this.pageSize));
+                },
+                toggleAll() {
+                    this.selectedIds = (this.selectedIds.length === this.dataList.length) ? [] : this.dataList.map(p => p.id);
+                },
+                resetVisibleCols() {
+                    Object.keys(this.visibleCols).forEach(k => { this.visibleCols[k] = true; });
+                },
+                openColumnModal() {
+                    this.tempVisibleCols = { ...this.visibleCols };
+                    this.isColumnModalOpen = true;
+                },
+                confirmColumnModal() {
+                    this.visibleCols = { ...this.tempVisibleCols };
+                    this.isColumnModalOpen = false;
+                },
+                isColumnGroupChecked(groupKey) {
+                    return this.columnGroups[groupKey].every(k => this.tempVisibleCols[k]);
+                },
+                isColumnGroupIndeterminate(groupKey) {
+                    const keys = this.columnGroups[groupKey];
+                    return !keys.every(k => this.tempVisibleCols[k]) && keys.some(k => this.tempVisibleCols[k]);
+                },
+                toggleColumnGroup(groupKey) {
+                    const all = this.columnGroups[groupKey].every(k => this.tempVisibleCols[k]);
+                    this.columnGroups[groupKey].forEach(k => { this.tempVisibleCols[k] = !all; });
+                },
+                isAllColumnsChecked() {
+                    return Object.values(this.tempVisibleCols).every(Boolean);
+                },
+                isAllColumnsIndeterminate() {
+                    const v = Object.values(this.tempVisibleCols);
+                    return !v.every(Boolean) && v.some(Boolean);
+                },
+                toggleAllColumns() {
+                    const all = this.isAllColumnsChecked();
+                    Object.keys(this.tempVisibleCols).forEach(k => { this.tempVisibleCols[k] = !all; });
+                },
+                resetQuery() {
+                    this.query = { searchType: '名稱', searchText: '', status: [], displayTimeStart: '', displayTimeEnd: '', audience: [], categories: [], lastModifiedStart: '', lastModifiedEnd: '', operator: '' };
+                },
+                init() {
+                    window.addEventListener('resize', () => { this.isMobile = window.innerWidth < 1024; });
+                },
+                openSearchModal() { this.searchOpen = true; },
+                openCategorySettings() {
+                    this.editCategoryList = this.categoryList.map(name => ({
+                        name,
+                        color: this.categoryColors[name] || '#6b7280'
+                    }));
+                    this.isCategorySettingsOpen = true;
+                },
+                addCategoryItem() { this.editCategoryList.push({ name: '', color: '#6b7280' }); },
+                removeCategoryItem(index) { this.editCategoryList.splice(index, 1); },
+                saveCategorySettings() {
+                    const valid = this.editCategoryList.filter(t => t.name.trim() !== '');
+                    this.categoryList = valid.map(t => t.name);
+                    const newColors = {};
+                    valid.forEach(t => { newColors[t.name] = t.color; });
+                    this.categoryColors = newColors;
+                    this.$dispatch('sync-category-list', this.categoryList);
+                    this.$dispatch('sync-category-colors', newColors);
+                    this.isCategorySettingsOpen = false;
+                    this.$dispatch('notify', { message: '分類已儲存' });
+                },
+                catDragStart(index) { this.catDragIndex = index; },
+                catDrop(index) {
+                    if (this.catDragIndex !== null && this.catDragIndex !== index) {
+                        const item = this.editCategoryList.splice(this.catDragIndex, 1)[0];
+                        this.editCategoryList.splice(index, 0, item);
+                    }
+                    this.catDragIndex = null;
+                },
+                confirmBatchDelete() {
+                    const count = this.selectedIds.length;
+                    this.dataList = this.dataList.filter(r => !this.selectedIds.includes(r.id));
+                    this.selectedIds = [];
+                    this.isBatchOpen = false;
+                    this.$dispatch('notify', { message: `已成功刪除 ${count} 筆資料` });
+                }
+            }
+        }
+    </script>
+</body>
+</html>

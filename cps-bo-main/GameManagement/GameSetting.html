@@ -1,0 +1,378 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 遊戲設定</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#2088ea', hover: '#1a7acb' },
+                        dark: { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../_shared/styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden"
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()"
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <!-- Modals Container -->
+    <div x-data="modalData()"
+         @open-game-detail.window="openDetail($event.detail)"
+         @open-add-game.window="openAdd()"
+         @trigger-takedown.window="triggerTakeDown($event.detail)">
+
+        <!-- 下架確認彈窗 -->
+        <div x-show="showConfirmTakeDown" style="display: none;" class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50" x-transition.opacity>
+            <div class="bg-gray-100 rounded-xl shadow-xl w-[320px] overflow-hidden flex flex-col">
+                <div class="px-5 py-4 flex items-baseline gap-2">
+                    <span class="text-lg font-bold">提示</span>
+                    <span class="text-xs text-gray-400 font-mono" x-text="confirmTargetName"></span>
+                </div>
+                <div class="px-5 py-8 bg-white/50 border-y border-gray-200 text-center">
+                    <p class="text-gray-800 font-bold">【 <span x-text="confirmTargetName"></span> 】 確認下架？</p>
+                </div>
+                <div class="p-4 bg-gray-100 flex justify-end gap-3">
+                    <button @click="showConfirmTakeDown = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">取消</button>
+                    <button @click="confirmAction()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 shadow-sm text-sm font-medium">確認</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 遊戲彈窗 (詳細/新增) -->
+        <div x-show="detailOpen" style="display: none;" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/30 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-[#f8fafc] rounded-lg shadow-2xl w-full max-w-5xl mx-4 overflow-hidden flex flex-col max-h-[92vh]" @click.outside="!isEditMode && !isAddMode && !showConfirmTakeDown && (detailOpen = false)">
+
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white flex-shrink-0">
+                    <h3 class="text-lg font-bold text-gray-700 flex items-center gap-2">
+                        <span>遊戲設定</span>
+                        <span class="text-gray-400 font-normal text-sm" x-text="isAddMode ? '新增' : editForm.id"></span>
+                    </h3>
+                </div>
+
+                <div class="overflow-y-auto custom-scroll flex-1 p-6 space-y-4">
+                    <template x-if="!isAddMode">
+                        <div class="bg-[#dfe3e8] border border-[#cbd5e1] rounded-lg p-5 grid grid-cols-2 gap-y-4 text-sm">
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">建立時間</p><div class="text-gray-700 font-medium">2026/01/19 16:32:05 - 15 天前</div></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">最後異動時間</p><div class="text-gray-700 font-medium">2026/01/21 17:59:59 - 13 天前</div></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">操作者</p><div class="text-gray-700 font-medium">jared</div></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">收藏數</p><div class="text-gray-700 font-medium" x-text="editForm.collect"></div></div>
+                        </div>
+                    </template>
+
+                    <!-- 基本 -->
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white border-b border-gray-100 flex justify-between items-center font-bold text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-2"><i class="ph-fill ph-identification-badge"></i> 基本</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" class="p-6">
+                            <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>排序</label><input type="number" class="w-full border border-gray-200 rounded p-2 text-sm disabled:bg-gray-50 disabled:text-gray-500" :value="isAddMode ? 14 : editForm.order" :disabled="!isEditMode && !isAddMode"></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>代號</label><input type="text" class="w-full border border-gray-200 rounded p-2 text-sm bg-gray-50" :value="isAddMode ? '' : editForm.id" :disabled="!isAddMode"></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>名稱</label><div class="flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-100"><img src="https://flagcdn.com/w20/tw.png" alt="TW" style="width:20px;height:auto;border-radius:2px"><input type="text" class="bg-transparent w-full outline-none text-sm font-bold disabled:text-gray-500" x-model="editForm.name" :disabled="!isEditMode && !isAddMode"></div></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>平台</label><input type="text" class="w-full border border-gray-200 rounded p-2 text-sm bg-gray-50" value="FC" disabled></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>類型</label><select class="w-full border border-gray-200 rounded p-2 text-sm disabled:bg-gray-50" :disabled="!isEditMode && !isAddMode"><option>電子</option></select></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>狀態</label><select class="w-full border border-gray-200 rounded p-2 text-sm disabled:bg-gray-50" :disabled="!isEditMode && !isAddMode"><option>啟用</option><option>停用</option></select></div>
+                            </div>
+                            <!-- 圖片預覽 -->
+                            <div class="mt-6 space-y-3">
+                                <label class="text-xs font-bold text-gray-500">圖片</label>
+                                <div class="grid grid-cols-1 gap-4">
+                                    <template x-for="slot in imageSlots" :key="slot.label">
+                                        <div class="bg-gray-50 rounded border border-gray-100 p-4 flex flex-col gap-3 min-h-[120px] relative">
+                                            <p class="text-[10px] text-gray-400" x-text="slot.label"></p>
+                                            <div class="flex gap-4">
+                                                <template x-if="!isAddMode && slot.hasData">
+                                                    <div class="flex gap-2">
+                                                        <div class="w-16 h-20 bg-white border border-gray-100 rounded p-1 flex flex-col relative overflow-hidden group">
+                                                            <div class="flex-1 flex items-center justify-center"><i class="ph ph-image text-blue-200 text-xl"></i></div>
+                                                            <div class="absolute bottom-1 right-1 bg-gray-700 text-white text-[8px] px-1 rounded uppercase">webp</div>
+                                                        </div>
+                                                        <div class="w-16 h-20 bg-white border border-gray-100 rounded p-1 flex flex-col relative overflow-hidden group">
+                                                            <div class="flex-1 flex items-center justify-center"><i class="ph ph-image text-blue-200 text-xl"></i></div>
+                                                            <div class="absolute bottom-1 right-1 bg-gray-700 text-white text-[8px] px-1 rounded uppercase">jpg</div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                                <div class="w-16 h-20 border-2 border-dashed border-gray-200 rounded flex flex-col items-center justify-center cursor-pointer hover:bg-white transition-colors">
+                                                    <i class="ph ph-image-plus text-gray-300 text-xl"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 自訂 -->
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white border-b border-gray-100 flex justify-between items-center font-bold text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-2"><i class="ph-fill ph-shooting-star"></i> 自訂</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" class="p-6 grid grid-cols-2 gap-x-8 gap-y-6">
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500">玩法</label><button class="px-3 py-1 bg-slate-300 text-white rounded text-[11px] font-bold flex items-center gap-1"><span class="bg-slate-500 w-4 h-4 rounded-full flex items-center justify-center text-[10px]" x-text="isAddMode ? 0 : 2"></span> 玩法</button></div>
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>RTP(%)</label><input type="text" class="w-full border border-gray-200 rounded p-2 text-sm disabled:bg-gray-50 disabled:text-gray-500" :value="isAddMode ? '96.5' : editForm.rtp" :disabled="!isEditMode && !isAddMode"></div>
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>最高倍率</label><input type="text" class="w-full border border-gray-200 rounded p-2 text-sm disabled:bg-gray-50 disabled:text-gray-500" :value="isAddMode ? '0' : editForm.maxRatio" :disabled="!isEditMode && !isAddMode"></div>
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500 mr-1">*</span>推薦池</label><div><label class="relative inline-flex items-center" :class="(isEditMode || isAddMode) ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'"><input type="checkbox" :checked="editForm.recommend" :disabled="!isEditMode && !isAddMode" class="sr-only peer"><div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label></div></div>
+                            <div class="space-y-2 col-span-2"><label class="text-xs font-bold text-gray-500">標籤</label><button class="px-3 py-1 bg-slate-300 text-white rounded text-[11px] font-bold flex items-center gap-1"><span class="bg-slate-500 w-4 h-4 rounded-full flex items-center justify-center text-[10px]">0</span> 標籤</button></div>
+                        </div>
+                    </div>
+
+                    <!-- 其他 -->
+                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white border-b border-gray-100 flex justify-between items-center font-bold text-gray-700 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-2"><i class="ph-fill ph-article"></i> 其他</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" class="p-6">
+                            <label class="text-xs font-bold text-gray-500 block mb-2">備註</label>
+                            <textarea class="w-full border border-gray-200 rounded p-4 text-sm min-h-[100px] outline-none focus:border-blue-500 transition-colors disabled:bg-gray-50 disabled:text-gray-500" placeholder="(無)" x-model="editForm.remark" :disabled="!isEditMode && !isAddMode"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-gray-200 bg-[#e2e8f0] flex justify-end gap-3 flex-shrink-0">
+                    <button @click="detailOpen = false; isEditMode = false" class="px-6 py-2 bg-[#94a3b8] text-white rounded hover:bg-slate-500 shadow-sm text-sm font-bold transition-colors">關閉</button>
+                    <template x-if="!isAddMode && !isEditMode">
+                        <div class="flex gap-3">
+                            <button @click="triggerImport()" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold">匯入</button>
+                            <button @click="notifyExport()" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold">匯出</button>
+                            <button @click="triggerTakeDown(editForm)" class="px-6 py-2 bg-[#ff5a3d] text-white rounded hover:bg-orange-700 shadow-sm text-sm font-bold">下架</button>
+                            <button @click="isEditMode = true" class="px-6 py-2 bg-[#f59e0b] text-white rounded hover:bg-amber-600 shadow-sm text-sm font-bold">編輯</button>
+                        </div>
+                    </template>
+                    <template x-if="!isAddMode && isEditMode">
+                        <div class="flex gap-3">
+                            <button @click="isEditMode = false" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold">取消</button>
+                            <button @click="$dispatch('notify', '更新成功'); isEditMode = false; detailOpen = false" class="px-6 py-2 bg-[#2088ea] text-white rounded hover:bg-primary-hover shadow-sm text-sm font-bold">確認</button>
+                        </div>
+                    </template>
+                    <template x-if="isAddMode">
+                        <button @click="$dispatch('notify', '新增成功'); detailOpen = false" class="px-6 py-2 bg-[#2088ea] text-white rounded hover:bg-primary-hover shadow-sm text-sm font-bold">儲存</button>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full bg-[#f3f4f6]" x-data="gamePage()">
+
+        <div id="layout-header"></div>
+
+        <div class="flex-1 overflow-auto relative h-full flex flex-col p-4 md:p-6">
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="text-gray-500">遊戲管理</span>
+                        <i class="ph ph-caret-right text-gray-300 text-xs"></i>
+                        <span class="font-semibold text-primary">遊戲設定</span>
+                    </nav>
+                    <div class="flex items-center gap-2">
+                        <!-- 說明內容更新 (同步 Directions.png) -->
+                        <div class="relative group" x-data="{ showHelp: false }">
+                            <button @click="showHelp = !showHelp" class="w-8 h-8 rounded-full bg-yellow-400 text-white hover:bg-yellow-500 flex items-center justify-center shadow-sm"><i class="ph-fill ph-lightbulb text-lg"></i></button>
+                            <span class="btn-tip">說明</span>
+                            <div x-show="showHelp" @click.outside="showHelp = false" class="absolute right-0 top-full mt-2 w-96 p-5 bg-[#fff9db] shadow-xl rounded-lg z-[120] border border-yellow-200 text-xs text-yellow-900 leading-relaxed" x-cloak>
+                                <p class="font-bold mb-2">說明：</p>
+                                <ul class="space-y-3">
+                                    <li>
+                                        <p class="font-bold ml-2">• Layout Module：</p>
+                                        <ul class="list-disc pl-8 space-y-1">
+                                            <li>近期爆獎：5 款，昨日，不重複 Top 高倍率</li>
+                                            <li>即時贏分：30 筆，1 小時內，Top 贏分</li>
+                                            <li>熱門 TOP 10：10 筆，30 日內(不含當日)，Top 總押注額</li>
+                                            <li>近期 RTP 高漲：3 筆，1 小時內，RTP > 基礎值(「RTP(%)」設定)</li>
+                                        </ul>
+                                    </li>
+                                    <li>
+                                        <p class="font-bold ml-2">• Icon Tag：上限 30 筆，排序(大 → 小)，gameid(大 → 小)</p>
+                                        <ul class="list-disc pl-8 space-y-1">
+                                            <li>本週最夯：3 筆，7 日內(不含當日)，Top 總押注額 > Top 注單量</li>
+                                            <li>穩坐NO 1.：1 筆，14 日內(不含當日)，Top 總押注額 > Top 注單量</li>
+                                            <li>爆獎最多：1 筆，7 日內(不含當日)，Top 倍率 100X↑次數 > Top 注單量</li>
+                                            <li>消除遊戲 TOP 1：1 筆，1 日內(不含當日)，消除類型遊戲，Top 總押注額 > Top 注單量</li>
+                                        </ul>
+                                    </li>
+                                    <li><p class="font-bold ml-2">• [客端] 遊戲排序：遊戲曝光 > 熱門排行 > 遊戲設定-排序(小 → 大)</p></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="relative group" x-data="{ syncDropdown: false }">
+                            <button @click="syncDropdown = !syncDropdown" class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center border border-gray-200 shadow-sm"><i class="ph-bold ph-arrows-clockwise text-lg"></i></button>
+                            <span class="btn-tip">資料交換</span>
+                            <div x-show="syncDropdown" @click.outside="syncDropdown = false" class="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl border border-gray-100 py-1 z-[150]" x-cloak><button @click="triggerImport(); syncDropdown = false" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700">匯入</button><button @click="notifyExport(selectedIds); syncDropdown = false" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700">匯出</button></div>
+                        </div>
+                        <div class="relative group"><button @click="$dispatch('open-add-game')" class="w-8 h-8 rounded-full bg-blue-500 text-white hover:bg-blue-600 flex items-center justify-center shadow-sm"><i class="ph-bold ph-plus text-lg"></i></button><span class="btn-tip">新增</span></div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col flex-1 min-h-0 relative">
+                    <div class="bg-gray-100 p-3 border-b border-gray-200 flex-shrink-0 flex items-center justify-between">
+                        <div class="px-4 text-sm font-bold text-blue-600" x-text="selectedIds.length > 0 ? '共 ' + selectedIds.length + ' 筆' : ''"></div>
+                        <div class="flex flex-col text-right px-4"><span class="text-xs text-gray-500 font-bold">筆數</span><span class="text-sm font-bold text-gray-800" x-text="gameList.length"></span></div>
+                    </div>
+
+                    <div class="flex-1 overflow-auto custom-scroll relative z-0 h-full">
+                        <table class="w-full text-left border-collapse min-w-[1400px]">
+                            <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3 w-12 text-center"><input type="checkbox" class="checkbox-custom" @change="toggleAll()" :checked="selectedIds.length === gameList.length && gameList.length > 0"></th>
+                                    <th class="px-4 py-3">排序</th>
+                                    <th class="px-4 py-3 w-32 lg:w-48 sticky left-0 z-20 bg-gray-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]"><span class="border-b border-dotted border-gray-400 cursor-help tooltip tooltip-down" data-tip="遊戲名稱 / 遊戲代號">名稱</span></th>
+                                    <th class="px-4 py-3">平台</th>
+                                    <th class="px-4 py-3">類型</th>
+                                    <th class="px-4 py-3">狀態</th>
+                                    <th class="px-4 py-3">圖片</th>
+                                    <th class="px-4 py-3">玩法</th>
+                                    <th class="px-4 py-3"><span class="border-b border-dotted border-gray-400 cursor-help tooltip tooltip-down" data-tip="(玩家總贏分/玩家總押注額) * 100%">RTP(%)</span></th>
+                                    <th class="px-4 py-3">最高倍率</th>
+                                    <th class="px-4 py-3"><span class="border-b border-dotted border-gray-400 cursor-help tooltip tooltip-down" data-tip="於「客端前台-猜你喜歡」模塊顯示">推薦池</span></th>
+                                    <th class="px-4 py-3">標籤</th>
+                                    <th class="px-4 py-3">備註</th>
+                                    <th class="px-4 py-3"><span class="border-b border-dotted border-gray-400 cursor-help tooltip tooltip-down" data-tip="每小時統計更新">收藏數</span></th>
+                                    <th class="px-4 py-3 table-cell-nowrap bg-gray-50 text-center sticky right-0 z-20 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-gray-600 divide-y divide-gray-100 bg-white">
+                                <template x-for="row in pagedList" :key="row.id">
+                                    <tr class="hover:bg-blue-50/20 transition-colors">
+                                        <td class="px-4 py-8 text-center"><input type="checkbox" class="checkbox-custom" :value="row.id" x-model="selectedIds"></td>
+                                        <td class="px-4 py-8" x-text="row.order"></td>
+                                        <td class="px-4 py-8 w-32 lg:w-48 bg-blue-50 border-l border-r border-blue-100/30 sticky left-0 z-10 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                                            <div class="flex flex-col overflow-hidden"><span class="font-bold text-gray-700 truncate" x-text="row.name"></span><span class="text-xs text-gray-400 truncate" x-text="row.id"></span></div>
+                                        </td>
+                                        <td class="px-4 py-8" x-text="row.platform"></td>
+                                        <td class="px-4 py-8" x-text="row.type"></td>
+                                        <td class="px-4 py-8"><span class="px-2 py-0.5 rounded bg-green-100 text-green-600 text-[11px] font-bold border border-green-200">啟用</span></td>
+                                        <td class="px-4 py-8">
+                                            <div class="w-16 h-20 bg-gray-50 rounded border border-gray-100 p-1 flex flex-col relative overflow-hidden">
+                                                <span class="text-[9px] text-gray-400">A. 1x1</span>
+                                                <div class="flex-1 flex items-center justify-center"><i class="ph ph-image text-blue-200 text-xl"></i></div>
+                                                <div class="absolute bottom-1 right-1 bg-gray-700 text-white text-[8px] px-1 rounded uppercase">webp</div>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-8"><div class="flex flex-col gap-1"><template x-for="tag in row.tags"><span class="px-2 py-0.5 bg-blue-500 text-white text-[10px] rounded font-bold w-fit" x-text="tag"></span></template></div></td>
+                                        <td class="px-4 py-8 font-mono" x-text="row.rtp"></td>
+                                        <td class="px-4 py-8 font-mono" x-text="row.maxRatio"></td>
+                                        <td class="px-4 py-8">
+                                            <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" :checked="row.recommend" class="sr-only peer"><div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label>
+                                        </td>
+                                        <td class="px-4 py-8"><span x-show="row.badge" class="px-2 py-0.5 bg-blue-500 text-white text-[10px] rounded font-bold" x-text="row.badge"></span><span x-show="!row.badge" class="text-gray-400">(無)</span></td>
+                                        <td class="px-4 py-8 text-gray-400" x-text="row.remark"></td>
+                                        <td class="px-4 py-8 font-mono" x-text="row.collect"></td>
+                                        <td class="px-4 py-8 text-center sticky right-0 bg-white z-10 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]" x-data="{ open: false }" :class="{'!z-[50]': open}">
+                                            <div class="hidden lg:flex items-center justify-center gap-1">
+                                                <button @click="$dispatch('open-game-detail', row)" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors tooltip mx-auto" data-tip="檢視"><i class="ph ph-caret-right text-lg"></i></button>
+                                                <!-- 一、列表：下架：點擊需出現再次確認彈窗 -->
+                                                <div class="relative group/down"><button @click="$dispatch('trigger-takedown', row)" class="w-8 h-8 rounded-full hover:bg-red-50 flex items-center justify-center text-red-400 transition-all"><i class="ph ph-arrow-fat-down text-lg"></i></button><span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/down:opacity-100 pointer-events-none whitespace-nowrap">下架</span></div>
+                                            </div>
+                                            <div class="lg:hidden relative flex items-center justify-center">
+                                                <button @click.stop="open = !open" class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 flex items-center justify-center"><i class="ph ph-list text-lg"></i></button>
+                                                <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-[200] min-w-[120px] text-left" x-cloak>
+                                                    <button @click="$dispatch('open-game-detail', row); open = false" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 flex items-center gap-2"><i class="ph ph-caret-right"></i>檢視</button>
+                                                    <button @click="$dispatch('trigger-takedown', row); open = false" class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-gray-700 flex items-center gap-2"><i class="ph ph-arrow-fat-down text-red-500"></i>下架</button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 分頁器 -->
+                    <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-end bg-white flex-shrink-0 gap-4">
+                        <div class="flex items-center gap-2 text-gray-400">
+                            <button @click="currentPage = 1" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-back text-sm"></i></button>
+                            <button @click="currentPage > 1 && currentPage--" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-left text-sm"></i></button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <template x-for="p in totalPages" :key="p">
+                                <button @click="currentPage = p" class="w-8 h-8 rounded-full text-sm font-medium flex items-center justify-center transition-colors" :class="currentPage === p ? 'bg-primary text-white shadow-sm' : 'hover:bg-gray-100 text-gray-600'" x-text="p"></button>
+                            </template>
+                        </div>
+                        <div class="flex items-center gap-2 text-gray-400">
+                            <button @click="currentPage < totalPages && currentPage++" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-right text-sm"></i></button>
+                            <button @click="currentPage = totalPages" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-forward text-sm"></i></button>
+                        </div>
+                        <div class="text-xs text-gray-400 font-medium" x-text="`${(currentPage-1)*pageSize+1} - ${Math.min(currentPage*pageSize, gameList.length)} 共 ${gameList.length}`"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = {
+            title:  '遊戲設定',
+            parent: '遊戲管理'
+        };
+    </script>
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+    <script>
+        function modalData() {
+            return {
+                detailOpen: false, isAddMode: false, isEditMode: false, editForm: {},
+                showConfirmTakeDown: false, confirmTargetName: '',
+                imageSlots: [{label:'A. 1x1',hasData:true}, {label:'B. 2x1',hasData:false}, {label:'C. 3x1',hasData:false}, {label:'D. 排行榜-最高歷史紀錄',hasData:true}, {label:'E. 排行榜-Top123',hasData:true}, {label:'F. (無)',hasData:false}],
+                openDetail(record) { this.isAddMode = false; this.isEditMode = false; this.editForm = { ...record }; this.detailOpen = true; },
+                openAdd() { this.isAddMode = true; this.isEditMode = false; this.editForm = { name: '', id: 'NEW', rtp: '96.5', maxRatio: '0', remark: '' }; this.detailOpen = true; },
+                triggerTakeDown(row) {
+                    this.confirmTargetName = `${row.name} ${row.id}`;
+                    this.showConfirmTakeDown = true;
+                },
+                confirmAction() {
+                    this.$dispatch('notify', { message: `【 ${this.confirmTargetName} 】已成功下架` });
+                    this.showConfirmTakeDown = false;
+                    this.detailOpen = false;
+                }
+            }
+        }
+
+        function gamePage() {
+            return {
+                selectedIds: [],
+                currentPage: 1,
+                pageSize: 10,
+                gameList: [
+                    { id: '22086', order: 1, name: '黃金秘寶', platform: 'FC', type: '電子', rtp: '98.50', maxRatio: '10,000', recommend: false, tags: ['消除', '轉換百搭'], badge: '', remark: '(無)', collect: 0 },
+                    { id: '22020', order: 2, name: '大過年', platform: 'FC', type: '電子', rtp: '98.50', maxRatio: '12,000', recommend: true, tags: ['經典', '倍數'], badge: '活動', remark: 'test', collect: 5 },
+                    { id: '22071', order: 3, name: '蜜糖爆擊2', platform: 'FC', type: '電子', rtp: '98.50', maxRatio: '5,000', recommend: true, tags: ['消除', '轉換百搭'], badge: '', remark: '(無)', collect: 13 },
+                    { id: '22043', order: 4, name: '蜜糖爆擊', platform: 'FC', type: '電子', rtp: '98.50', maxRatio: '3,000', recommend: true, tags: ['消除', '轉換百搭'], badge: '', remark: '(無)', collect: 7 },
+                    { id: '22099', order: 5, name: '金龍發發', platform: 'FC', type: '電子', rtp: '97.00', maxRatio: '8,000', recommend: false, tags: ['測試'], badge: '', remark: '(無)', collect: 1 },
+                    { id: '22100', order: 6, name: '招財貓', platform: 'FC', type: '電子', rtp: '96.50', maxRatio: '2,500', recommend: false, tags: ['測試'], badge: '', remark: '(無)', collect: 2 },
+                    { id: '22101', order: 7, name: '魔龍傳奇', platform: 'FC', type: '電子', rtp: '98.00', maxRatio: '15,000', recommend: true, tags: ['高RTP'], badge: 'NEW', remark: '(無)', collect: 20 },
+                    { id: '22102', order: 8, name: '超級富翁', platform: 'FC', type: '電子', rtp: '97.20', maxRatio: '6,000', recommend: false, tags: ['測試'], badge: '', remark: '(無)', collect: 4 },
+                    { id: '22103', order: 9, name: '幸運輪盤', platform: 'FC', type: '電子', rtp: '96.80', maxRatio: '4,500', recommend: true, tags: ['熱門'], badge: '', remark: '(無)', collect: 33 },
+                    { id: '22104', order: 10, name: '忍者傳說', platform: 'FC', type: '電子', rtp: '97.50', maxRatio: '10,000', recommend: false, tags: ['測試'], badge: '', remark: '(無)', collect: 9 }
+                ],
+                get totalPages() { return Math.max(1, Math.ceil(this.gameList.length / this.pageSize)); },
+                get pagedList() { const start = (this.currentPage - 1) * this.pageSize; return this.gameList.slice(start, start + parseInt(this.pageSize)); },
+                toggleAll() { this.selectedIds = (this.selectedIds.length === this.gameList.length) ? [] : this.gameList.map(g => g.id); }
+            }
+        }
+    </script>
+</body>
+</html>

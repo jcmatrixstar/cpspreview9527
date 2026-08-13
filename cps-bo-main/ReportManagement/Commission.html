@@ -1,0 +1,1242 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 交收報表</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#2088ea', hover: '#1a7acb' },
+                        dark: { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' },
+                        amber: { DEFAULT: '#f59e0b', hover: '#d97706' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../_shared/styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden"
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()"
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full" x-data="settlementPage()">
+
+        <div id="layout-header"></div>
+
+        <div class="flex-1 overflow-auto relative h-full flex flex-col p-4 md:p-6">
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="text-gray-500">報表管理</span>
+                        <i class="ph ph-caret-right text-gray-300 text-xs"></i>
+                        <span class="font-semibold text-primary">交收報表</span>
+                    </nav>
+                    <div class="flex items-center gap-3">
+                        <div class="relative" x-data="{ showTip: false }" @click.outside="showTip = false">
+                            <button @click="showTip = !showTip" class="w-8 h-8 rounded-full bg-yellow-50 text-yellow-500 hover:bg-yellow-100 transition-colors flex items-center justify-center border border-yellow-200 shadow-sm tooltip tooltip-down" data-tip="說明"><i class="ph-fill ph-lightbulb text-lg"></i></button>
+                            <div x-show="showTip" x-transition.opacity class="absolute right-0 top-full mt-2 w-80 p-4 bg-[#fffbeb] shadow-xl rounded-lg z-[100] border border-[#fcd34d] text-gray-700"><div class="popover-arrow"></div><h4 class="font-bold text-amber-800 flex items-center gap-2 mb-2 border-b border-amber-200 pb-2"><i class="ph-fill ph-info"></i> 欄位說明</h4><ul class="text-xs space-y-2 list-disc pl-4 text-gray-600"><template x-for="note in currentNotes" :key="note"><li x-html="note"></li></template></ul></div>
+                        </div>
+
+                        <button @click="$dispatch('notify', '重算中，請稍候…')"
+                                class="w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center focus:outline-none tooltip tooltip-down" data-tip="重算">
+                            <i class="ph ph-calculator text-xl"></i>
+                        </button>
+
+                        <button x-show="currentTab === 'game'" @click="fetchData(true)"
+                                class="w-8 h-8 rounded-full text-primary hover:bg-blue-50 transition-colors flex items-center justify-center focus:outline-none tooltip tooltip-down" data-tip="重撈">
+                            <i class="ph ph-arrows-clockwise text-xl" :class="isSpinning ? 'animate-spin' : ''"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex gap-1 border-b border-gray-200 px-4 pt-2 flex-shrink-0 overflow-x-auto no-scrollbar">
+                    <template x-for="tab in tabs" :key="tab.id">
+                        <button @click="currentTab = tab.id; fetchData(false)"
+                                class="px-8 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                                :class="currentTab === tab.id ? 'border-primary text-primary bg-white rounded-t-md shadow-sm' : 'border-transparent text-gray-400 hover:text-gray-600'">
+                            <i :class="['ph text-lg', tab.icon]"></i>
+                            <span x-text="tab.name"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="lg:hidden flex-shrink-0">
+                    <div @click="openSearchModal" class="bg-white border border-gray-200 rounded-lg shadow-sm p-3 flex items-center justify-between cursor-pointer active:bg-gray-50">
+                        <div class="flex items-center gap-2 text-gray-600 font-bold"><i class="ph ph-magnifying-glass text-lg"></i> 搜尋</div>
+                        <i class="ph ph-caret-right text-gray-400"></i>
+                    </div>
+                </div>
+
+                <div class="hidden lg:flex bg-white rounded-xl p-4 border border-gray-200 shadow-sm flex-col flex-wrap gap-4 flex-shrink-0">
+                    <div class="flex flex-wrap items-end justify-between w-full gap-4">
+                        <div class="flex flex-wrap items-end gap-4 mr-auto">
+
+                            <div class="floating-input-group">
+                                <label class="floating-label">日期</label>
+                                <div class="flex items-center">
+                                    <input x-ref="dateStart" type="text" class="floating-input w-36 rounded-r-none border-r-0 text-center bg-white focus:z-10" placeholder="起">
+                                    <div class="bg-white border-y border-gray-200 h-[42px] flex items-center px-1 text-gray-400 z-0">~</div>
+                                    <input x-ref="dateEnd" type="text" class="floating-input w-36 rounded-l-none border-l-0 text-center bg-white focus:z-10" placeholder="訖">
+                                </div>
+                            </div>
+
+                            <!-- 需求：代幣商、金流商不顯示廠商選單 (程式碼保留，使用 x-show 控制) -->
+                            <div class="floating-input-group w-56 relative opacity-70 cursor-not-allowed" x-data="{ open: false }" @click.outside="open = false" x-show="currentTab === 'game'">
+                                <label class="floating-label" x-text="vendorLabel"></label>
+                                <button disabled class="floating-input justify-between hover:border-gray-200 transition-colors cursor-not-allowed">
+                                    <span class="truncate text-gray-700" x-text="getSelectedVendorText()"></span><i class="ph ph-caret-down text-gray-400"></i>
+                                </button>
+                                <div x-show="open" x-transition class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[60] py-1 max-h-60 overflow-y-auto custom-scroll hidden">
+                                    <div><div class="px-3 py-2 border-b border-gray-100 flex gap-2"><button @click="selectAllVendors()" class="text-xs text-primary hover:underline">全選</button><button @click="selectedVendors =[]" class="text-xs text-gray-500 hover:underline">清除</button></div><template x-for="v in (currentTab === 'token' ? vendorOptions.token : (currentTab === 'game' ? vendorOptions.game : vendorOptions.payment))"><label class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer select-none"><input type="checkbox" :value="v" x-model="selectedVendors" class="checkbox-item rounded border-gray-300"><span class="text-sm text-gray-700" x-text="v"></span></label></template></div>
+                                </div>
+                            </div>
+
+                            <!-- 需求：代幣商、金流商不顯示比對 (程式碼保留，使用 x-show 控制) -->
+                            <div class="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg h-[42px] transition-colors"
+                                 :class="currentTab !== 'game' ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:border-primary'"
+                                 x-show="currentTab === 'game'">
+                                <label class="flex items-center gap-2 select-none" :class="currentTab !== 'game' ? 'cursor-not-allowed' : 'cursor-pointer'">
+                                    <input type="checkbox" x-model="isCompareMode" class="checkbox-item rounded border-gray-300" :disabled="currentTab !== 'game'">
+                                    <span class="text-sm font-bold text-gray-700 whitespace-nowrap">比對</span>
+                                </label>
+                                <div class="relative flex items-center" x-data="{ show: false }">
+                                    <button @mouseenter="show = true" @mouseleave="show = false" @click="show = !show" class="text-gray-400 hover:text-primary transition-colors focus:outline-none"><i class="ph-fill ph-info text-lg"></i></button>
+                                    <div x-show="show" x-transition.opacity class="absolute left-full ml-2 bottom-1/2 translate-y-1/2 w-max px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-50 pointer-events-none">我方 / 對方<div class="absolute right-full top-1/2 -translate-y-1/2 -mr-1 w-2 h-2 bg-gray-800 rotate-45"></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button @click="fetchData(false)"
+                                class="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-primary text-white rounded-lg hover:bg-blue-600 shadow-md active:scale-95 transition-all">
+                            <i class="ph ph-magnifying-glass text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div :class="{'fixed inset-0 z-[120] bg-white flex flex-col': isMobile && searchOpen, 'hidden': !isMobile || !searchOpen}">
+                     <div class="lg:hidden px-4 py-3 border-b border-gray-100 flex justify-between items-center mb-4 flex-shrink-0 bg-white">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-lg text-gray-800" x-text="'交收報表 - ' + (tabs.find(t => t.id === currentTab)?.name || '')"></span>
+                            <span class="text-gray-400 font-normal text-sm">搜尋</span>
+                        </div>
+                        <button @click="searchOpen = false" class="text-gray-500 hover:text-gray-700 p-1"><i class="ph ph-x text-2xl"></i></button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto px-4 space-y-5 pt-4">
+                        <div class="floating-input-group"><label class="floating-label">日期(起)</label><div class="relative"><input x-ref="dateStartMobile" type="text" class="floating-input pl-9" placeholder="開始日期"><i class="ph ph-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i></div></div>
+                        <div class="floating-input-group"><label class="floating-label">日期(訖)</label><div class="relative"><input x-ref="dateEndMobile" type="text" class="floating-input pl-9" placeholder="結束日期"><i class="ph ph-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i></div></div>
+
+                        <div class="floating-input-group relative opacity-70 cursor-not-allowed" x-data="{ open: false }" x-show="currentTab === 'game'">
+                            <label class="floating-label" x-text="vendorLabel"></label>
+                            <button disabled class="floating-input justify-between">
+                                <span class="truncate text-gray-700" x-text="getSelectedVendorText()"></span><i class="ph ph-caret-down text-gray-400"></i>
+                            </button>
+                            <div x-show="open" class="mt-2 border border-gray-200 rounded-lg p-2 max-h-48 overflow-y-auto hidden">
+                                <template x-for="v in (currentTab === 'token' ? vendorOptions.token : (currentTab === 'game' ? vendorOptions.game : vendorOptions.payment))">
+                                    <label class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer select-none">
+                                        <input type="checkbox" :value="v" x-model="selectedVendors" class="checkbox-item rounded border-gray-300">
+                                        <span class="text-sm text-gray-700" x-text="v"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="floating-input-group" x-show="currentTab === 'game'">
+                             <div class="flex items-center gap-2 px-3 py-3 bg-white border border-gray-200 rounded-lg" :class="currentTab !== 'game' ? 'opacity-50 bg-gray-50' : ''">
+                                <label class="flex items-center gap-2 w-full" :class="currentTab !== 'game' ? '' : 'cursor-pointer'">
+                                    <input type="checkbox" x-model="isCompareMode" class="checkbox-item rounded border-gray-300" :disabled="currentTab !== 'game'">
+                                    <span class="text-sm font-bold text-gray-700">比對</span>
+                                </label>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-shrink-0 p-4 bg-white border-t border-gray-200 flex gap-3">
+                         <button @click="fetchData(false)" class="flex-1 h-11 bg-primary text-white font-bold rounded-lg shadow flex items-center justify-center gap-2">搜尋 <i class="ph ph-magnifying-glass text-lg"></i></button>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden flex flex-col flex-1 min-h-0 relative">
+                    <div x-show="isLoading" class="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm"><div class="flex flex-col items-center gap-2"><i class="ph ph-spinner animate-spin text-3xl text-primary"></i><span class="text-sm font-medium text-gray-600">數據更新中...</span></div></div>
+
+                    <div class="bg-gray-100 p-3 border-b border-gray-200 flex-shrink-0 text-gray-800 flex items-center gap-3 relative z-[60]">
+                        <div class="flex-1 min-w-0 overflow-x-auto no-scrollbar custom-scroll">
+                            <div class="flex items-center justify-end px-4 gap-6 min-w-max">
+                                <div class="grid gap-x-8 gap-y-0.5 text-right"
+                                     :style="'grid-template-columns: repeat(' + summaryMetrics.length + ', auto)'">
+                                    <template x-for="(metric, idx) in summaryMetrics" :key="'sl_'+idx">
+                                        <span class="text-xs text-gray-500 whitespace-nowrap" x-text="getHeaderLabel(metric.label)"></span>
+                                    </template>
+                                    <template x-for="(metric, idx) in summaryMetrics" :key="'sv_'+idx">
+                                        <span class="text-sm font-bold font-mono whitespace-nowrap"
+                                              :class="[
+                                                getSummaryColor(metric.value.my, metric.label),
+                                                currentTab === 'token' && ['派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '押注', '贈禮', '系統提出', '儲值退款', '消費代幣'].includes(metric.label) ? 'opacity-70' : ''
+                                              ]"
+                                              x-text="formatCurrency(metric.value.my, metric.isCurrency, metric.label)"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-shrink-0 border-l border-gray-300 pl-3">
+                            <button @click="notifyDownload()" class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center shadow-sm transition-colors tooltip tooltip-down" data-tip="下載">
+                                <i class="ph ph-download-simple text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-auto flex-1 relative custom-scroll">
+                        <table class="w-full text-sm text-gray-600 whitespace-nowrap border-separate border-spacing-0 min-w-max table-fixed font-mono">
+                            <thead class="bg-gray-50 text-xs text-gray-700 uppercase font-bold">
+                                <tr>
+                                    <th class="px-6 py-3 text-left sticky-col sticky-header bg-gray-50 w-[240px] min-w-[240px] max-w-[240px]">日期 / 廠商</th>
+                                    <template x-for="(header, index) in tableHeaders" :key="index">
+                                        <th class="px-6 py-3 text-right sticky-header bg-gray-50"
+                                            :class="[
+                                                (header === '代幣' && currentTab === 'payment') || (header === '抽成%' && currentTab === 'payment') || (currentTab === 'game' && header === '輸贏') || ['彩池貢獻金','彩池獎金','遊戲彩池貢獻金','遊戲彩池獎金','抽水','免費旋轉','站台 JP 貢獻金','站台 JP 彩金','押注','派彩','活動派彩','收禮','系統存入','活動獎勵','贈禮','儲值','儲值回饋','購買序號兌換','更新序號兌換','系統提出','儲值退款','消費代幣'].includes(header) ? 'w-[160px] min-w-[160px] max-w-[160px]' : 'w-[140px] min-w-[140px] max-w-[140px]',
+                                                currentTab === 'token' && ['儲值', '儲值回饋', '購買序號兌換'].includes(header) && !tokenDetailsPurchaseOpen ? 'hidden' : '',
+                                                currentTab === 'token' && ['派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換'].includes(header) && !tokenDetailsPlusOpen ? 'hidden' : '',
+                                                currentTab === 'token' &&['押注', '贈禮', '系統提出', '儲值退款', '消費代幣'].includes(header) && !tokenDetailsMinusOpen ? 'hidden' : '',
+                                                currentTab === 'token' && ['儲值', '儲值回饋', '購買序號兌換'].includes(header) && tokenDetailsPurchaseOpen ? 'token-details-header' : '',
+                                                currentTab === 'token' && ['派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換'].includes(header) && tokenDetailsPlusOpen ? 'token-details-header' : '',
+                                                currentTab === 'token' &&['押注', '贈禮', '系統提出', '儲值退款', '消費代幣'].includes(header) && tokenDetailsMinusOpen ? 'token-minus-details-header' : ''
+                                            ]">
+                                            <div class="flex justify-end items-center gap-1">
+                                                <template x-if="currentTab === 'game' && (header === '站台 JP 貢獻金' || header === '站台 JP 彩金')">
+                                                    <span class="relative group/tip border-b border-dashed border-gray-400 cursor-help normal-case">
+                                                        <span x-text="getHeaderLabel(header)"></span>
+                                                        <div class="absolute top-full right-0 mt-1 bg-gray-800 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity z-[100] normal-case font-normal"
+                                                             x-text="header === '站台 JP 貢獻金' ? '[系統] 全部遊戲的累積彩金貢獻值' : '[系統] 全部遊戲的累積彩金'"></div>
+                                                    </span>
+                                                </template>
+                                                <template x-if="!(currentTab === 'game' && (header === '站台 JP 貢獻金' || header === '站台 JP 彩金'))">
+                                                    <span x-text="getHeaderLabel(header)"></span>
+                                                </template>
+                                                <template x-if="currentTab === 'token' && header === '購買(+)'">
+                                                    <button @click="toggleTokenDetails('purchase')" class="text-gray-400 hover:text-primary transition-colors focus:outline-none" :title="tokenDetailsPurchaseOpen ? '收合明細' : '展開明細'">
+                                                        <i class="ph text-base" :class="tokenDetailsPurchaseOpen ? 'ph-minus' : 'ph-plus'"></i>
+                                                    </button>
+                                                </template>
+                                                <template x-if="currentTab === 'token' && header === '更新(+)'">
+                                                    <button @click="toggleTokenDetails('plus')" class="text-gray-400 hover:text-primary transition-colors focus:outline-none" :title="tokenDetailsPlusOpen ? '收合明細' : '展開明細'">
+                                                        <i class="ph text-base" :class="tokenDetailsPlusOpen ? 'ph-minus' : 'ph-plus'"></i>
+                                                    </button>
+                                                </template>
+                                                <template x-if="currentTab === 'token' && header === '更新(-)'">
+                                                    <button @click="toggleTokenDetails('minus')" class="text-gray-400 hover:text-primary transition-colors focus:outline-none" :title="tokenDetailsMinusOpen ? '收合明細' : '展開明細'">
+                                                        <i class="ph text-base" :class="tokenDetailsMinusOpen ? 'ph-minus' : 'ph-plus'"></i>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <template x-for="row in tableData" :key="row.id">
+                                    <tbody class="group">
+                                        <tr class="hover:bg-blue-50/50 transition-colors cursor-pointer bg-slate-50/50" @click="row.expanded = !row.expanded">
+                                            <td class="px-6 py-3 text-left font-bold text-gray-800 sticky-col bg-white w-[240px] min-w-[240px] max-w-[240px]">
+                                                <div class="flex items-center gap-2">
+                                                    <!-- 代幣商需求：隱藏展開按鈕 -->
+                                                    <div class="w-5 h-5 flex items-center justify-center rounded border border-gray-300 text-gray-500 bg-white transition-colors hover:border-primary hover:text-primary shadow-sm flex-shrink-0" x-show="currentTab !== 'token'"><i class="ph text-xs" :class="row.expanded ? 'ph-minus' : 'ph-plus'"></i></div>
+                                                    <span x-text="row.date" class="truncate font-sans"></span>
+                                                </div>
+                                            </td>
+                                            <template x-for="(val, idx) in row.metrics" :key="idx">
+                                                <td class="px-6 py-3 text-right font-medium truncate"
+                                                    :class="[
+                                                        getCellClass(val.my, val.their, tableHeaders[idx]),
+                                                        (tableHeaders[idx] === '代幣' && currentTab === 'payment') || (tableHeaders[idx] === '抽成%' && currentTab === 'payment') || (currentTab === 'game' && tableHeaders[idx] === '輸贏') || ['彩池貢獻金','彩池獎金','遊戲彩池貢獻金','遊戲彩池獎金','抽水','免費旋轉','站台 JP 貢獻金','站台 JP 彩金','押注','派彩','活動派彩','收禮','系統存入','活動獎勵','贈禮','儲值','儲值回饋','購買序號兌換','更新序號兌換','系統提出','儲值退款','消費代幣'].includes(tableHeaders[idx]) ? 'w-[160px] min-w-[160px] max-w-[160px]' : 'w-[140px] min-w-[140px] max-w-[140px]',
+                                                        currentTab === 'token' && ['儲值', '儲值回饋', '購買序號兌換'].includes(tableHeaders[idx]) && !tokenDetailsPurchaseOpen ? 'hidden' : '',
+                                                        currentTab === 'token' &&['派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換'].includes(tableHeaders[idx]) && !tokenDetailsPlusOpen ? 'hidden' : '',
+                                                        currentTab === 'token' && ['押注', '贈禮', '系統提出', '儲值退款', '消費代幣'].includes(tableHeaders[idx]) && !tokenDetailsMinusOpen ? 'hidden' : '',
+                                                        currentTab === 'token' && ['儲值', '儲值回饋', '購買序號兌換'].includes(tableHeaders[idx]) && tokenDetailsPurchaseOpen ? 'token-details-content' : '',
+                                                        currentTab === 'token' && ['派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換'].includes(tableHeaders[idx]) && tokenDetailsPlusOpen ? 'token-details-content' : '', /* Plus Content 底色/邊框/變淡 */
+                                                        currentTab === 'token' && ['押注', '贈禮', '系統提出', '儲值退款', '消費代幣'].includes(tableHeaders[idx]) && tokenDetailsMinusOpen ? 'token-minus-details-content' : '' /* Minus Content 底色/邊框/變淡 */
+                                                    ]">
+                                                    <span x-text="formatCurrency(val.my, !['筆數','局數','抽成%'].includes(tableHeaders[idx]), tableHeaders[idx]) + (tableHeaders[idx]?.includes('抽成%') && typeof val.my === 'number' && !val.my.toString().includes('~') && currentTab === 'payment' ? '%' : '')"></span>
+                                                    <template x-if="isCompareMode"><span class="text-xs opacity-75 block mt-0.5" x-text="'/ ' + formatCurrency(val.their, !['筆數','局數','抽成%'].includes(tableHeaders[idx]), tableHeaders[idx]) + (tableHeaders[idx]?.includes('抽成%') && typeof val.their === 'number' && !val.their.toString().includes('~') && currentTab === 'payment' ? '%' : '')"></span></template>
+                                                </td>
+                                            </template>
+                                        </tr>
+                                        <!-- 代幣商需求：不顯示子分類 (使用 x-if 隱藏) -->
+                                        <template x-if="row.expanded && currentTab !== 'token'">
+                                            <template x-for="vendor in row.vendors" :key="vendor.name">
+                                                <tr class="bg-white hover:bg-blue-50/30 border-t border-gray-100">
+                                                    <td class="px-6 py-3 text-left pl-12 relative sticky-col bg-white w-[240px] min-w-[240px] max-w-[240px]">
+                                                        <div class="absolute left-6 top-0 bottom-1/2 w-px bg-gray-300"></div><div class="absolute left-6 top-1/2 w-4 h-px bg-gray-300"></div>
+                                                        <div class="flex items-center gap-2">
+                                                            <template x-if="currentTab !== 'token'">
+                                                                <button @click="vendor.expanded = !vendor.expanded" class="w-4 h-4 flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-primary hover:border-primary bg-white mr-1 shadow-sm flex-shrink-0"><i class="ph text-[10px]" :class="vendor.expanded ? 'ph-minus' : 'ph-plus'"></i></button>
+                                                            </template>
+                                                            <span class="font-medium text-gray-700 truncate font-sans" :class="currentTab === 'token' ? 'ml-6' : ''" x-text="vendor.name"></span>
+                                                        </div>
+                                                    </td>
+                                                    <template x-for="(vVal, vIdx) in vendor.metrics" :key="vIdx">
+                                                        <td class="px-6 py-3 text-right truncate"
+                                                            :class="[
+                                                                getCellClass(vVal.my, vVal.their, tableHeaders[vIdx]),
+                                                                (tableHeaders[vIdx] === '代幣' && currentTab === 'payment') || (tableHeaders[vIdx] === '抽成%' && currentTab === 'payment') || (currentTab === 'game' && tableHeaders[vIdx] === '輸贏') || ['彩池貢獻金','彩池獎金','遊戲彩池貢獻金','遊戲彩池獎金','抽水','免費旋轉','站台 JP 貢獻金','站台 JP 彩金','押注','派彩','活動派彩','收禮','系統存入','活動獎勵','贈禮','儲值','儲值回饋','購買序號兌換','更新序號兌換','系統提出','儲值退款','消費代幣'].includes(tableHeaders[vIdx]) ? 'w-[160px] min-w-[160px] max-w-[160px]' : 'w-[140px] min-w-[140px] max-w-[140px]',
+                                                                currentTab === 'token' && ['儲值', '儲值回饋', '購買序號兌換'].includes(tableHeaders[vIdx]) && !tokenDetailsPurchaseOpen ? 'hidden' : '',
+                                                                currentTab === 'token' && ['派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換'].includes(tableHeaders[vIdx]) && !tokenDetailsPlusOpen ? 'hidden' : '',
+                                                                currentTab === 'token' && ['押注', '贈禮', '系統提出', '儲值退款', '消費代幣'].includes(tableHeaders[vIdx]) && !tokenDetailsMinusOpen ? 'hidden' : '',
+                                                                currentTab === 'token' && ['儲值', '儲值回饋', '購買序號兌換'].includes(tableHeaders[vIdx]) && tokenDetailsPurchaseOpen ? 'token-details-content' : '',
+                                                                currentTab === 'token' &&['派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換'].includes(tableHeaders[vIdx]) && tokenDetailsPlusOpen ? 'token-details-content' : '', /* Plus Content 底色/邊框/變淡 */
+                                                                currentTab === 'token' && ['押注', '贈禮', '系統提出', '儲值退款', '消費代幣'].includes(tableHeaders[vIdx]) && tokenDetailsMinusOpen ? 'token-minus-details-content' : '' /* Minus Content 底色/邊框/變淡 */
+                                                            ]">
+                                                            <span x-text="formatCurrency(vVal.my, !['筆數','局數','抽成%'].includes(tableHeaders[vIdx]), tableHeaders[vIdx]) + (tableHeaders[vIdx]?.includes('抽成%') && typeof vVal.my === 'number' && !vVal.my.toString().includes('~') && currentTab === 'payment' ? '%' : '')"></span>
+                                                            <template x-if="isCompareMode"><span class="text-xs opacity-75 block mt-0.5" x-text="'/ ' + formatCurrency(vVal.their, !['筆數','局數','抽成%'].includes(tableHeaders[vIdx]), tableHeaders[vIdx]) + (tableHeaders[vIdx]?.includes('抽成%') && typeof vVal.their === 'number' && !vVal.their.toString().includes('~') && currentTab === 'payment' ? '%' : '')"></span></template>
+                                                        </td>
+                                                    </template>
+                                                </tr>
+                                                <template x-if="currentTab === 'token' && (tokenDetailsPurchaseOpen || tokenDetailsPlusOpen || tokenDetailsMinusOpen)">
+                                                    <tr class="bg-gray-50/50 hover:bg-gray-100 text-xs text-gray-500 border-t border-gray-50">
+                                                        <td class="px-6 py-2 text-left pl-24 relative sticky-col bg-gray-50 w-[240px] min-w-[240px] max-w-[240px]">
+                                                            <div class="absolute left-6 top-0 bottom-0 w-px bg-gray-300"></div><span class="truncate font-sans">明細(項目)</span>
+                                                        </td>
+                                                        <template x-for="(tVal, tIdx) in vendor.details.metrics" :key="tIdx">
+                                                            <td class="px-6 py-2 text-right truncate"
+                                                                :class="[
+                                                                    getCellClass(tVal.my, tVal.their, tableHeaders[tIdx]),
+                                                                    (tableHeaders[tIdx] === '代幣' && currentTab === 'payment') || (tableHeaders[tIdx] === '抽成%' && currentTab === 'payment') || (currentTab === 'game' && tableHeaders[tIdx] === '輸贏') || ['彩池貢獻金','彩池獎金','遊戲彩池貢獻金','遊戲彩池獎金','抽水','免費旋轉','站台 JP 貢獻金','站台 JP 彩金','押注','派彩','活動派彩','收禮','系統存入','活動獎勵','贈禮','儲值','儲值回饋','購買序號兌換','更新序號兌換','系統提出','儲值退款','消費代幣'].includes(tableHeaders[tIdx]) ? 'w-[160px] min-w-[160px] max-w-[160px]' : 'w-[140px] min-w-[140px] max-w-[140px]',
+                                                                    currentTab === 'token' && ['儲值', '儲值回饋', '購買序號兌換'].includes(tableHeaders[tIdx]) && !tokenDetailsPurchaseOpen ? 'hidden' : '',
+                                                                    currentTab === 'token' && ['派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換'].includes(tableHeaders[tIdx]) && !tokenDetailsPlusOpen ? 'hidden' : '',
+                                                                    currentTab === 'token' && ['押注', '贈禮', '系統提出', '儲值退款', '消費代幣'].includes(tableHeaders[tIdx]) && !tokenDetailsMinusOpen ? 'hidden' : '',
+                                                                    currentTab === 'token' && ['儲值', '儲值回饋', '購買序號兌換'].includes(tableHeaders[tIdx]) && tokenDetailsPurchaseOpen ? 'token-details-content' : '',
+                                                                    currentTab === 'token' &&['派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換'].includes(tableHeaders[tIdx]) && tokenDetailsPlusOpen ? 'token-details-content' : '', /* Plus Content 底色/邊框/變淡 */
+                                                                    currentTab === 'token' && ['押注', '贈禮', '系統提出', '儲值退款', '消費代幣'].includes(tableHeaders[tIdx]) && tokenDetailsMinusOpen ? 'token-minus-details-content' : '' /* Minus Content 底色/邊框/變淡 */
+                                                                ]">
+                                                                <span x-text="formatCurrency(tVal.my, !['筆數','局數','抽成%'].includes(tableHeaders[tIdx]), tableHeaders[tIdx]) + (tableHeaders[tIdx]?.includes('抽成%') && typeof tVal.my === 'number' && !tVal.my.toString().includes('~') && currentTab === 'payment' ? '%' : '')"></span>
+                                                                <template x-if="isCompareMode"><span class="text-xs opacity-75 block mt-0.5" x-text="'/ ' + formatCurrency(tVal.their, !['筆數','局數','抽成%'].includes(tableHeaders[tIdx]), tableHeaders[tIdx]) + (tableHeaders[tIdx]?.includes('抽成%') && typeof tVal.their === 'number' && !tVal.their.toString().includes('~') && currentTab === 'payment' ? '%' : '')"></span></template>
+                                                            </td>
+                                                        </template>
+                                                    </tr>
+                                                </template>
+                                            </template>
+                                        </template>
+
+                                        <template x-if="row.expanded && currentTab !== 'token'">
+                                            <template x-for="vendor in row.vendors" :key="vendor.name + '_types'">
+                                                <template x-if="vendor.expanded">
+                                                    <template x-for="type in vendor.types" :key="type.name">
+                                                        <tr class="bg-gray-50/50 hover:bg-gray-100 text-xs text-gray-500 border-t border-gray-50">
+                                                            <td class="px-6 py-2 text-left pl-24 relative sticky-col bg-gray-50 w-[240px] min-w-[240px] max-w-[240px]">
+                                                                <div class="absolute left-6 top-0 bottom-0 w-px bg-gray-300"></div><span x-text="type.name" class="truncate font-sans"></span>
+                                                            </td>
+                                                            <template x-for="(tVal, tIdx) in type.metrics" :key="tIdx">
+                                                                <td class="px-6 py-2 text-right truncate"
+                                                                    :class="[
+                                                                        getCellClass(tVal.my, tVal.their, tableHeaders[tIdx]),
+                                                                        (tableHeaders[tIdx] === '代幣' && currentTab === 'payment') || (tableHeaders[tIdx] === '抽成%' && currentTab === 'payment') || (currentTab === 'game' && tableHeaders[tIdx] === '輸贏') || ['彩池貢獻金','彩池獎金','遊戲彩池貢獻金','遊戲彩池獎金','抽水','免費旋轉','站台 JP 貢獻金','站台 JP 彩金','押注','派彩','活動派彩','收禮','系統存入','活動獎勵','贈禮','儲值','儲值回饋','購買序號兌換','更新序號兌換','系統提出','儲值退款','消費代幣'].includes(tableHeaders[tIdx]) ? 'w-[160px] min-w-[160px] max-w-[160px]' : 'w-[140px] min-w-[140px] max-w-[140px]'
+                                                                    ]">
+                                                                    <span x-text="formatCurrency(tVal.my, !['筆數','局數','抽成%'].includes(tableHeaders[tIdx]), tableHeaders[tIdx]) + (tableHeaders[tIdx]?.includes('抽成%') && typeof tVal.my === 'number' && !tVal.my.toString().includes('~') && currentTab === 'payment' ? '%' : '')"></span>
+                                                                    <template x-if="isCompareMode"><span class="text-xs opacity-75 block mt-0.5" x-text="'/ ' + formatCurrency(tVal.their, !['筆數','局數','抽成%'].includes(tableHeaders[tIdx]), tableHeaders[tIdx]) + (tableHeaders[tIdx]?.includes('抽成%') && typeof tVal.their === 'number' && !tVal.their.toString().includes('~') && currentTab === 'payment' ? '%' : '')"></span></template>
+                                                                </td>
+                                                            </template>
+                                                        </tr>
+                                                    </template>
+                                                </template>
+                                            </template>
+                                        </template>
+                                    </tbody>
+                                </template>
+                        </table>
+                        <div x-show="!isLoading && tableData.length === 0" class="p-10 text-center text-gray-400"><i class="ph ph-file-search text-4xl mb-2"></i><p>查無資料</p></div>
+                    </div>
+
+                    <div class="p-4 border-t border-gray-200 flex flex-col md:flex-row items-end md:items-center justify-end gap-2 bg-white flex-shrink-0 sticky bottom-0 z-20">
+                        <div class="flex items-center gap-2 order-1 md:order-1">
+                            <div class="flex items-center gap-2 text-gray-400 mr-2"><button class="hover:text-primary"><i class="ph ph-skip-back text-sm"></i></button><button class="hover:text-primary"><i class="ph ph-caret-left text-sm"></i></button></div>
+                            <div class="flex items-center gap-1"><button class="w-8 h-8 rounded-full bg-primary text-white text-sm font-medium flex items-center justify-center shadow-sm">1</button><button class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-600 text-sm font-medium flex items-center justify-center transition-colors">2</button><button class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-600 text-sm font-medium flex items-center justify-center transition-colors">3</button></div>
+                            <div class="flex items-center gap-2 text-gray-400 ml-2"><button class="hover:text-primary"><i class="ph ph-caret-right text-sm"></i></button><button class="hover:text-primary"><i class="ph ph-skip-forward text-sm"></i></button></div>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-gray-500 mt-2 md:mt-0 md:pl-4 md:border-l border-gray-200 order-2 md:order-2">
+                            <span>每頁筆數：</span>
+                            <select class="border border-gray-300 rounded px-2 py-1 outline-none text-gray-700 bg-white hover:border-gray-400"><option>10</option><option>20</option></select>
+                            <span class="ml-2">1 - 10 共 50</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div x-show="isPaymentConfigOpen" class="modal-backdrop" x-transition.opacity>
+            <div x-data="{ tempConfig: JSON.parse(JSON.stringify(paymentConfig)), isEditing: false }" @click.outside="isPaymentConfigOpen = false" class="modal-content">
+
+                <div class="modal-header">
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="ph-fill ph-gear text-primary"></i> 金流商設定</h3>
+                </div>
+
+                <div class="modal-body custom-scroll space-y-6">
+                    <template x-for="vendorName in vendorOptions.payment" :key="vendorName">
+                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            <h4 class="text-lg font-bold text-gray-700 mb-3" x-text="vendorName"></h4>
+                            <div class="space-y-3">
+                                <template x-for="type in tempConfig[vendorName]" :key="type.name">
+                                    <div class="flex flex-wrap items-center gap-4 p-3 bg-white rounded-md border border-gray-100 shadow-sm">
+                                        <div class="w-24 text-sm font-bold text-gray-600 flex-shrink-0" x-text="type.name"></div>
+
+                                        <div class="floating-input-group w-32">
+                                            <label class="floating-label">抽成</label>
+                                            <input type="number" step="0.01" min="0"
+                                                   class="floating-input text-right"
+                                                   x-model.number="type.commissionRate"
+                                                   :disabled="!isEditing"
+                                                   :placeholder="type.commissionRate">
+                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+                                        </div>
+
+                                        <div class="floating-input-group w-32">
+                                            <label class="floating-label">手續費</label>
+                                            <input type="number" step="0.01" min="0"
+                                                   class="floating-input text-right"
+                                                   x-model.number="type.fee"
+                                                   :disabled="!isEditing"
+                                                   :placeholder="type.fee">
+                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                                        </div>
+
+                                        <div class="floating-input-group w-32">
+                                            <label class="floating-label">其他</label>
+                                            <input type="number" step="0.01"
+                                                   class="floating-input text-right"
+                                                   x-model.number="type.other"
+                                                   :disabled="!isEditing"
+                                                   :placeholder="type.other">
+                                            <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                                        </div>
+
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="modal-footer">
+                    <template x-if="!isEditing">
+                        <div class="flex gap-3">
+                            <button @click="isPaymentConfigOpen = false" class="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors">關閉</button>
+                            <button @click="isEditing = true" class="px-4 py-2 text-sm font-bold text-white bg-amber rounded hover:bg-amber-hover shadow-sm transition-colors">編輯</button>
+                        </div>
+                    </template>
+                    <template x-if="isEditing">
+                        <div class="flex gap-3">
+                            <button @click="tempConfig = JSON.parse(JSON.stringify(paymentConfig)); isEditing = false" class="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors">取消</button>
+                            <button @click="savePaymentConfig(tempConfig); isEditing = false" class="px-4 py-2 text-sm font-bold text-white bg-primary rounded hover:bg-blue-600 shadow-sm transition-colors">儲存</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = {
+            title:  '交收報表',
+            parent: '報表管理'
+        };
+    </script>
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+
+    <script>
+        // MAIN CONTENT LOGIC (Modified Commission_ai.html v37 Logic)
+        function settlementPage() {
+            return {
+                currentTab: 'token',
+                isLoading: false,
+                isSpinning: false,
+                isMobile: window.innerWidth < 768,
+                searchOpen: false,
+                isPaymentConfigOpen: false,
+                isPaymentConfigEditing: false,
+                selectedVendors:[],
+                isCompareMode: false,
+                tokenDetailsPurchaseOpen: false, // 控制 購買(+) 的明細 (儲值、儲值回饋、序號兌換)
+                tokenDetailsPlusOpen: false, // 控制 更新(+) 的明細 (派彩、活動派彩、收禮、系統存入、站台 JP 彩金、活動獎勵、序號兌換)
+                tokenDetailsMinusOpen: false, // 控制 更新(-) 的明細 (押注、贈禮、系統提出、儲值退款、消費代幣)
+
+                tabs:[
+                    { id: 'token', name: '代幣商', icon: 'ph-coin' },
+                    { id: 'game', name: '遊戲商', icon: 'ph-game-controller' },
+                    { id: 'payment', name: '金流商', icon: 'ph-credit-card' }
+                ],
+
+                vendorOptions: {
+                    token:['OX', 'FC', 'JDB', 'TC'],
+                    game:['FC', 'JDB', 'PG', 'CQ9'],
+                    payment: ['GASH', 'MyCard', 'Green', 'LinePay']
+                },
+
+                // Mock Data for Payment Commission/Fee Configuration
+                paymentConfig: {
+                    'GASH':[{name: '點數卡', commissionRate: 5.50, fee: 10, other: 0}, {name: '信用卡', commissionRate: 3.50, fee: 20, other: 0}],
+                    'MyCard':[{name: '點數卡', commissionRate: 6.00, fee: 8, other: 0}, {name: 'ATM', commissionRate: 1.50, fee: 5, other: 0}],
+                    'Green':[{name: '電子支付', commissionRate: 2.50, fee: 0, other: 0}],
+                    'LinePay':[{name: '行動支付', commissionRate: 2.80, fee: 0, other: 0}]
+                },
+
+                summaryMetrics: [],
+                tableHeaders:[],
+                tableData:[],
+
+                init() {
+                    window.addEventListener('resize', () => { this.isMobile = window.innerWidth < 768; });
+
+                    // Initialization of flatpickr for date selection
+                    flatpickr(this.$refs.dateStart, { mode: "range", dateFormat: "Y-m-d", locale: "zh_tw", altInput: true, altFormat: "Y/m/d" });
+                    flatpickr(this.$refs.dateEnd, { mode: "range", dateFormat: "Y-m-d", locale: "zh_tw", altInput: true, altFormat: "Y/m/d" });
+                    flatpickr(this.$refs.dateStartMobile, { mode: "range", dateFormat: "Y-m-d", locale: "zh_tw", altInput: true, altFormat: "Y/m/d" });
+                    flatpickr(this.$refs.dateEndMobile, { mode: "range", dateFormat: "Y-m-d", locale: "zh_tw", altInput: true, altFormat: "Y/m/d" });
+
+                    this.selectAllVendors(); // Set initial selectedVendors to all
+                    this.fetchData(false); // Initial load (as a search)
+
+                    this.$watch('currentTab', (val) => {
+                        this.isCompareMode = false;
+                        this.tokenDetailsPurchaseOpen = false;
+                        this.tokenDetailsPlusOpen = false;
+                        this.tokenDetailsMinusOpen = false;
+                        this.selectAllVendors();
+                        this.fetchData(false);
+                    });
+                },
+
+                openSearchModal() { this.searchOpen = true; },
+                openPaymentConfigModal() {
+                    this.isPaymentConfigOpen = true;
+                    this.isPaymentConfigEditing = false; // Reset to view mode
+                },
+                savePaymentConfig(newConfig) {
+                    this.paymentConfig = JSON.parse(JSON.stringify(newConfig));
+                    console.log('Saving configuration:', JSON.parse(JSON.stringify(this.paymentConfig)));
+
+                    this.fetchData(false); // Save config then re-search
+                    this.addToast('金流配置已儲存');
+                },
+                // 控制 代幣商 的明細展開
+                toggleTokenDetails(type) {
+                     if (this.currentTab === 'token' && !this.isMobile) {
+                        if (type === 'purchase') {
+                            this.tokenDetailsPurchaseOpen = !this.tokenDetailsPurchaseOpen;
+                        } else if (type === 'plus') {
+                            this.tokenDetailsPlusOpen = !this.tokenDetailsPlusOpen;
+                        } else if (type === 'minus') {
+                            this.tokenDetailsMinusOpen = !this.tokenDetailsMinusOpen;
+                        }
+                     }
+                },
+                getPaymentTypes(vendorName) {
+                    return this.paymentConfig[vendorName] ||[];
+                },
+                get vendorLabel() {
+                    const map = { token: '代幣商', game: '遊戲商', payment: '金流商' };
+                    return map[this.currentTab];
+                },
+                get currentNotes() {
+                    if(this.currentTab === 'token') return[
+                        '單位：代幣',
+                        '時區：皆以 UTC+8 顯示及對帳',
+                        '時間：以 OX 返回「收到紀錄的時間」進行統計，避免跨日時間差導致對帳差異',
+                        '淨值：購買 + 更新(+) - 更新(-) + 保險箱(+) - 保險箱(-)',
+                        '購買(+)：儲值(首儲+儲值)、儲值回饋(首儲回饋+儲值回饋)',
+                        '更新(+)：派彩、活動派彩、收禮、系統存入、站台 JP 彩金(巨獎+大獎+小獎)、活動獎勵、序號兌換…',
+                        '更新(-)：押注、贈禮、系統提出、儲值退款、消費代幣、…',
+                        '保險箱(+)：保險箱提出',
+                        '保險箱(-)：保險箱存入'
+                    ];
+                    if(this.currentTab === 'game') return[
+                        '單位：代幣',
+                        'FC 數據為 GMT-4，對帳/交收請自行轉換時區查詢',
+                        '贏分：派彩金額',
+                        '輸贏：派彩 - 押注',
+                        '站台 JP 貢獻金：[系統] 全部遊戲的累積彩金貢獻值',
+                        '站台 JP 彩金：[系統] 全部遊戲的累積彩金',
+                        '彩池貢獻金：全部遊戲的累積彩金貢獻值',
+                        '彩池獎金：全部遊戲的累積彩金',
+                        '遊戲彩池貢獻金: 單一遊戲的累積彩金貢獻值',
+                        '遊戲彩池獎金：單一遊戲的累積彩金',
+                        '抽水：棋牌抽水'
+                    ];
+                    if(this.currentTab === 'payment') return[
+                        '單位：金額(新台幣)',
+                        '筆數：訂單數量',
+                        '金額：儲值付款',
+                        '代幣：玩家實際取得的平台代幣'
+                    ];
+                    return[];
+                },
+                getSelectedVendorText() {
+                    return '全部';
+                },
+                // 內部欄位鍵值 -> 顯示文字對照 (購買(+)、更新(+) 底下皆有「序號兌換」子分類，需區分內部鍵值但顯示相同文字)
+                getHeaderLabel(header) {
+                    const map = { '購買序號兌換': '序號兌換', '更新序號兌換': '序號兌換' };
+                    return map[header] || header;
+                },
+                selectAllVendors() { this.selectedVendors = [...this.vendorOptions[this.currentTab]]; },
+                fetchData(isRefresh = false) {
+                    this.isLoading = true;
+                    // 重撈 (isRefresh: true) 啟動 spin
+                    if(isRefresh) this.isSpinning = true;
+
+                    setTimeout(() => {
+                        this.generateMockData();
+                        this.isLoading = false;
+                        this.isSpinning = false;
+                        if (!isRefresh) { // 只有在點擊「搜尋」按鈕時才關閉 modal
+                            this.searchOpen = false;
+                        }
+                        if (isRefresh) {
+                            this.addToast('數據已更新');
+                        }
+                    }, 600);
+                },
+                formatCurrency(value, isCurrency = true, label = '') {
+                    if (typeof value === 'string' && value.includes('~')) return value;
+
+                    // 需要顯示為正整數的欄位 (代幣商)
+                    const isPositiveIntegerDisplay =['筆數', '購買(+)', '儲值', '儲值回饋', '購買序號兌換', '更新(+)', '派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換', '保險箱(+)'].includes(label) && this.currentTab === 'token';
+
+                    const absValue = Math.abs(value);
+                    let formattedValue;
+
+                    if (isPositiveIntegerDisplay) {
+                         formattedValue = Math.floor(absValue).toLocaleString(undefined, {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                        });
+                    } else {
+                         formattedValue = absValue.toLocaleString(undefined, {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2
+                        });
+                    }
+
+                    // 檢查是否為遊戲商的特殊欄位 (彩池貢獻金, 彩池獎金, 遊戲彩池貢獻金, 遊戲彩池獎金, 抽水, 免費旋轉, 站台 JP 貢獻金, 站台 JP 彩金)
+                    const isGameSpecialCurrency =['彩池貢獻金', '彩池獎金', '遊戲彩池貢獻金', '遊戲彩池獎金', '抽水', '免費旋轉', '站台 JP 貢獻金', '站台 JP 彩金'].includes(label) && this.currentTab === 'game';
+
+                    // 針對 非貨幣欄位 (筆數, 局數, 抽成%(金流))
+                    if (['筆數', '局數'].includes(label) || (label === '抽成%' && this.currentTab === 'payment')) {
+                        if (label === '抽成%') {
+                            if(typeof value === 'number') return value.toFixed(2);
+                            return value;
+                        }
+                        return formattedValue;
+                    }
+
+                    // 針對 遊戲商的特殊貨幣欄位
+                    if (isGameSpecialCurrency) {
+                        return (value < 0 ? '-$' : '$') + formattedValue;
+                    }
+
+                    // 針對 金流商的 "其他" 欄位
+                    if (label === '其他' && this.currentTab === 'payment') {
+                        return (value < 0 ? '-$' : '$') + formattedValue;
+                    }
+
+                    // 對於要求正整數的代幣商欄位，因為已經處理了顯示，所以只加貨幣符號
+                    if (isPositiveIntegerDisplay) {
+                        return '$' + formattedValue;
+                    }
+
+                    // 針對其他貨幣欄位 (淨值、更新(-)、押注、贈禮、保險箱(-))
+                    return (value < 0 ? '-$' : '$') + formattedValue;
+                },
+                getCellClass(myVal, theirVal, header) {
+                    let classes =[];
+                    const isToken = this.currentTab === 'token';
+
+                    // 金流商 highlight
+                    if (this.currentTab === 'payment' && header === '實際交收') classes.push('col-highlight-primary');
+
+                    // 遊戲商差異 highlight
+                    if (this.currentTab === 'game' && myVal !== theirVal) {
+                        classes.push('diff-highlight');
+                    }
+
+                    // 處理負值顏色 (代幣商)
+                    if (isToken) {
+                        const positiveOnlyFields =['筆數', '購買(+)', '儲值', '儲值回饋', '購買序號兌換', '更新(+)', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換', '保險箱(+)'];
+
+                        if (typeof myVal === 'string' && myVal.includes('~')) { classes.push('text-gray-800'); }
+                        // 1. 強制負值紅字 (更新(-), 押注, 贈禮, 系統提出, 儲值退款, 消費代幣, 保險箱(-))
+                        else if (['更新(-)', '押注', '贈禮', '系統提出', '儲值退款', '消費代幣', '保險箱(-)', '淨值'].includes(header) && myVal < 0) {
+                             classes.push('text-red-500 font-bold');
+                        }
+                        // 2. 確保正值欄位顯示黑字 (筆數, 購買(+), 更新(+), 派彩, 收禮, 獎金, 保險箱(+))
+                        else if (positiveOnlyFields.includes(header)) {
+                             classes.push('text-gray-800');
+                        }
+                        // 3. 淨值、派彩、收禮、獎金 (正數為黑字)
+                        else {
+                             classes.push('text-gray-800');
+                        }
+                    } else if (this.currentTab === 'payment') {
+                        if (['實際交收', '手續費', '其他'].includes(header) && myVal < 0) {
+                            classes.push('text-red-500');
+                        } else { classes.push('text-gray-800'); }
+                    } else if (this.currentTab === 'game') {
+                        if (header === '輸贏') {
+                            if (myVal > 0) classes.push('text-green-600 font-bold'); else if (myVal < 0) classes.push('text-red-500'); else classes.push('text-gray-800');
+                        } else { classes.push('text-gray-800'); }
+                    }
+
+                    return classes.join(' ');
+                },
+                getSummaryColor(val, label) {
+                    if (typeof val === 'string' && val.includes('~')) return 'text-gray-800';
+                    if (this.currentTab === 'game' && label === '輸贏') { if (val > 0) return 'text-green-600'; if (val < 0) return 'text-red-500'; return 'text-gray-800'; }
+
+                    if (this.currentTab === 'token') {
+                        // 筆數, 購買(+), 更新(+), 保險箱(+) 總計顯示黑字
+                        if (['筆數', '購買(+)', '儲值', '儲值回饋', '購買序號兌換', '更新(+)', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換', '保險箱(+)'].includes(label)) return 'text-gray-800';
+
+                        // 淨值, 更新(-), 押注, 贈禮, 保險箱(-) 總計負數顯示紅字
+                        if (val < 0) return 'text-red-500 font-bold';
+                        if (label === '淨值') return 'text-primary'; // 淨值正數突出顯示
+                    }
+
+                    if (val < 0) return 'text-red-500';
+                    if (label === '淨值' || label === '實際交收' || label === '輸贏') return 'text-primary';
+                    return 'text-gray-800';
+                },
+                getGameMetrics() {
+                    let m = {};
+                    m.count = Math.floor(Math.random()*500)+1;
+                    m.rounds = m.count*(Math.floor(Math.random()*5)+1);
+                    m.bet = Math.floor(Math.random()*1000000)+1000;
+                    m.validBet = Math.floor(m.bet*0.95);
+                    if(m.validBet===0) m.validBet=m.bet;
+                    m.win = Math.floor(Math.random()*1000000)+100;
+                    m.pl = m.win - m.bet;
+                    m.jpContribAll = Math.floor(Math.random()*10000)+1000;
+                    m.jpPrizeAll = Math.random()>0.9?Math.floor(Math.random()*100000):0;
+                    m.jpContribGame = Math.floor(m.jpContribAll * (0.1 + Math.random() * 0.5));
+                    m.jpPrizeGame = Math.random()>0.8?Math.floor(m.jpPrizeAll * (0.1 + Math.random() * 0.5)):0;
+                    m.commission = Math.floor(m.validBet * (0.005 + Math.random() * 0.015));
+                    m.freeSpins = Math.floor(Math.random()*2000);
+                    m.siteJpContrib = Math.floor(Math.random()*5000)+500;
+                    m.siteJpPrize = Math.random()>0.92?Math.floor(Math.random()*80000):0;
+
+                    // 調整後的順序：[筆數, 局數, 押注, 有效押注, 贏分, 輸贏, 彩池貢獻金, 彩池獎金, 遊戲彩池貢獻金, 遊戲彩池獎金, 抽水, 免費旋轉, 站台 JP 貢獻金, 站台 JP 彩金]
+                    const myArr =[m.count, m.rounds, m.bet, m.validBet, m.win, m.pl, m.jpContribAll, m.jpPrizeAll, m.jpContribGame, m.jpPrizeGame, m.commission, m.freeSpins, m.siteJpContrib, m.siteJpPrize];
+
+                    return myArr.map((val, i) => {
+                        // 讓部分欄位出現差異 (即使未勾選比對，這些差異存在數據中，現在 UI 會直接顯示黃底)
+                        if (Math.random()>0.9) return { my: val, their: Math.floor(val*1.02)+1 };
+                        return { my: val, their: val };
+                    });
+                },
+                getPaymentMetrics(vendorName, typeName) {
+                    const config = this.paymentConfig[vendorName].find(t => t.name === typeName) || { commissionRate: 0, fee: 0, other: 0 };
+
+                    let m = {};
+                    m.count = Math.floor(Math.random() * 9999) + 1;
+                    m.amount = Math.floor(Math.random()*100000)+1000;
+                    m.coin = m.amount * (10 + Math.floor(Math.random() * 5));
+
+                    // 需求：金流商只保留[筆數, 金額, 代幣]
+                    const myArr = [m.count, m.amount, m.coin];
+
+                    return myArr.map((val, i) => {
+                        let theirVal = val;
+                        // 不在金流商模式下做比對數據模擬
+                        return { my: val, their: theirVal };
+                    });
+                },
+                // Updated getTokenMetrics (for vendor summary row)
+                getTokenMetrics() {
+                    // Utility function to get positive integer
+                    const getPositiveInt = (min, max) => Math.max(1, Math.floor(Math.random() * (max - min + 1)) + min);
+
+                    let m = {};
+                    m.count = getPositiveInt(10, 50); // 筆數
+                    m.deposit = getPositiveInt(900, 95000); // 儲值
+                    m.depositBonus = getPositiveInt(100, 5000); // 儲值回饋
+                    m.serialPurchase = getPositiveInt(50, 3000); // 購買(+) 的序號兌換
+                    m.purchase = m.deposit + m.depositBonus + m.serialPurchase; // 購買(+) = 儲值 + 儲值回饋 + 序號兌換
+
+                    m.payout = getPositiveInt(800, 1200) * (m.purchase / 1000); // 派彩
+                    m.activityPayout = getPositiveInt(50, 300) * (m.purchase / 1000); // 活動派彩
+                    m.receiveGift = getPositiveInt(10, 50) * (m.purchase / 1000); // 收禮
+                    m.systemDeposit = getPositiveInt(10, 100) * (m.purchase / 1000); // 系統存入
+                    m.siteJpPrize = getPositiveInt(0, 20) * (m.purchase / 1000); // 站台 JP 彩金 (巨獎+大獎+小獎)
+                    m.activityBonus = getPositiveInt(5, 30) * (m.purchase / 1000); // 活動獎勵
+                    m.serialUpdate = getPositiveInt(5, 20) * (m.purchase / 1000); // 更新(+) 的序號兌換
+                    m.updatePlus = m.payout + m.activityPayout + m.receiveGift + m.systemDeposit + m.siteJpPrize + m.activityBonus + m.serialUpdate; // 更新(+) = 派彩 + 活動派彩 + 收禮 + 系統存入 + 站台 JP 彩金 + 活動獎勵 + 序號兌換
+
+                    m.bet = -getPositiveInt(500, 1100) * (m.purchase / 1000); // 押注 (負值)
+                    m.giveGift = -getPositiveInt(5, 10) * (m.purchase / 1000); // 贈禮 (負值)
+                    m.systemWithdraw = -getPositiveInt(5, 30) * (m.purchase / 1000); // 系統提出 (負值)
+                    m.depositRefund = -getPositiveInt(5, 20) * (m.purchase / 1000); // 儲值退款 (負值)
+                    m.consume = -getPositiveInt(5, 20) * (m.purchase / 1000); // 消費代幣 (負值)
+
+                    // 更新(-) = 押注 + 贈禮 + 系統提出 + 儲值退款 + 消費代幣 (全部都是負值)
+                    m.updateMinus = m.bet + m.giveGift + m.systemWithdraw + m.depositRefund + m.consume;
+
+                    m.vaultPlus = getPositiveInt(100, 200) * (m.purchase / 1000); // 保險箱(+)
+                    m.vaultMinus = -getPositiveInt(50, 150) * (m.purchase / 1000); // 保險箱(-) (負值)
+
+                    // 淨值：購買 + 更新(+) + 更新(-) + 保險箱(+) + 保險箱(-)
+                    m.netValue = m.purchase + m.updatePlus + m.updateMinus + m.vaultPlus + m.vaultMinus;
+
+                    // Final order:[筆數, 淨值, 購買(+), 儲值, 儲值回饋, 購買序號兌換, 更新(+), 派彩, 活動派彩, 收禮, 系統存入, 站台 JP 彩金, 活動獎勵, 更新序號兌換, 更新(-), 押注, 贈禮, 系統提出, 儲值退款, 消費代幣, 保險箱(+), 保險箱(-)]
+                    const myArr =[
+                        Math.floor(m.count),
+                        Math.floor(m.netValue), // 淨值可能為負，不強制正整數
+                        Math.floor(m.purchase),
+                        Math.floor(m.deposit),
+                        Math.floor(m.depositBonus),
+                        Math.floor(m.serialPurchase),
+                        Math.floor(m.updatePlus),
+                        Math.floor(m.payout),
+                        Math.floor(m.activityPayout),
+                        Math.floor(m.receiveGift),
+                        Math.floor(m.systemDeposit),
+                        Math.floor(m.siteJpPrize),
+                        Math.floor(m.activityBonus),
+                        Math.floor(m.serialUpdate),
+                        Math.floor(m.updateMinus), // 負值
+                        Math.floor(m.bet), // 負值
+                        Math.floor(m.giveGift), // 負值
+                        Math.floor(m.systemWithdraw), // 負值
+                        Math.floor(m.depositRefund), // 負值
+                        Math.floor(m.consume), // 負值
+                        Math.floor(m.vaultPlus),
+                        Math.floor(m.vaultMinus) // 負值
+                    ];
+
+                    return myArr.map((val, i) => {
+                        let theirVal = val;
+                        // 讓部分欄位出現差異
+                        if (this.isCompareMode && Math.random()>0.9) theirVal = Math.floor(val*1.05);
+
+                        // Ensure negative values remain negative for comparison
+                        if (val < 0 && theirVal > 0) theirVal = -Math.abs(theirVal);
+                        else if (val > 0 && theirVal < 0) theirVal = Math.abs(theirVal);
+
+                        return { my: val, their: theirVal };
+                    });
+                },
+                // Updated getTokenDetailsMetrics (for expandable row -押注/派彩明細)
+                getTokenDetailsMetrics(metrics) {
+                    const totalHeadersCount = 22; // 筆數, 淨值, 購買(+), 儲值, 儲值回饋, 購買序號兌換, 更新(+), 派彩, 活動派彩, 收禮, 系統存入, 站台 JP 彩金, 活動獎勵, 更新序號兌換, 更新(-), 押注, 贈禮, 系統提出, 儲值退款, 消費代幣, 保險箱(+), 保險箱(-)
+                    let newMetrics = Array.from({length: totalHeadersCount}, () => ({ my: 0, their: 0 }));
+
+                    const headers = this.tableHeaders;
+
+                    // 購買(+) 明細
+                    const depositIdx = headers.indexOf('儲值');
+                    const depositBonusIdx = headers.indexOf('儲值回饋');
+                    const serialPurchaseIdx = headers.indexOf('購買序號兌換');
+                    if (depositIdx !== -1) newMetrics[depositIdx] = metrics[depositIdx];
+                    if (depositBonusIdx !== -1) newMetrics[depositBonusIdx] = metrics[depositBonusIdx];
+                    if (serialPurchaseIdx !== -1) newMetrics[serialPurchaseIdx] = metrics[serialPurchaseIdx];
+
+                    // 更新(+) 明細
+                    const payoutIdx = headers.indexOf('派彩');
+                    const activityPayoutIdx = headers.indexOf('活動派彩');
+                    const receiveGiftIdx = headers.indexOf('收禮');
+                    const systemDepositIdx = headers.indexOf('系統存入');
+                    const siteJpPrizeIdx = headers.indexOf('站台 JP 彩金');
+                    const activityBonusIdx = headers.indexOf('活動獎勵');
+                    const serialUpdateIdx = headers.indexOf('更新序號兌換');
+                    if (payoutIdx !== -1) newMetrics[payoutIdx] = metrics[payoutIdx];
+                    if (activityPayoutIdx !== -1) newMetrics[activityPayoutIdx] = metrics[activityPayoutIdx];
+                    if (receiveGiftIdx !== -1) newMetrics[receiveGiftIdx] = metrics[receiveGiftIdx];
+                    if (systemDepositIdx !== -1) newMetrics[systemDepositIdx] = metrics[systemDepositIdx];
+                    if (siteJpPrizeIdx !== -1) newMetrics[siteJpPrizeIdx] = metrics[siteJpPrizeIdx];
+                    if (activityBonusIdx !== -1) newMetrics[activityBonusIdx] = metrics[activityBonusIdx];
+                    if (serialUpdateIdx !== -1) newMetrics[serialUpdateIdx] = metrics[serialUpdateIdx];
+
+                    // 更新(-) 明細
+                    const betIdx = headers.indexOf('押注');
+                    const giveGiftIdx = headers.indexOf('贈禮');
+                    const systemWithdrawIdx = headers.indexOf('系統提出');
+                    const depositRefundIdx = headers.indexOf('儲值退款');
+                    const consumeIdx = headers.indexOf('消費代幣');
+                    if (betIdx !== -1) newMetrics[betIdx] = metrics[betIdx];
+                    if (giveGiftIdx !== -1) newMetrics[giveGiftIdx] = metrics[giveGiftIdx];
+                    if (systemWithdrawIdx !== -1) newMetrics[systemWithdrawIdx] = metrics[systemWithdrawIdx];
+                    if (depositRefundIdx !== -1) newMetrics[depositRefundIdx] = metrics[depositRefundIdx];
+                    if (consumeIdx !== -1) newMetrics[consumeIdx] = metrics[consumeIdx];
+
+                    // 其他欄位為 0
+
+                    return newMetrics;
+                },
+                calculateTotals(cols, isPayment = false) {
+                    let totals = new Array(cols).fill({my:0, their:0});
+
+                    const nonSumHeaders =['抽水', '彩池獎金', '遊戲彩池獎金', '站台 JP 彩金', '抽成%'];
+                    const nonSumIndices = nonSumHeaders.map(h => this.tableHeaders.indexOf(h)).filter(i => i !== -1);
+
+                    this.tableData.forEach(row => {
+                        row.metrics.forEach((val, idx) => {
+                            if (nonSumIndices.includes(idx)) return;
+
+                            // 代幣商的 淨值 / 更新(+) / 更新(-) 需要重新計算總和
+                            if (this.currentTab === 'token') {
+                                // 排除：淨值、更新(+)、更新(-) (它們是公式)
+                                if (['淨值', '更新(+)', '更新(-)'].includes(this.tableHeaders[idx])) return;
+                            }
+
+                            totals[idx].my += typeof val.my === 'number' ? val.my : 0;
+                            totals[idx].their += typeof val.their === 'number' ? val.their : 0;
+                        });
+                    });
+
+                    // 重新計算 代幣商的 更新(+) / 更新(-) / 淨值 總和
+                    if (this.currentTab === 'token') {
+                        const payoutIdx = this.tableHeaders.indexOf('派彩');
+                        const activityPayoutIdx = this.tableHeaders.indexOf('活動派彩');
+                        const receiveGiftIdx = this.tableHeaders.indexOf('收禮');
+                        const systemDepositIdx = this.tableHeaders.indexOf('系統存入');
+                        const siteJpPrizeIdx = this.tableHeaders.indexOf('站台 JP 彩金');
+                        const activityBonusIdx = this.tableHeaders.indexOf('活動獎勵');
+                        const serialUpdateIdx = this.tableHeaders.indexOf('更新序號兌換');
+                        const betIdx = this.tableHeaders.indexOf('押注');
+                        const giveGiftIdx = this.tableHeaders.indexOf('贈禮');
+                        const systemWithdrawIdx = this.tableHeaders.indexOf('系統提出');
+                        const depositRefundIdx = this.tableHeaders.indexOf('儲值退款');
+                        const consumeIdx = this.tableHeaders.indexOf('消費代幣');
+                        const purchaseIdx = this.tableHeaders.indexOf('購買(+)');
+                        const vaultPlusIdx = this.tableHeaders.indexOf('保險箱(+)');
+                        const vaultMinusIdx = this.tableHeaders.indexOf('保險箱(-)');
+                        const updatePlusIdx = this.tableHeaders.indexOf('更新(+)');
+                        const updateMinusIdx = this.tableHeaders.indexOf('更新(-)');
+                        const netValueIdx = this.tableHeaders.indexOf('淨值');
+
+                        // 重新計算所有欄位的總和 (因為上面只加總了非公式欄位)
+                        const sumField = (headerIndex) => this.tableData.reduce((sum, row) => sum + (row.metrics[headerIndex]?.my || 0), 0);
+                        const sumFieldTheir = (headerIndex) => this.tableData.reduce((sum, row) => sum + (row.metrics[headerIndex]?.their || 0), 0);
+
+                        // 重新計算所有子項目的總和
+                        if (payoutIdx !== -1) totals[payoutIdx] = { my: sumField(payoutIdx), their: sumFieldTheir(payoutIdx) };
+                        if (activityPayoutIdx !== -1) totals[activityPayoutIdx] = { my: sumField(activityPayoutIdx), their: sumFieldTheir(activityPayoutIdx) };
+                        if (receiveGiftIdx !== -1) totals[receiveGiftIdx] = { my: sumField(receiveGiftIdx), their: sumFieldTheir(receiveGiftIdx) };
+                        if (systemDepositIdx !== -1) totals[systemDepositIdx] = { my: sumField(systemDepositIdx), their: sumFieldTheir(systemDepositIdx) };
+                        if (siteJpPrizeIdx !== -1) totals[siteJpPrizeIdx] = { my: sumField(siteJpPrizeIdx), their: sumFieldTheir(siteJpPrizeIdx) };
+                        if (activityBonusIdx !== -1) totals[activityBonusIdx] = { my: sumField(activityBonusIdx), their: sumFieldTheir(activityBonusIdx) };
+                        if (serialUpdateIdx !== -1) totals[serialUpdateIdx] = { my: sumField(serialUpdateIdx), their: sumFieldTheir(serialUpdateIdx) };
+                        if (betIdx !== -1) totals[betIdx] = { my: sumField(betIdx), their: sumFieldTheir(betIdx) };
+                        if (giveGiftIdx !== -1) totals[giveGiftIdx] = { my: sumField(giveGiftIdx), their: sumFieldTheir(giveGiftIdx) };
+                        if (systemWithdrawIdx !== -1) totals[systemWithdrawIdx] = { my: sumField(systemWithdrawIdx), their: sumFieldTheir(systemWithdrawIdx) };
+                        if (depositRefundIdx !== -1) totals[depositRefundIdx] = { my: sumField(depositRefundIdx), their: sumFieldTheir(depositRefundIdx) };
+                        if (consumeIdx !== -1) totals[consumeIdx] = { my: sumField(consumeIdx), their: sumFieldTheir(consumeIdx) };
+
+                        // 重新計算 "更新(+)"
+                        if (updatePlusIdx !== -1) {
+                            totals[updatePlusIdx].my = (totals[payoutIdx]?.my || 0) + (totals[activityPayoutIdx]?.my || 0) + (totals[receiveGiftIdx]?.my || 0) + (totals[systemDepositIdx]?.my || 0) + (totals[siteJpPrizeIdx]?.my || 0) + (totals[activityBonusIdx]?.my || 0) + (totals[serialUpdateIdx]?.my || 0);
+                            totals[updatePlusIdx].their = (totals[payoutIdx]?.their || 0) + (totals[activityPayoutIdx]?.their || 0) + (totals[receiveGiftIdx]?.their || 0) + (totals[systemDepositIdx]?.their || 0) + (totals[siteJpPrizeIdx]?.their || 0) + (totals[activityBonusIdx]?.their || 0) + (totals[serialUpdateIdx]?.their || 0);
+                        }
+                        // 重新計算 "更新(-)" (押注 + 贈禮 + 系統提出 + 儲值退款 + 消費代幣 已各自加總，這裡取各廠商 updateMinus 總和)
+                        if (updateMinusIdx !== -1) {
+                            totals[updateMinusIdx].my = sumField(updateMinusIdx);
+                            totals[updateMinusIdx].their = sumFieldTheir(updateMinusIdx);
+                        }
+
+                        // 重新計算 "淨值"
+                        if (netValueIdx !== -1) {
+                            let totalNetValueMy = 0;
+                            let totalNetValueTheir = 0;
+                            this.tableData.forEach(row => {
+                                // 淨值：購買 + 更新(+) + 更新(-) + 保險箱(+) + 保險箱(-)
+                                const r = row.metrics;
+                                const netValMy = (r[purchaseIdx]?.my || 0) + (r[updatePlusIdx]?.my || 0) + (r[updateMinusIdx]?.my || 0) + (r[vaultPlusIdx]?.my || 0) + (r[vaultMinusIdx]?.my || 0);
+                                const netValTheir = (r[purchaseIdx]?.their || 0) + (r[updatePlusIdx]?.their || 0) + (r[updateMinusIdx]?.their || 0) + (r[vaultPlusIdx]?.their || 0) + (r[vaultMinusIdx]?.their || 0);
+
+                                totalNetValueMy += netValMy;
+                                totalNetValueTheir += netValTheir;
+                            });
+                            totals[netValueIdx] = { my: totalNetValueMy, their: totalNetValueTheir };
+                        }
+                    }
+
+                    if (this.currentTab === 'game') {
+                        const commissionIdx = this.tableHeaders.indexOf('抽水');
+                        const jpPrizeIdx = this.tableHeaders.indexOf('彩池獎金');
+                        const gameJPPrizeIdx = this.tableHeaders.indexOf('遊戲彩池獎金');
+                        const siteJpPrizeIdx = this.tableHeaders.indexOf('站台 JP 彩金');
+
+                        if (commissionIdx !== -1) {
+                            let totalCommission = 0;
+                            let totalCommissionTheir = 0;
+                            this.tableData.forEach(row => {
+                                totalCommission += row.metrics[commissionIdx].my;
+                                totalCommissionTheir += row.metrics[commissionIdx].their;
+                            });
+                            totals[commissionIdx] = { my: totalCommission, their: totalCommissionTheir };
+                        }
+                        if (jpPrizeIdx !== -1) {
+                            let totalJPPrize = 0;
+                            let totalJPPrizeTheir = 0;
+                            this.tableData.forEach(row => {
+                                totalJPPrize += row.metrics[jpPrizeIdx].my;
+                                totalJPPrizeTheir += row.metrics[jpPrizeIdx].their;
+                            });
+                            totals[jpPrizeIdx] = { my: totalJPPrize, their: totalJPPrizeTheir };
+                        }
+                        if (gameJPPrizeIdx !== -1) {
+                            let totalGameJPPrize = 0;
+                            let totalGameJPPrizeTheir = 0;
+                            this.tableData.forEach(row => {
+                                totalGameJPPrize += row.metrics[gameJPPrizeIdx].my;
+                                totalGameJPPrizeTheir += row.metrics[gameJPPrizeIdx].their;
+                            });
+                            totals[gameJPPrizeIdx] = { my: totalGameJPPrize, their: totalGameJPPrizeTheir };
+                        }
+                        if (siteJpPrizeIdx !== -1) {
+                            let totalSiteJpPrize = 0;
+                            let totalSiteJpPrizeTheir = 0;
+                            this.tableData.forEach(row => {
+                                totalSiteJpPrize += row.metrics[siteJpPrizeIdx].my;
+                                totalSiteJpPrizeTheir += row.metrics[siteJpPrizeIdx].their;
+                            });
+                            totals[siteJpPrizeIdx] = { my: totalSiteJpPrize, their: totalSiteJpPrizeTheir };
+                        }
+                    }
+
+                    return totals;
+                },
+                generateMockData() {
+                    // Generate 25 Days
+                    const dates =[];
+                    for(let i=0; i<25; i++) {
+                        const d = new Date();
+                        d.setDate(d.getDate() - i);
+                        dates.push(d.toISOString().split('T')[0]);
+                    }
+
+                    // 1. Update Headers
+                    if (this.currentTab === 'token') {
+                        // Updated Token Headers
+                        this.tableHeaders =['筆數', '淨值', '購買(+)', '儲值', '儲值回饋', '購買序號兌換', '更新(+)', '派彩', '活動派彩', '收禮', '系統存入', '站台 JP 彩金', '活動獎勵', '更新序號兌換', '更新(-)', '押注', '贈禮', '系統提出', '儲值退款', '消費代幣', '保險箱(+)', '保險箱(-)'];
+                    }
+                    else if (this.currentTab === 'game') {
+                        this.tableHeaders =['筆數', '局數', '押注', '有效押注', '贏分', '輸贏', '彩池貢獻金', '彩池獎金', '遊戲彩池貢獻金', '遊戲彩池獎金', '抽水', '免費旋轉', '站台 JP 貢獻金', '站台 JP 彩金'];
+                    }
+                    else if (this.currentTab === 'payment') {
+                        // 需求：金流商只保留 '筆數', '金額', '代幣'
+                        this.tableHeaders =['筆數', '金額', '代幣'];
+                    }
+
+                    let targetVendor = null;
+                    if (this.currentTab === 'token') targetVendor = 'OX';
+                    else if (this.currentTab === 'game') targetVendor = 'FC';
+                    else if (this.currentTab === 'payment') targetVendor = 'GASH';
+
+                    this.tableData = dates.map((date, i) => {
+                        let row = { id: i, date: date, expanded: true, metrics:[], vendors: [] };
+
+                        let allVendorsData = this.vendorOptions[this.currentTab].map(vName => {
+                            let vendor = { name: vName, expanded: vName === targetVendor, metrics: [], types:[], details: {} };
+
+                            if (this.currentTab === 'game') {
+                                ['電子', '捕魚'].forEach(t => vendor.types.push({ name: t, metrics: this.getGameMetrics() }));
+                            } else if (this.currentTab === 'payment') {
+                                this.getPaymentTypes(vName).forEach(tConfig => vendor.types.push({ name: tConfig.name, metrics: this.getPaymentMetrics(vName, tConfig.name) }));
+                            } else if (this.currentTab === 'token') {
+                                vendor.metrics = this.getTokenMetrics();
+                                vendor.details.metrics = this.getTokenDetailsMetrics(vendor.metrics);
+                            }
+
+                            if (vendor.types.length > 0) {
+                                const nonSumHeaders =['抽水', '彩池獎金', '遊戲彩池獎金', '站台 JP 彩金', '抽成%'];
+                                const nonSumIndices = nonSumHeaders.map(h => this.tableHeaders.indexOf(h)).filter(i => i !== -1);
+
+                                vendor.metrics = vendor.types.reduce((acc, curr) => {
+                                    if (acc.length === 0) return curr.metrics.map(m => ({ my: m.my, their: m.their }));
+
+                                    return curr.metrics.map((m, idx) => {
+                                        if (nonSumIndices.includes(idx)) return m;
+
+                                        return {
+                                            my: (acc[idx]?.my||0) + m.my,
+                                            their: (acc[idx]?.their||0) + m.their
+                                        };
+                                    });
+                                },[]);
+                            }
+
+                            // Payment tab specific column handling (if needed for ranges, but now columns are hidden)
+
+                            if (this.currentTab === 'game') {
+                                const commissionIdx = this.tableHeaders.indexOf('抽水');
+                                const jpPrizeIdx = this.tableHeaders.indexOf('彩池獎金');
+                                const gameJPPrizeIdx = this.tableHeaders.indexOf('遊戲彩池獎金');
+                                const siteJpPrizeIdx = this.tableHeaders.indexOf('站台 JP 彩金');
+
+                                if (commissionIdx !== -1 && vendor.types.length > 0) {
+                                    const totalCommission = vendor.types.reduce((sum, type) => sum + type.metrics[commissionIdx].my, 0);
+                                    const totalCommissionTheir = vendor.types.reduce((sum, type) => sum + type.metrics[commissionIdx].their, 0);
+                                    vendor.metrics[commissionIdx] = { my: totalCommission, their: totalCommissionTheir };
+                                }
+                                if (jpPrizeIdx !== -1 && vendor.types.length > 0) {
+                                    const totalJPPrize = vendor.types.reduce((sum, type) => sum + type.metrics[jpPrizeIdx].my, 0);
+                                    const totalJPPrizeTheir = vendor.types.reduce((sum, type) => sum + type.metrics[jpPrizeIdx].their, 0);
+                                    vendor.metrics[jpPrizeIdx] = { my: totalJPPrize, their: totalJPPrizeTheir };
+                                }
+                                if (gameJPPrizeIdx !== -1 && vendor.types.length > 0) {
+                                    const totalGameJPPrize = vendor.types.reduce((sum, type) => sum + type.metrics[gameJPPrizeIdx].my, 0);
+                                    const totalGameJPPrizeTheir = vendor.types.reduce((sum, type) => sum + type.metrics[gameJPPrizeIdx].their, 0);
+                                    vendor.metrics[gameJPPrizeIdx] = { my: totalGameJPPrize, their: totalGameJPPrizeTheir };
+                                }
+                                if (siteJpPrizeIdx !== -1 && vendor.types.length > 0) {
+                                    const totalSiteJpPrize = vendor.types.reduce((sum, type) => sum + type.metrics[siteJpPrizeIdx].my, 0);
+                                    const totalSiteJpPrizeTheir = vendor.types.reduce((sum, type) => sum + type.metrics[siteJpPrizeIdx].their, 0);
+                                    vendor.metrics[siteJpPrizeIdx] = { my: totalSiteJpPrize, their: totalSiteJpPrizeTheir };
+                                }
+                            }
+
+                            return vendor;
+                        });
+
+                        // 總計列的計算
+                        const headers = this.tableHeaders;
+                        row.metrics = Array(headers.length).fill(null).map((_, idx) => {
+                            const header = headers[idx];
+                            const isFormula = ['淨值', '更新(+)', '更新(-)'].includes(header);
+                            const isRate = header === '抽成%';
+                            const isNonSumGame =['抽水', '彩池獎金', '遊戲彩池獎金', '站台 JP 彩金'].includes(header) && this.currentTab === 'game';
+
+                            if (isFormula || isRate || isNonSumGame) return { my: 0, their: 0 }; // Placeholder, will be calculated later
+
+                            const myVal = allVendorsData.reduce((sum, v) => sum + (v.metrics[idx]?.my || 0), 0);
+                            const theirVal = allVendorsData.reduce((sum, v) => sum + (v.metrics[idx]?.their || 0), 0);
+                            return { my: myVal, their: theirVal };
+                        });
+
+                        // 重新計算總計列的範圍/總和欄位
+                        if (this.currentTab === 'token') {
+                            const payoutIdx = this.tableHeaders.indexOf('派彩');
+                            const activityPayoutIdx = this.tableHeaders.indexOf('活動派彩');
+                            const receiveGiftIdx = this.tableHeaders.indexOf('收禮');
+                            const systemDepositIdx = this.tableHeaders.indexOf('系統存入');
+                            const siteJpPrizeIdx = this.tableHeaders.indexOf('站台 JP 彩金');
+                            const activityBonusIdx = this.tableHeaders.indexOf('活動獎勵');
+                            const serialUpdateIdx = this.tableHeaders.indexOf('更新序號兌換');
+                            const betIdx = this.tableHeaders.indexOf('押注');
+                            const giveGiftIdx = this.tableHeaders.indexOf('贈禮');
+                            const systemWithdrawIdx = this.tableHeaders.indexOf('系統提出');
+                            const depositRefundIdx = this.tableHeaders.indexOf('儲值退款');
+                            const consumeIdx = this.tableHeaders.indexOf('消費代幣');
+                            const purchaseIdx = this.tableHeaders.indexOf('購買(+)');
+                            const vaultPlusIdx = this.tableHeaders.indexOf('保險箱(+)');
+                            const vaultMinusIdx = this.tableHeaders.indexOf('保險箱(-)');
+                            const updatePlusIdx = this.tableHeaders.indexOf('更新(+)');
+                            const updateMinusIdx = this.tableHeaders.indexOf('更新(-)');
+                            const netValueIdx = this.tableHeaders.indexOf('淨值');
+
+                            // 重新計算所有子項目的總和
+                            const sumField = (headerIndex) => allVendorsData.reduce((sum, v) => sum + (v.metrics[headerIndex]?.my || 0), 0);
+                            const sumFieldTheir = (headerIndex) => allVendorsData.reduce((sum, v) => sum + (v.metrics[headerIndex]?.their || 0), 0);
+
+                            if (payoutIdx !== -1) row.metrics[payoutIdx] = { my: sumField(payoutIdx), their: sumFieldTheir(payoutIdx) };
+                            if (activityPayoutIdx !== -1) row.metrics[activityPayoutIdx] = { my: sumField(activityPayoutIdx), their: sumFieldTheir(activityPayoutIdx) };
+                            if (receiveGiftIdx !== -1) row.metrics[receiveGiftIdx] = { my: sumField(receiveGiftIdx), their: sumFieldTheir(receiveGiftIdx) };
+                            if (systemDepositIdx !== -1) row.metrics[systemDepositIdx] = { my: sumField(systemDepositIdx), their: sumFieldTheir(systemDepositIdx) };
+                            if (siteJpPrizeIdx !== -1) row.metrics[siteJpPrizeIdx] = { my: sumField(siteJpPrizeIdx), their: sumFieldTheir(siteJpPrizeIdx) };
+                            if (activityBonusIdx !== -1) row.metrics[activityBonusIdx] = { my: sumField(activityBonusIdx), their: sumFieldTheir(activityBonusIdx) };
+                            if (serialUpdateIdx !== -1) row.metrics[serialUpdateIdx] = { my: sumField(serialUpdateIdx), their: sumFieldTheir(serialUpdateIdx) };
+                            if (betIdx !== -1) row.metrics[betIdx] = { my: sumField(betIdx), their: sumFieldTheir(betIdx) };
+                            if (giveGiftIdx !== -1) row.metrics[giveGiftIdx] = { my: sumField(giveGiftIdx), their: sumFieldTheir(giveGiftIdx) };
+                            if (systemWithdrawIdx !== -1) row.metrics[systemWithdrawIdx] = { my: sumField(systemWithdrawIdx), their: sumFieldTheir(systemWithdrawIdx) };
+                            if (depositRefundIdx !== -1) row.metrics[depositRefundIdx] = { my: sumField(depositRefundIdx), their: sumFieldTheir(depositRefundIdx) };
+                            if (consumeIdx !== -1) row.metrics[consumeIdx] = { my: sumField(consumeIdx), their: sumFieldTheir(consumeIdx) };
+
+                            // 重新計算 "更新(+)"
+                            if (updatePlusIdx !== -1) {
+                                const myVal = (row.metrics[payoutIdx]?.my || 0) + (row.metrics[activityPayoutIdx]?.my || 0) + (row.metrics[receiveGiftIdx]?.my || 0) + (row.metrics[systemDepositIdx]?.my || 0) + (row.metrics[siteJpPrizeIdx]?.my || 0) + (row.metrics[activityBonusIdx]?.my || 0) + (row.metrics[serialUpdateIdx]?.my || 0);
+                                const theirVal = (row.metrics[payoutIdx]?.their || 0) + (row.metrics[activityPayoutIdx]?.their || 0) + (row.metrics[receiveGiftIdx]?.their || 0) + (row.metrics[systemDepositIdx]?.their || 0) + (row.metrics[siteJpPrizeIdx]?.their || 0) + (row.metrics[activityBonusIdx]?.their || 0) + (row.metrics[serialUpdateIdx]?.their || 0);
+                                row.metrics[updatePlusIdx] = { my: myVal, their: theirVal };
+                            }
+                            // 重新計算 "更新(-)" (押注 + 贈禮 + 系統提出 + 儲值退款 + 消費代幣 已各自加總，這裡取各廠商 updateMinus 總和)
+                            if (updateMinusIdx !== -1) {
+                                const myVal = allVendorsData.reduce((sum, v) => sum + (v.metrics[updateMinusIdx]?.my || 0), 0);
+                                const theirVal = allVendorsData.reduce((sum, v) => sum + (v.metrics[updateMinusIdx]?.their || 0), 0);
+                                row.metrics[updateMinusIdx] = { my: myVal, their: theirVal };
+                            }
+                            // 重新計算 "淨值"
+                            if (netValueIdx !== -1) {
+                                // 淨值：購買 + 更新(+) + 更新(-) + 保險箱(+) + 保險箱(-)
+                                const myVal = (row.metrics[purchaseIdx]?.my || 0) + (row.metrics[updatePlusIdx]?.my || 0) + (row.metrics[updateMinusIdx]?.my || 0) + (row.metrics[vaultPlusIdx]?.my || 0) + (row.metrics[vaultMinusIdx]?.my || 0);
+                                const theirVal = (row.metrics[purchaseIdx]?.their || 0) + (row.metrics[updatePlusIdx]?.their || 0) + (row.metrics[updateMinusIdx]?.their || 0) + (row.metrics[vaultPlusIdx]?.their || 0) + (row.metrics[vaultMinusIdx]?.their || 0);
+                                row.metrics[netValueIdx] = { my: myVal, their: theirVal };
+                            }
+                        }
+
+                        if (this.currentTab === 'game') {
+                            const commissionIdx = this.tableHeaders.indexOf('抽水');
+                            const jpPrizeIdx = this.tableHeaders.indexOf('彩池獎金');
+                            const gameJPPrizeIdx = this.tableHeaders.indexOf('遊戲彩池獎金');
+                            const siteJpPrizeIdx = this.tableHeaders.indexOf('站台 JP 彩金');
+
+                            if (commissionIdx !== -1) {
+                                const totalCommission = allVendorsData.flatMap(v => v.types.map(t => t.metrics[commissionIdx].my)).reduce((sum, val) => sum + val, 0);
+                                const totalCommissionTheir = allVendorsData.flatMap(v => v.types.map(t => t.metrics[commissionIdx].their)).reduce((sum, val) => sum + val, 0);
+                                row.metrics[commissionIdx] = { my: totalCommission, their: totalCommissionTheir };
+                            }
+                            if (jpPrizeIdx !== -1) {
+                                const totalJPPrize = allVendorsData.flatMap(v => v.types.map(t => t.metrics[jpPrizeIdx].my)).reduce((sum, val) => sum + val, 0);
+                                const totalJPPrizeTheir = allVendorsData.flatMap(v => v.types.map(t => t.metrics[jpPrizeIdx].their)).reduce((sum, val) => sum + val, 0);
+                                row.metrics[jpPrizeIdx] = { my: totalJPPrize, their: totalJPPrizeTheir };
+                            }
+                            if (gameJPPrizeIdx !== -1) {
+                                const totalGameJPPrize = allVendorsData.flatMap(v => v.types.map(t => t.metrics[gameJPPrizeIdx].my)).reduce((sum, val) => sum + val, 0);
+                                const totalGameJPPrizeTheir = allVendorsData.flatMap(v => v.types.map(t => t.metrics[gameJPPrizeIdx].their)).reduce((sum, val) => sum + val, 0);
+                                row.metrics[gameJPPrizeIdx] = { my: totalGameJPPrize, their: totalGameJPPrizeTheir };
+                            }
+                            if (siteJpPrizeIdx !== -1) {
+                                const totalSiteJpPrize = allVendorsData.flatMap(v => v.types.map(t => t.metrics[siteJpPrizeIdx].my)).reduce((sum, val) => sum + val, 0);
+                                const totalSiteJpPrizeTheir = allVendorsData.flatMap(v => v.types.map(t => t.metrics[siteJpPrizeIdx].their)).reduce((sum, val) => sum + val, 0);
+                                row.metrics[siteJpPrizeIdx] = { my: totalSiteJpPrize, their: totalSiteJpPrizeTheir };
+                            }
+                        }
+
+                        row.vendors = allVendorsData.filter(v => v.name === targetVendor).map(v => {
+                            return v;
+                        });
+
+                        return row;
+                    });
+
+                    this.summaryMetrics = this.mapSummary(this.calculateTotals(this.tableHeaders.length, this.currentTab === 'payment'), this.tableHeaders);
+                },
+                mapSummary(totals, headers) {
+                    const nonCurrencyHeaders = ['筆數','局數','抽成%'];
+                    return headers.map((h, i) => ({
+                        label: h,
+                        value: totals[i],
+                        isCurrency: !nonCurrencyHeaders.includes(h)
+                    }));
+                }
+            }
+        }
+    </script>
+</body>
+</html>

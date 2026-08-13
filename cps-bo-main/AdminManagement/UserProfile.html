@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 用戶資訊</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#2088ea', hover: '#1a7acb' },
+                        dark:    { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="../_shared/styles.css">
+</head>
+
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden"
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()"
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full" x-data="pageData()">
+
+        <div id="layout-header"></div>
+
+        <div class="flex-1 overflow-auto bg-slate-50 p-4 md:p-6 flex flex-col">
+
+            <!-- ==================== 頁面專屬內容開始 ==================== -->
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+
+                <!-- 麵包屑（根層級頁面，無上層分類） -->
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="font-semibold text-primary">用戶資訊</span>
+                    </nav>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col min-h-0">
+
+                    <!-- Banner + 頭像（同一個匡內顯示） -->
+                    <div class="relative rounded-t-xl bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 flex-shrink-0">
+                        <div class="h-14 md:h-16"></div>
+                        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 pb-4">
+                            <!-- 頭像 + 暱稱 + 鎖頭：置於 banner 框內，z-index 確保不被遮蓋 -->
+                            <div class="flex items-center gap-3">
+                                <img :src="'https://ui-avatars.com/api/?name=' + userInfo.account + '&background=random'"
+                                     class="w-14 h-14 md:w-16 md:h-16 rounded-full ring-4 ring-white shadow-sm object-cover flex-shrink-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-white drop-shadow-sm" x-text="userInfo.nickname || '(無)'"></span>
+                                    <span class="w-5 h-5 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center flex-shrink-0">
+                                        <i class="ph-fill ph-lock-simple text-xs"></i>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Tab 頁籤：寬度不足時可左右滑動；手機裝置獨立一行，不與頭像重疊 -->
+                            <div class="flex items-stretch gap-1 overflow-x-auto no-scrollbar max-w-full">
+                                <button @click="currentTab = 'info'" class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
+                                        :class="currentTab === 'info' ? 'border-white text-white font-bold' : 'border-transparent text-white/70 hover:text-white'">
+                                    <i class="ph ph-user"></i><span>資訊</span>
+                                </button>
+                                <button @click="currentTab = 'security'" class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
+                                        :class="currentTab === 'security' ? 'border-white text-white font-bold' : 'border-transparent text-white/70 hover:text-white'">
+                                    <i class="ph ph-shield-check"></i><span>安全</span>
+                                </button>
+                                <button @click="currentTab = 'permission'" class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
+                                        :class="currentTab === 'permission' ? 'border-white text-white font-bold' : 'border-transparent text-white/70 hover:text-white'">
+                                    <i class="ph ph-lock-key"></i><span>權限</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="border-b border-gray-100"></div>
+
+                    <!-- ══════════════════════ 資訊 Tab ══════════════════════ -->
+                    <div x-show="currentTab === 'info'" class="flex-1 overflow-hidden flex flex-col min-h-0">
+                        <div class="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-4">
+
+                            <!-- 基本 -->
+                            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                                <div @click="open = !open" class="px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                    <div class="flex items-center gap-2 font-bold text-gray-800"><i class="ph-fill ph-identification-card text-gray-400"></i> 基本</div>
+                                    <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                                </div>
+
+                                <!-- 檢視模式 -->
+                                <template x-if="open && !isInfoEditing">
+                                    <div class="p-4 space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                                            <div><div class="text-gray-500 mb-0.5">帳號</div><div class="font-medium text-gray-800" x-text="userInfo.account"></div></div>
+                                            <div><div class="text-gray-500 mb-0.5">暱稱</div><div class="font-medium text-gray-800" x-text="userInfo.nickname || '(無)'"></div></div>
+                                        </div>
+                                        <div class="border-t border-gray-100 pt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                                            <div>
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="text-gray-500 text-sm">手機號碼</span>
+                                                    <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                          :class="userInfo.phoneVerified ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                                                          x-text="userInfo.phoneVerified ? '已驗證' : '未驗證'"></span>
+                                                </div>
+                                                <div class="font-mono text-sm text-gray-800" x-text="userInfo.phone ? (userInfo.countryCode + ' ' + userInfo.phone) : '(無)'"></div>
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="text-gray-500 text-sm">信箱</span>
+                                                    <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                          :class="userInfo.emailVerified ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                                                          x-text="userInfo.emailVerified ? '已驗證' : '未驗證'"></span>
+                                                </div>
+                                                <div class="text-sm text-gray-800" x-text="userInfo.email || '(無)'"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- 編輯模式 -->
+                                <template x-if="open && isInfoEditing">
+                                    <div class="p-4 space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                            <div class="space-y-1">
+                                                <label class="text-xs font-bold text-gray-500">帳號</label>
+                                                <div class="w-full border border-gray-100 rounded-md p-2.5 bg-gray-50 text-sm text-gray-500" x-text="infoDraft.account"></div>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <label class="text-xs font-bold text-gray-500">暱稱</label>
+                                                <input type="text" x-model="infoDraft.nickname" maxlength="20"
+                                                       class="w-full border border-gray-200 rounded-md p-2.5 bg-gray-50 outline-none focus:border-primary text-sm">
+                                            </div>
+                                        </div>
+
+                                        <div class="border-t border-gray-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                            <div class="space-y-1">
+                                                <div class="flex items-center gap-2">
+                                                    <label class="text-xs font-bold text-gray-500">手機號碼</label>
+                                                    <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                          :class="userInfo.phoneVerified ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                                                          x-text="userInfo.phoneVerified ? '已驗證' : '未驗證'"></span>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <select x-model="infoDraft.countryCode"
+                                                            class="flex-shrink-0 bg-gray-50 border border-gray-200 rounded-md text-sm px-2 h-[42px] outline-none text-gray-700 cursor-pointer focus:border-primary">
+                                                        <template x-for="c in countryCodes" :key="c.code">
+                                                            <option :value="c.code" x-text="c.flag + ' ' + c.code"></option>
+                                                        </template>
+                                                    </select>
+                                                    <input type="number" x-model="infoDraft.phone" placeholder="請輸入門號"
+                                                           class="flex-1 border border-gray-200 rounded-md p-2.5 bg-gray-50 outline-none focus:border-primary text-sm">
+                                                </div>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <div class="flex items-center gap-2">
+                                                    <label class="text-xs font-bold text-gray-500">信箱</label>
+                                                    <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                          :class="userInfo.emailVerified ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                                                          x-text="userInfo.emailVerified ? '已驗證' : '未驗證'"></span>
+                                                </div>
+                                                <input type="email" x-model="infoDraft.email" placeholder="example@mail.com"
+                                                       class="w-full border border-gray-200 rounded-md p-2.5 bg-gray-50 outline-none focus:border-primary text-sm">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 現在登入 -->
+                            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                                <div @click="open = !open" class="px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                    <div class="flex items-center gap-2 font-bold text-gray-800"><i class="ph-fill ph-sign-in text-gray-400"></i> 現在登入</div>
+                                    <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                                </div>
+                                <div x-show="open" class="p-4">
+                                    <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                        <div><div class="text-gray-500 mb-0.5">時間</div><div class="font-mono text-sm text-gray-800" x-text="currentLogin.time"></div><div class="text-xs text-gray-400 mt-0.5" x-text="'- ' + currentLogin.relative"></div></div>
+                                        <div><div class="text-gray-500 mb-0.5">IP</div><div class="font-mono text-sm text-gray-800" x-text="currentLogin.ip"></div><div class="text-xs text-gray-400 mt-0.5" x-text="currentLogin.region"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 上次登入 -->
+                            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                                <div @click="open = !open" class="px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                    <div class="flex items-center gap-2 font-bold text-gray-800"><i class="ph-fill ph-clock-counter-clockwise text-gray-400"></i> 上次登入</div>
+                                    <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                                </div>
+                                <div x-show="open" class="p-4">
+                                    <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                        <div><div class="text-gray-500 mb-0.5">時間</div><div class="font-mono text-sm text-gray-800" x-text="lastLogin.time"></div><div class="text-xs text-gray-400 mt-0.5" x-text="'- ' + lastLogin.relative"></div></div>
+                                        <div><div class="text-gray-500 mb-0.5">IP</div><div class="font-mono text-sm text-gray-800" x-text="lastLogin.ip"></div><div class="text-xs text-gray-400 mt-0.5" x-text="lastLogin.region"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 頁尾按鈕 -->
+                        <div class="px-6 py-4 border-t border-gray-200 bg-[#e2e8f0] flex justify-end gap-3 flex-shrink-0">
+                            <template x-if="!isInfoEditing">
+                                <button @click="editInfo()" class="px-5 py-2 bg-amber-400 hover:bg-amber-500 text-white rounded shadow-sm text-sm font-bold">編輯</button>
+                            </template>
+                            <template x-if="isInfoEditing">
+                                <div class="flex gap-3">
+                                    <button @click="cancelInfo()" class="btn-modal-secondary">取消</button>
+                                    <button @click="saveInfo()" class="btn-modal-primary">儲存</button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- ══════════════════════ 安全 Tab ══════════════════════ -->
+                    <div x-show="currentTab === 'security'" class="flex-1 overflow-hidden flex flex-col min-h-0">
+                        <div class="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-4">
+
+                            <!-- 變更密碼 -->
+                            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                                <div @click="open = !open" class="px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                    <div>
+                                        <div class="font-bold text-gray-800">變更密碼</div>
+                                        <div class="text-xs text-gray-400 mt-0.5">最後變更時間：<span x-text="loginPassword.updatedAt"></span></div>
+                                    </div>
+                                    <i class="ph ph-caret-down text-gray-400 transition-transform duration-200 flex-shrink-0" :class="open ? 'rotate-180' : ''"></i>
+                                </div>
+                                <div x-show="open" class="p-4">
+                                    <template x-if="securityEditTarget !== 'password'">
+                                        <div>
+                                            <label class="text-xs font-bold text-gray-500 block mb-1">密碼</label>
+                                            <div class="text-gray-700 font-mono tracking-widest">••••••••</div>
+                                        </div>
+                                    </template>
+                                    <template x-if="securityEditTarget === 'password'">
+                                        <div class="space-y-4 max-w-md">
+                                            <div class="space-y-1">
+                                                <label class="text-xs font-bold text-gray-500">舊密碼</label>
+                                                <div class="relative">
+                                                    <input :type="showPwd.old ? 'text' : 'password'" x-model="pwdForm.old"
+                                                           class="w-full border border-gray-200 rounded-md p-2.5 pr-10 bg-gray-50 outline-none focus:border-primary text-sm">
+                                                    <button type="button" @click="showPwd.old = !showPwd.old" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                        <i class="ph text-lg" :class="showPwd.old ? 'ph-eye' : 'ph-eye-slash'"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <label class="text-xs font-bold text-gray-500">新密碼</label>
+                                                <div class="relative">
+                                                    <input :type="showPwd.new ? 'text' : 'password'" x-model="pwdForm.new"
+                                                           class="w-full border border-gray-200 rounded-md p-2.5 pr-10 bg-gray-50 outline-none focus:border-primary text-sm">
+                                                    <button type="button" @click="showPwd.new = !showPwd.new" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                        <i class="ph text-lg" :class="showPwd.new ? 'ph-eye' : 'ph-eye-slash'"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <label class="text-xs font-bold text-gray-500">確認新密碼</label>
+                                                <div class="relative">
+                                                    <input :type="showPwd.confirm ? 'text' : 'password'" x-model="pwdForm.confirm"
+                                                           class="w-full border border-gray-200 rounded-md p-2.5 pr-10 bg-gray-50 outline-none focus:border-primary text-sm">
+                                                    <button type="button" @click="showPwd.confirm = !showPwd.confirm" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                        <i class="ph text-lg" :class="showPwd.confirm ? 'ph-eye' : 'ph-eye-slash'"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 認證密碼 -->
+                            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                                <div @click="open = !open" class="px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                    <div>
+                                        <div class="font-bold text-gray-800">認證密碼</div>
+                                        <div class="text-xs text-gray-400 mt-0.5">最後變更時間：<span x-text="verifyPassword.updatedAt || '(未設定)'"></span></div>
+                                    </div>
+                                    <i class="ph ph-caret-down text-gray-400 transition-transform duration-200 flex-shrink-0" :class="open ? 'rotate-180' : ''"></i>
+                                </div>
+                                <div x-show="open" class="p-4">
+                                    <template x-if="securityEditTarget !== 'verifyPassword'">
+                                        <div>
+                                            <label class="text-xs font-bold text-gray-500 block mb-1">密碼</label>
+                                            <div class="text-gray-700 font-mono tracking-widest" x-text="verifyPassword.value ? '••••••••' : '(未設定)'"></div>
+                                        </div>
+                                    </template>
+                                    <template x-if="securityEditTarget === 'verifyPassword'">
+                                        <div class="space-y-4 max-w-md">
+                                            <div class="space-y-1" x-show="verifyPassword.value">
+                                                <label class="text-xs font-bold text-gray-500">舊密碼</label>
+                                                <div class="relative">
+                                                    <input :type="showPwd.old ? 'text' : 'password'" x-model="pwdForm.old"
+                                                           class="w-full border border-gray-200 rounded-md p-2.5 pr-10 bg-gray-50 outline-none focus:border-primary text-sm">
+                                                    <button type="button" @click="showPwd.old = !showPwd.old" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                        <i class="ph text-lg" :class="showPwd.old ? 'ph-eye' : 'ph-eye-slash'"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <label class="text-xs font-bold text-gray-500">新密碼</label>
+                                                <div class="relative">
+                                                    <input :type="showPwd.new ? 'text' : 'password'" x-model="pwdForm.new"
+                                                           class="w-full border border-gray-200 rounded-md p-2.5 pr-10 bg-gray-50 outline-none focus:border-primary text-sm">
+                                                    <button type="button" @click="showPwd.new = !showPwd.new" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                        <i class="ph text-lg" :class="showPwd.new ? 'ph-eye' : 'ph-eye-slash'"></i>
+                                                    </button>
+                                                </div>
+                                                <p class="text-xs text-amber-600 mt-1">認證密碼不可與變更密碼相同</p>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <label class="text-xs font-bold text-gray-500">確認新密碼</label>
+                                                <div class="relative">
+                                                    <input :type="showPwd.confirm ? 'text' : 'password'" x-model="pwdForm.confirm"
+                                                           class="w-full border border-gray-200 rounded-md p-2.5 pr-10 bg-gray-50 outline-none focus:border-primary text-sm">
+                                                    <button type="button" @click="showPwd.confirm = !showPwd.confirm" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                        <i class="ph text-lg" :class="showPwd.confirm ? 'ph-eye' : 'ph-eye-slash'"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 2FA 驗證 -->
+                            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                                <div @click="open = !open" class="px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                    <div class="font-bold text-gray-800">2FA 驗證</div>
+                                    <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                                </div>
+                                <div x-show="open" class="p-4">
+                                    <label class="text-xs font-bold text-gray-500 block mb-1.5"><span class="text-red-500">*</span> 狀態</label>
+                                    <template x-if="securityEditTarget !== 'tfa'">
+                                        <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                              :class="tfaEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                                              x-text="tfaEnabled ? '啟用' : '停用'"></span>
+                                    </template>
+                                    <template x-if="securityEditTarget === 'tfa'">
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" @click="tfaDraft = !tfaDraft"
+                                                    class="w-9 h-5 rounded-full relative transition-colors duration-300 flex-shrink-0"
+                                                    :class="tfaDraft ? 'bg-primary' : 'bg-gray-300'">
+                                                <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300"
+                                                      :class="tfaDraft ? 'translate-x-4' : 'translate-x-0'"></span>
+                                            </button>
+                                            <span class="text-sm text-gray-700" x-text="tfaDraft ? '啟用' : '停用'"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 頁尾按鈕 -->
+                        <div class="px-6 py-4 border-t border-gray-200 bg-[#e2e8f0] flex justify-end gap-3 flex-shrink-0">
+                            <template x-if="!securityEditTarget">
+                                <div class="relative" x-data="{}">
+                                    <div x-show="securityEditMenuOpen" @click.outside="securityEditMenuOpen = false" x-cloak
+                                         class="absolute right-0 bottom-full mb-2 bg-white border border-gray-200 rounded-lg shadow-xl py-1 min-w-[120px] text-left z-10">
+                                        <button @click="startSecurityEdit('password')" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700">變更密碼</button>
+                                        <button @click="startSecurityEdit('verifyPassword')" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700">認證密碼</button>
+                                        <button @click="startSecurityEdit('tfa')" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700">2FA 驗證</button>
+                                    </div>
+                                    <button @click="securityEditMenuOpen = !securityEditMenuOpen" class="px-5 py-2 bg-amber-400 hover:bg-amber-500 text-white rounded shadow-sm text-sm font-bold flex items-center gap-1.5">
+                                        編輯 <i class="ph ph-caret-up text-xs transition-transform" :class="securityEditMenuOpen ? '' : 'rotate-180'"></i>
+                                    </button>
+                                </div>
+                            </template>
+                            <template x-if="securityEditTarget">
+                                <div class="flex gap-3">
+                                    <button @click="cancelSecurityEdit()" class="btn-modal-secondary">取消</button>
+                                    <button @click="saveSecurityEdit()" class="btn-modal-primary">儲存</button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- ══════════════════════ 權限 Tab（僅檢視） ══════════════════════ -->
+                    <div x-show="currentTab === 'permission'" class="flex-1 overflow-y-auto custom-scroll p-4 md:p-6 space-y-4">
+                        <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                            <div @click="open = !open" class="px-4 py-3 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                <div class="font-bold text-gray-800">角色權限</div>
+                                <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                            </div>
+                            <div x-show="open" class="p-4 flex items-center justify-between">
+                                <span class="px-2.5 py-1 rounded-md text-sm font-bold inline-flex items-center gap-1 bg-blue-100 text-blue-700">
+                                    <i x-show="roleInfo.isAdmin" class="ph-fill ph-crown text-yellow-500"></i>
+                                    <span x-text="roleInfo.name"></span>
+                                </span>
+                                <span class="text-red-500 font-bold text-sm" x-text="'（共 ' + roleInfo.count + ' 個）'"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <!-- ==================== 頁面專屬內容結束 ==================== -->
+        </div>
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = {
+            title:  '用戶資訊',
+            parent: ''
+        };
+    </script>
+
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+
+    <script>
+        function pageData() {
+            return {
+                currentTab: 'info',
+
+                countryCodes: [
+                    { code: '+886', flag: '🇹🇼' },
+                    { code: '+852', flag: '🇭🇰' },
+                    { code: '+853', flag: '🇲🇴' },
+                    { code: '+86',  flag: '🇨🇳' },
+                    { code: '+81',  flag: '🇯🇵' },
+                    { code: '+82',  flag: '🇰🇷' },
+                    { code: '+65',  flag: '🇸🇬' },
+                    { code: '+60',  flag: '🇲🇾' },
+                    { code: '+66',  flag: '🇹🇭' },
+                    { code: '+84',  flag: '🇻🇳' },
+                    { code: '+63',  flag: '🇵🇭' },
+                    { code: '+1',   flag: '🇺🇸' }
+                ],
+
+                /* ── 資訊 ── */
+                isInfoEditing: false,
+                userInfo: {
+                    account: 'yvonne',
+                    nickname: '',
+                    phoneVerified: false,
+                    countryCode: '+886',
+                    phone: '',
+                    emailVerified: false,
+                    email: ''
+                },
+                infoDraft: {},
+                currentLogin: { time: '2026/07/09 10:56:29', relative: '3 小時前', ip: '210.66.196.104', region: '[TW, Taipei]' },
+                lastLogin:    { time: '2026/07/08 09:59:59', relative: '1 天前',   ip: '210.66.196.104', region: '[TW, Taipei]' },
+
+                editInfo() {
+                    this.infoDraft = JSON.parse(JSON.stringify(this.userInfo));
+                    this.isInfoEditing = true;
+                },
+                cancelInfo() {
+                    this.isInfoEditing = false;
+                },
+                saveInfo() {
+                    if (this.infoDraft.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.infoDraft.email)) {
+                        this.$dispatch('notify', { message: '信箱格式不正確' });
+                        return;
+                    }
+                    if (this.infoDraft.phone && !/^\d+$/.test(String(this.infoDraft.phone))) {
+                        this.$dispatch('notify', { message: '門號格式不正確，請輸入數字' });
+                        return;
+                    }
+                    this.userInfo = JSON.parse(JSON.stringify(this.infoDraft));
+                    this.isInfoEditing = false;
+                    this.$dispatch('notify', '用戶資訊已更新');
+                },
+
+                /* ── 安全 ── */
+                securityEditMenuOpen: false,
+                securityEditTarget: null,
+
+                loginPassword:  { value: 'Passw0rd!', updatedAt: '2025/06/30 09:37:36' },
+                verifyPassword: { value: '',          updatedAt: '' },
+                tfaEnabled: false,
+                tfaDraft: false,
+
+                pwdForm: { old: '', new: '', confirm: '' },
+                showPwd: { old: false, new: false, confirm: false },
+
+                startSecurityEdit(target) {
+                    this.securityEditTarget = target;
+                    this.securityEditMenuOpen = false;
+                    this.pwdForm = { old: '', new: '', confirm: '' };
+                    this.showPwd = { old: false, new: false, confirm: false };
+                    if (target === 'tfa') this.tfaDraft = this.tfaEnabled;
+                },
+                cancelSecurityEdit() {
+                    this.securityEditTarget = null;
+                },
+                saveSecurityEdit() {
+                    const target = this.securityEditTarget;
+
+                    if (target === 'tfa') {
+                        this.tfaEnabled = this.tfaDraft;
+                        this.securityEditTarget = null;
+                        this.$dispatch('notify', '2FA 驗證設定已更新');
+                        return;
+                    }
+
+                    const current = target === 'password' ? this.loginPassword : this.verifyPassword;
+
+                    if (current.value && this.pwdForm.old !== current.value) {
+                        this.$dispatch('notify', { message: '舊密碼不正確' });
+                        return;
+                    }
+                    if (!this.pwdForm.new || this.pwdForm.new.length < 6) {
+                        this.$dispatch('notify', { message: '新密碼至少需 6 個字元' });
+                        return;
+                    }
+                    if (this.pwdForm.new !== this.pwdForm.confirm) {
+                        this.$dispatch('notify', { message: '新密碼與確認新密碼不一致' });
+                        return;
+                    }
+                    if (target === 'verifyPassword' && this.pwdForm.new === this.loginPassword.value) {
+                        this.$dispatch('notify', { message: '認證密碼不可與變更密碼相同' });
+                        return;
+                    }
+
+                    current.value = this.pwdForm.new;
+                    current.updatedAt = this.formatNow();
+                    this.securityEditTarget = null;
+                    this.$dispatch('notify', target === 'password' ? '密碼已變更' : '認證密碼已更新');
+                },
+                formatNow() {
+                    const d = new Date();
+                    const pad = n => String(n).padStart(2, '0');
+                    return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                },
+
+                /* ── 權限 ── */
+                roleInfo: { name: '管理員', count: 66, isAdmin: true },
+
+                init() {}
+            };
+        }
+    </script>
+</body>
+</html>

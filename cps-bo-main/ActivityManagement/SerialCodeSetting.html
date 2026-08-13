@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 序號設定</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Date Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#2088ea', hover: '#1a7acb' },
+                        dark: { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../_shared/styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden"
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()"
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full" x-data="serialCodePage()">
+
+        <div id="layout-header"></div>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-auto p-4 md:p-6 flex flex-col">
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+
+                <!-- Breadcrumb & Actions -->
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="text-gray-500">活動管理</span>
+                        <i class="ph ph-caret-right text-gray-300 text-xs"></i>
+                        <span class="font-semibold text-primary">序號設定</span>
+                    </nav>
+                    <div class="flex items-center gap-2">
+                        <!-- 說明 -->
+                        <div class="relative group" x-data="{ showHelp: false }">
+                            <button @click="showHelp = !showHelp"
+                                    class="w-8 h-8 rounded-full bg-yellow-50 text-yellow-500 hover:bg-yellow-100 transition-colors flex items-center justify-center border border-yellow-200 shadow-sm">
+                                <i class="ph-fill ph-lightbulb text-lg"></i>
+                            </button>
+                            <span class="btn-tip">說明</span>
+                            <div x-show="showHelp" x-cloak @click.outside="showHelp = false"
+                                 class="absolute right-0 top-full mt-2 w-80 p-4 bg-yellow-50 shadow-xl rounded-lg z-[120] border border-yellow-100 text-xs text-yellow-800 leading-relaxed">
+                                <ul class="list-disc pl-4 space-y-2">
+                                    <li>有效會員(狀態：啟用) 可於「活動時間」內進行兌換，序號過期將自動失效顯示"逾期"</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <!-- 資料交換 -->
+                        <div class="relative group" x-data="{ syncDropdown: false }">
+                            <button @click="syncDropdown = !syncDropdown"
+                                    class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center border border-gray-200 shadow-sm transition-colors">
+                                <i class="ph-bold ph-arrows-clockwise text-lg"></i>
+                            </button>
+                            <span class="btn-tip">資料交換</span>
+                            <div x-show="syncDropdown" x-cloak @click.outside="syncDropdown = false"
+                                 class="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-xl border border-gray-100 py-1 z-[150]">
+                                <button @click="triggerImport(); syncDropdown = false"
+                                        class="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 text-gray-700">匯入</button>
+                                <button @click="notifyExport(selectedIds); syncDropdown = false"
+                                        class="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 text-gray-700">匯出</button>
+                            </div>
+                        </div>
+                        <!-- 新增 -->
+                        <div class="relative group">
+                            <button @click="openAdd()"
+                                    class="w-8 h-8 rounded-full bg-primary text-white hover:bg-blue-600 shadow-md active:scale-95 transition-all flex items-center justify-center">
+                                <i class="ph-bold ph-plus text-lg"></i>
+                            </button>
+                            <span class="btn-tip">新增</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Mobile Trigger -->
+                <div class="lg:hidden flex-shrink-0">
+                    <div @click="searchOpen = true" class="bg-white border border-gray-200 rounded-lg shadow-sm p-3 flex items-center justify-between cursor-pointer active:bg-gray-50">
+                        <div class="flex items-center gap-2 text-gray-600 font-bold"><i class="ph ph-magnifying-glass text-lg"></i> 搜尋</div>
+                        <i class="ph ph-caret-right text-gray-400"></i>
+                    </div>
+                </div>
+
+                <!-- Search Container -->
+                <div :class="{
+                        'fixed inset-0 z-[150] bg-white flex flex-col': isMobile && searchOpen,
+                        'bg-white border border-gray-200 rounded-lg shadow-sm p-5 flex-shrink-0 lg:block': !isMobile || !searchOpen,
+                        'hidden': isMobile && !searchOpen
+                     }">
+
+                    <div class="lg:hidden px-4 py-3 border-b border-gray-100 flex justify-between items-center mb-4 flex-shrink-0" x-show="isMobile">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-lg text-gray-800">序號設定</span>
+                            <span class="text-gray-400 font-normal text-sm">搜尋</span>
+                        </div>
+                        <button @click="searchOpen = false" class="text-gray-500 hover:text-gray-700 p-1"><i class="ph ph-x text-2xl"></i></button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start lg:items-end px-4 lg:px-0 pt-4 lg:pt-0" :class="{'overflow-y-auto flex-1 pb-20': isMobile}">
+                        <!-- 名稱 -->
+                        <div class="floating-input-group">
+                            <label class="floating-label">名稱</label>
+                            <input type="text" x-model="search.name" class="floating-input bg-input-base focus:bg-white">
+                        </div>
+
+                        <!-- 狀態 (複選) -->
+                        <div class="floating-input-group relative" x-data="{ open: false }">
+                            <label class="floating-label">狀態</label>
+                            <button @click="open = !open" @click.outside="open = false" class="floating-input bg-input-base focus:bg-white text-left flex justify-between items-center">
+                                <span class="truncate" x-text="search.status.length > 0 ? '已選 ' + search.status.length + ' 項' : '全部'"></span>
+                                <i class="ph ph-caret-down text-gray-400"></i>
+                            </button>
+                            <div x-show="open" @click.outside="open = false" class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 shadow-lg rounded z-[110] p-2 max-h-48 overflow-y-auto" x-cloak>
+                                <template x-for="opt in statusOptions" :key="opt.key">
+                                    <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded">
+                                        <input type="checkbox" class="checkbox-item" :value="opt.key" x-model="search.status">
+                                        <span class="text-sm" x-text="opt.label"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- 序號規則 (Select 單選 + Input 序號) -->
+                        <div class="floating-input-group">
+                            <label class="floating-label z-10">序號規則</label>
+                            <div class="floating-input !p-0 flex items-center overflow-hidden bg-input-base focus-within:bg-white focus-within:border-primary">
+                                <select x-model="search.ruleType" class="text-xs text-gray-600 bg-transparent pl-2.5 pr-1 py-2 outline-none border-r border-gray-200 cursor-pointer flex-shrink-0 h-full">
+                                    <option value="">全部</option>
+                                    <template x-for="opt in ruleTypeOptions" :key="opt.key">
+                                        <option :value="opt.key" x-text="opt.label"></option>
+                                    </template>
+                                </select>
+                                <input type="text" x-model="search.serialCode" placeholder="序號" class="flex-1 px-3 py-2 text-sm outline-none bg-transparent min-w-0 font-mono">
+                            </div>
+                        </div>
+
+                        <!-- 活動時間 (起訖) -->
+                        <div class="floating-input-group">
+                            <label class="floating-label">活動時間</label>
+                            <div class="hidden md:flex items-center">
+                                <input x-ref="timeStart" type="text" class="floating-input rounded-r-none border-r-0 text-center bg-input-base focus:bg-white text-xs px-1">
+                                <div class="px-1 border-y border-gray-200 bg-input-base h-[42px] flex items-center text-gray-400">~</div>
+                                <input x-ref="timeEnd" type="text" class="floating-input rounded-l-none border-l-0 text-center bg-input-base focus:bg-white text-xs px-1">
+                            </div>
+                            <div class="flex flex-col md:hidden w-full">
+                                <input x-ref="timeStartMobile" type="text" class="floating-input rounded-b-none border-b-0 text-center bg-input-base focus:bg-white w-full">
+                                <input x-ref="timeEndMobile" type="text" class="floating-input rounded-t-none text-center bg-input-base focus:bg-white w-full">
+                            </div>
+                        </div>
+
+                        <!-- Advanced -->
+                        <template x-if="advancedSearch || isMobile">
+                            <div class="contents">
+                                <!-- 單號 -->
+                                <div class="floating-input-group">
+                                    <label class="floating-label">單號</label>
+                                    <input type="text" x-model="search.orderId" class="floating-input bg-input-base focus:bg-white font-mono">
+                                </div>
+
+                                <!-- 獎勵內容 (Select 單選) -->
+                                <div class="floating-input-group">
+                                    <label class="floating-label z-10">獎勵內容</label>
+                                    <div class="relative">
+                                        <select x-model="search.rewardType" class="floating-input bg-input-base focus:bg-white appearance-none">
+                                            <option value="">全部</option>
+                                            <option value="token">代幣</option>
+                                            <option value="freespin">免費旋轉</option>
+                                        </select>
+                                        <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                    </div>
+                                </div>
+
+                                <!-- 來源 (Select 單選) -->
+                                <div class="floating-input-group">
+                                    <label class="floating-label z-10">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="「無償」為活動發送；「有價」為付費取得">來源</span>
+                                    </label>
+                                    <div class="relative">
+                                        <select x-model="search.source" class="floating-input bg-input-base focus:bg-white appearance-none">
+                                            <option value="">全部</option>
+                                            <template x-for="opt in sourceOptions" :key="opt.key">
+                                                <option :value="opt.key" x-text="opt.label"></option>
+                                            </template>
+                                        </select>
+                                        <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                    </div>
+                                </div>
+
+                                <!-- 發放形式 (複選) -->
+                                <div class="floating-input-group relative" x-data="{ open: false }">
+                                    <label class="floating-label">發放形式</label>
+                                    <button @click="open = !open" @click.outside="open = false" class="floating-input bg-input-base focus:bg-white text-left flex justify-between items-center">
+                                        <span class="truncate" x-text="search.distributeType.length > 0 ? '已選 ' + search.distributeType.length + ' 項' : '全部'"></span>
+                                        <i class="ph ph-caret-down text-gray-400"></i>
+                                    </button>
+                                    <div x-show="open" @click.outside="open = false" class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 shadow-lg rounded z-[110] p-2 max-h-48 overflow-y-auto" x-cloak>
+                                        <template x-for="opt in distributeTypeOptions" :key="opt.key">
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded">
+                                                <input type="checkbox" class="checkbox-item" :value="opt.key" x-model="search.distributeType">
+                                                <span class="text-sm" x-text="opt.label"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- 上限 (起訖) -->
+                                <div class="floating-input-group">
+                                    <label class="floating-label">上限</label>
+                                    <div class="flex items-center">
+                                        <input type="number" x-model="search.limitMin" class="floating-input rounded-r-none border-r-0 text-center bg-input-base focus:bg-white font-mono">
+                                        <div class="px-1 border-y border-gray-200 bg-input-base h-[42px] flex items-center text-gray-400">~</div>
+                                        <input type="number" x-model="search.limitMax" class="floating-input rounded-l-none border-l-0 text-center bg-input-base focus:bg-white font-mono">
+                                    </div>
+                                </div>
+
+                                <!-- 兌換規則 (Select 單選) -->
+                                <div class="floating-input-group">
+                                    <label class="floating-label z-10">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="「統一」將依據&quot;兌換內容&quot;進行兌換；「單獨」將依據&quot;會員清單-兌換內容&quot;進行兌換">兌換規則</span>
+                                    </label>
+                                    <div class="relative">
+                                        <select x-model="search.exchangeRule" class="floating-input bg-input-base focus:bg-white appearance-none">
+                                            <option value="">全部</option>
+                                            <template x-for="opt in exchangeRuleOptions" :key="opt.key">
+                                                <option :value="opt.key" x-text="opt.label"></option>
+                                            </template>
+                                        </select>
+                                        <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                                    </div>
+                                </div>
+
+                                <!-- 最後異動時間 (起訖) -->
+                                <div class="floating-input-group">
+                                    <label class="floating-label">最後異動時間</label>
+                                    <div class="hidden md:flex items-center">
+                                        <input x-ref="updatedStart" type="text" class="floating-input rounded-r-none border-r-0 text-center bg-input-base focus:bg-white text-xs px-1">
+                                        <div class="px-1 border-y border-gray-200 bg-input-base h-[42px] flex items-center text-gray-400">~</div>
+                                        <input x-ref="updatedEnd" type="text" class="floating-input rounded-l-none border-l-0 text-center bg-input-base focus:bg-white text-xs px-1">
+                                    </div>
+                                    <div class="flex flex-col md:hidden w-full">
+                                        <input x-ref="updatedStartMobile" type="text" class="floating-input rounded-b-none border-b-0 text-center bg-input-base focus:bg-white w-full">
+                                        <input x-ref="updatedEndMobile" type="text" class="floating-input rounded-t-none text-center bg-input-base focus:bg-white w-full">
+                                    </div>
+                                </div>
+
+                                <!-- 操作者 -->
+                                <div class="floating-input-group">
+                                    <label class="floating-label">操作者</label>
+                                    <input type="text" x-model="search.operator" class="floating-input bg-input-base focus:bg-white">
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="flex items-center justify-between" :class="isMobile ? 'fixed bottom-4 left-0 right-0 px-4 bg-white pt-2 border-t border-gray-100 z-50' : 'mt-4 px-4 lg:px-0'">
+                        <button @click="advancedSearch = !advancedSearch; $nextTick(() => initAdvancedDatePickers())" class="text-sm text-gray-500 hover:text-primary items-center gap-1 hidden lg:flex font-medium transition-colors">
+                            <span x-text="advancedSearch ? '隱藏條件' : '進階'"></span>
+                            <i class="ph" :class="advancedSearch ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </button>
+                        <div class="flex gap-2 items-center w-full lg:w-auto">
+                            <button @click="doSearch(); searchOpen = false" class="lg:w-10 lg:h-10 w-full h-11 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow transition-colors flex items-center justify-center gap-2">
+                                <span class="lg:hidden">搜尋</span><i class="ph ph-magnifying-glass text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 relative">
+
+                    <!-- Summary Top Bar -->
+                    <div class="bg-gray-50 p-3 border-b border-gray-200 flex-shrink-0 flex items-center gap-2 text-gray-800">
+                        <div class="text-sm font-bold text-primary flex-shrink-0" x-show="selectedIds.length > 0" x-cloak>
+                            共 <span x-text="selectedIds.length"></span> 筆
+                        </div>
+                        <div class="flex items-center gap-2 ml-auto">
+                            <div class="overflow-x-auto custom-scroll min-w-0 flex-shrink">
+                                <div class="flex gap-6 items-center px-2 whitespace-nowrap">
+                                    <div class="flex flex-col text-right"><span class="text-xs text-gray-500">筆數</span><span class="text-sm font-bold text-gray-800" x-text="filteredList.length"></span></div>
+                                    <div class="flex flex-col text-right"><span class="text-xs text-gray-500">進行中</span><span class="text-sm font-bold text-green-600" x-text="filteredList.filter(r => r.status === 'active').length"></span></div>
+                                    <div class="flex flex-col text-right"><span class="text-xs text-gray-500">未開始</span><span class="text-sm font-bold text-blue-500" x-text="filteredList.filter(r => r.status === 'not_started').length"></span></div>
+                                    <div class="flex flex-col text-right"><span class="text-xs text-gray-500">已逾期</span><span class="text-sm font-bold text-red-500" x-text="filteredList.filter(r => r.status === 'expired').length"></span></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center flex-shrink-0 gap-2 pl-2 border-l border-gray-300">
+                                <button @click="openColumnModal()" class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center shadow-sm tooltip tooltip-down" data-tip="欄位顯示">
+                                    <i class="ph ph-columns text-lg"></i>
+                                </button>
+                                <div class="h-5 w-px bg-gray-300"></div>
+                                <button @click="notifyDownload()" class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center shadow-sm tooltip tooltip-down" data-tip="下載">
+                                    <i class="ph ph-download-simple text-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-auto custom-scroll relative z-0 h-full p-0">
+                        <table class="w-full text-left border-collapse min-w-[1700px]">
+                            <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 z-[30] shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3 w-12 text-center bg-gray-50">
+                                        <input type="checkbox" class="checkbox-custom" @change="toggleAll()" :checked="selectedIds.length === filteredList.length && filteredList.length > 0">
+                                    </th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap" x-show="colStatus.orderId">單號</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap sticky left-0 z-[40] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">名稱</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap text-center" x-show="colStatus.status">狀態</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap text-center" x-show="colStatus.source">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="「無償」為活動發送；「有價」為付費取得">來源</span>
+                                    </th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap" x-show="colStatus.effectiveTime">活動時間</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap text-right" x-show="colStatus.limit">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="兌換次數限制：單一會員 / 總計">上限</span>
+                                    </th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap" x-show="colStatus.ruleType">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="「自訂」指定序號全部會員通用；「隨機」系統生成序號全部會員通用；「單一」系統生成各別會員專屬獨享序號">序號規則</span>
+                                    </th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap text-center" x-show="colStatus.distributeType">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="「廣發」開放全站會員兌換；「限定」僅限指定對象兌換">發放形式</span>
+                                    </th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap text-center" x-show="colStatus.exchangeRule">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="「統一」將依據&quot;兌換內容&quot;進行兌換；「單獨」將依據&quot;會員清單-兌換內容&quot;進行兌換">兌換規則</span>
+                                    </th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap" x-show="colStatus.reward">
+                                        <div class="flex items-center gap-1">
+                                            <span>兌換內容</span>
+                                            <button @click="rewardContentOpen = !rewardContentOpen"
+                                                    class="ml-1 w-5 h-5 rounded flex items-center justify-center bg-gray-200 hover:bg-primary hover:text-white text-gray-600 transition-colors text-xs font-bold tooltip tooltip-down"
+                                                    :data-tip="rewardContentOpen ? '收合' : '展開'">
+                                                <i class="ph" :class="rewardContentOpen ? 'ph-minus' : 'ph-plus'"></i>
+                                            </button>
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-3 bg-orange-50 text-orange-700 text-right table-cell-nowrap" x-show="colStatus.reward && rewardContentOpen">代幣($)</th>
+                                    <th class="px-4 py-3 bg-purple-50 text-purple-700 text-right table-cell-nowrap" x-show="colStatus.reward && rewardContentOpen">免費旋轉</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap" x-show="colStatus.totalReward">
+                                        <div class="flex items-center gap-1">
+                                            <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="設定已發出的兌換累計">兌換發放</span>
+                                            <button @click="rewardPaidOpen = !rewardPaidOpen"
+                                                    class="ml-1 w-5 h-5 rounded flex items-center justify-center bg-gray-200 hover:bg-primary hover:text-white text-gray-600 transition-colors text-xs font-bold tooltip tooltip-down"
+                                                    :data-tip="rewardPaidOpen ? '收合' : '展開'">
+                                                <i class="ph" :class="rewardPaidOpen ? 'ph-minus' : 'ph-plus'"></i>
+                                            </button>
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-3 bg-orange-50 text-orange-700 text-right table-cell-nowrap" x-show="colStatus.totalReward && rewardPaidOpen">代幣</th>
+                                    <th class="px-4 py-3 bg-purple-50 text-purple-700 text-right table-cell-nowrap" x-show="colStatus.totalReward && rewardPaidOpen">免費旋轉</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap text-right" x-show="colStatus.participants">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="已兌換人數 / 上限">人數</span>
+                                    </th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap min-w-[140px]" x-show="colStatus.usageStatus">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="未用 / 已用 / 過期 / 作廢 / 凍結">使用狀態</span>
+                                    </th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap text-right" x-show="colStatus.usageRate">使用率</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap" x-show="colStatus.updatedAt">最後異動時間</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap" x-show="colStatus.operator">操作者</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap text-center" x-show="colStatus.relatedInfo">相關資訊</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap text-center" x-show="colStatus.remark">備註</th>
+                                    <th class="w-10 lg:w-28 px-1 py-3 table-cell-nowrap text-center sticky right-0 bg-gray-50 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-gray-600 divide-y divide-gray-100 bg-white">
+                                <template x-for="row in pagedList" :key="row.id">
+                                    <tr class="group hover:bg-blue-50/50 transition-colors">
+                                        <td class="px-4 py-3 text-center">
+                                            <input type="checkbox" class="checkbox-custom" :value="row.id" x-model="selectedIds">
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.orderId">
+                                            <div class="flex items-center gap-2" x-data="{ copied: false }">
+                                                <span class="font-mono text-xs text-gray-600" x-text="row.orderId"></span>
+                                                <div class="relative">
+                                                    <button @click="navigator.clipboard.writeText(row.orderId); copied = true; setTimeout(() => copied = false, 2000)" class="text-gray-400 hover:text-primary transition-colors focus:outline-none">
+                                                        <i class="ph-bold ph-copy"></i>
+                                                    </button>
+                                                    <div x-show="copied" x-transition.opacity.duration.300ms class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg whitespace-nowrap z-50 pointer-events-none">
+                                                        已複製
+                                                        <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap font-bold text-gray-800 sticky left-0 bg-white group-hover:bg-blue-50 transition-colors shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]" x-text="row.name"></td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.status">
+                                            <span class="px-2 py-0.5 rounded text-xs font-bold" :class="statusBadgeClass(row.status)" x-text="statusLabel(row.status)"></span>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.source">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium" :class="row.source === 'paid' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-600'" x-text="sourceLabel(row.source)"></span>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.effectiveTime">
+                                            <div class="font-mono text-xs text-gray-600" x-text="row.effectiveStart"></div>
+                                            <div class="font-mono text-xs text-gray-600" x-text="'~ ' + row.effectiveEnd"></div>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.limit">
+                                            <span class="font-mono text-xs text-gray-700" x-text="(row.limitPerMember || 0).toLocaleString() + ' / ' + row.limit.toLocaleString()"></span>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.ruleType">
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium" :class="ruleTypeBadgeClass(row.ruleType)" x-text="ruleTypeLabel(row.ruleType)"></span>
+                                            <div class="text-[11px] text-gray-400 font-mono mt-0.5" x-text="row.ruleType === 'single' ? '-' : row.customCode"></div>
+                                            <button @click="openSingleList(row)" class="block text-[11px] text-primary hover:underline mt-0.5" x-text="singleListCount(row) + ' 筆'"></button>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.distributeType">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium" :class="row.distributeType === 'public' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'" x-text="distributeTypeLabel(row.distributeType)"></span>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.exchangeRule">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium" :class="row.exchangeRule === 'individual' ? 'bg-rose-50 text-rose-700' : 'bg-teal-50 text-teal-700'" x-text="exchangeRuleLabel(row.exchangeRule)"></span>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.reward">
+                                            <template x-if="row.exchangeRule === 'individual'">
+                                                <button @click="openSingleList(row)" class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-primary flex items-center justify-center transition-colors tooltip" data-tip="詳細">
+                                                    <i class="ph ph-eye text-lg"></i>
+                                                </button>
+                                            </template>
+                                            <div class="flex flex-wrap gap-1.5" x-show="row.exchangeRule !== 'individual' && !rewardContentOpen">
+                                                <template x-if="row.rewardTokens || (row.rewardTokenTiers && row.rewardTokenTiers.length)">
+                                                    <span class="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded text-xs font-medium inline-flex items-center gap-1">
+                                                        <span class="relative" x-data="{ t: false }" @mouseenter="t = true" @mouseleave="t = false">
+                                                            <i class="ph-bold" :class="row.rewardTokenType === 'random' ? 'ph-shuffle' : 'ph-crosshair'"></i>
+                                                            <div x-show="t" style="display:none;" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-gray-700 text-white text-[11px] rounded whitespace-nowrap pointer-events-none z-[999]" x-text="row.rewardTokenType === 'random' ? '隨機' : '固定'"></div>
+                                                        </span>
+                                                        <span x-text="tokenRewardLabel(row, '代幣 ')"></span>
+                                                    </span>
+                                                </template>
+                                                <template x-if="row.rewardFreeSpinId">
+                                                    <span class="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium" x-text="'免費旋轉：' + freeSpinLabel(row.rewardFreeSpinId)"></span>
+                                                </template>
+                                                <template x-if="!row.rewardTokens && !(row.rewardTokenTiers && row.rewardTokenTiers.length) && !row.rewardFreeSpinId"><span class="text-gray-400 text-xs">-</span></template>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-orange-50/30" x-show="colStatus.reward && rewardContentOpen">
+                                            <span class="font-mono text-orange-600 font-medium text-xs" x-text="row.exchangeRule === 'individual' ? '-' : tokenRewardLabel(row, '')"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-purple-50/30" x-show="colStatus.reward && rewardContentOpen">
+                                            <span class="font-mono text-purple-600 font-medium text-xs" x-text="row.exchangeRule === 'individual' ? '-' : (row.rewardFreeSpinId ? freeSpinLabel(row.rewardFreeSpinId) : '-')"></span>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.totalReward">
+                                            <div class="flex flex-wrap gap-1.5" x-show="!rewardPaidOpen">
+                                                <template x-if="(row.tokensPaid || 0) > 0">
+                                                    <button @click="$dispatch('notify', '已帶入條件查詢交易紀錄：' + row.orderId)" class="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded text-xs font-medium hover:bg-orange-100 transition-colors" x-text="'代幣 $' + (row.tokensPaid || 0).toLocaleString()"></button>
+                                                </template>
+                                                <template x-if="(row.spinsPaid || 0) > 0">
+                                                    <button @click="$dispatch('notify', '已帶入條件查詢活動遊戲紀錄：' + row.orderId)" class="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium hover:bg-purple-100 transition-colors" x-text="'免費旋轉 ' + (row.spinsPaid || 0).toLocaleString()"></button>
+                                                </template>
+                                                <template x-if="!(row.tokensPaid || 0) && !(row.spinsPaid || 0)">
+                                                    <span class="text-gray-400 text-xs">-</span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-orange-50/30" x-show="colStatus.totalReward && rewardPaidOpen">
+                                            <template x-if="(row.tokensPaid || 0) > 0">
+                                                <button @click="$dispatch('notify', '已帶入條件查詢交易紀錄：' + row.orderId)" class="font-mono text-orange-600 font-medium text-xs hover:underline" x-text="'$' + (row.tokensPaid || 0).toLocaleString()"></button>
+                                            </template>
+                                            <template x-if="!((row.tokensPaid || 0) > 0)">
+                                                <span class="font-mono text-orange-600 font-medium text-xs">-</span>
+                                            </template>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-purple-50/30" x-show="colStatus.totalReward && rewardPaidOpen">
+                                            <template x-if="(row.spinsPaid || 0) > 0">
+                                                <button @click="$dispatch('notify', '已帶入條件查詢活動遊戲紀錄：' + row.orderId)" class="font-mono text-purple-600 font-medium text-xs hover:underline" x-text="(row.spinsPaid || 0).toLocaleString()"></button>
+                                            </template>
+                                            <template x-if="!((row.spinsPaid || 0) > 0)">
+                                                <div class="font-mono text-purple-600 font-medium text-xs">-</div>
+                                            </template>
+                                            <div class="text-[11px] text-gray-400 mt-0.5" x-text="(row.spinWonTokens || 0) > 0 ? '派彩 $' + (row.spinWonTokens || 0).toLocaleString() : ''"></div>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.participants">
+                                            <span class="font-mono text-gray-600" x-text="row.participants.toLocaleString()"></span>
+                                            <span class="text-gray-300 mx-1">/</span>
+                                            <span class="font-mono text-gray-800 font-bold" x-text="row.limit.toLocaleString()"></span>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap min-w-[140px]" x-show="colStatus.usageStatus">
+                                            <div class="grid grid-cols-2 gap-1 text-[11px]">
+                                                <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700" x-text="row.usageStatus.unused.toLocaleString()"></span>
+                                                <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500" x-text="row.usageStatus.used.toLocaleString()"></span>
+                                                <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600" x-text="row.usageStatus.expired.toLocaleString()"></span>
+                                                <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600" x-text="row.usageStatus.void.toLocaleString()"></span>
+                                                <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700" x-text="row.usageStatus.frozen.toLocaleString()"></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.usageRate">
+                                            <span class="font-mono text-xs font-bold text-gray-700" x-text="usageRate(row)"></span>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.updatedAt">
+                                            <div class="font-mono text-xs text-gray-600" x-text="row.updatedAt"></div>
+                                            <div class="text-xs text-gray-400 mt-0.5" x-text="relativeTime(row.updatedAt)"></div>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.operator">
+                                            <button @click="openUserDetail(row.creator)" class="text-primary hover:underline text-xs font-medium" x-text="row.creator"></button>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.relatedInfo">
+                                            <div class="flex items-center justify-center gap-1">
+                                                <div class="relative" x-data="{ t: false }">
+                                                    <button @click="$dispatch('notify', '已跳轉至應用場景')"
+                                                            @mouseenter="t = true" @mouseleave="t = false"
+                                                            class="w-7 h-7 rounded-full hover:bg-blue-50 flex items-center justify-center text-gray-400 hover:text-primary transition-colors">
+                                                        <i class="ph ph-puzzle-piece text-sm"></i>
+                                                    </button>
+                                                    <div x-show="t" style="display:none;" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-gray-700 text-white text-[11px] rounded whitespace-nowrap pointer-events-none z-[999]">應用場景</div>
+                                                </div>
+                                                <div class="relative" x-data="{ t: false }">
+                                                    <button @click="$dispatch('notify', '已帶入條件查詢序號兌換紀錄：' + row.orderId)"
+                                                            @mouseenter="t = true" @mouseleave="t = false"
+                                                            class="w-7 h-7 rounded-full hover:bg-blue-50 flex items-center justify-center text-gray-400 hover:text-primary transition-colors">
+                                                        <i class="ph ph-ticket text-sm"></i>
+                                                    </button>
+                                                    <div x-show="t" style="display:none;" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-gray-700 text-white text-[11px] rounded whitespace-nowrap pointer-events-none z-[999]">序號兌換紀錄</div>
+                                                </div>
+                                                <div class="relative" x-data="{ t: false }">
+                                                    <button @click="$dispatch('notify', '已帶入條件查詢交易紀錄：' + row.orderId)"
+                                                            @mouseenter="t = true" @mouseleave="t = false"
+                                                            class="w-7 h-7 rounded-full hover:bg-emerald-50 flex items-center justify-center text-gray-400 hover:text-emerald-600 transition-colors">
+                                                        <i class="ph ph-receipt text-sm"></i>
+                                                    </button>
+                                                    <div x-show="t" style="display:none;" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-gray-700 text-white text-[11px] rounded whitespace-nowrap pointer-events-none z-[999]">交易紀錄</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.remark">
+                                            <div class="tooltip tooltip-down text-gray-600 text-lg" :data-tip="row.remark || '(無)'">
+                                                <i class="ph-fill ph-file-text cursor-pointer hover:text-primary transition-colors"></i>
+                                            </div>
+                                        </td>
+                                        <td class="w-10 lg:w-28 px-1 py-3 table-cell-nowrap text-center sticky right-0 bg-white group-hover:bg-blue-50 transition-colors shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]"
+                                            x-data="{ opOpen: false, hoverTip: false }" :class="{'!z-[50]': opOpen || hoverTip}" style="z-index:10">
+
+                                            <!-- 桌面（lg+）：個別 icon 按鈕 -->
+                                            <div class="hidden lg:inline-flex items-center justify-center gap-0.5">
+                                                <div class="relative" x-data="{ t: false }">
+                                                    <button @click="openDetail(row)" @mouseenter="t = true; hoverTip = true" @mouseleave="t = false; hoverTip = false"
+                                                            class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
+                                                        <i class="ph ph-caret-right text-lg"></i>
+                                                    </button>
+                                                    <div x-show="t" style="display:none;" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-gray-700 text-white text-[11px] rounded whitespace-nowrap pointer-events-none z-[999]">檢視</div>
+                                                </div>
+                                                <div class="relative" x-data="{ t: false }">
+                                                    <button @click="triggerTakedown(row)" @mouseenter="t = true; hoverTip = true" @mouseleave="t = false; hoverTip = false"
+                                                            class="w-8 h-8 rounded-full hover:bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 transition-colors">
+                                                        <i class="ph ph-arrow-fat-down text-lg"></i>
+                                                    </button>
+                                                    <div x-show="t" style="display:none;" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-gray-700 text-white text-[11px] rounded whitespace-nowrap pointer-events-none z-[999]">下架</div>
+                                                </div>
+                                                <div class="relative" x-data="{ t: false }">
+                                                    <button @click="!(row.distributeType !== 'limited' || row.status === 'expired') && openSend(row)"
+                                                            @mouseenter="t = true; hoverTip = true" @mouseleave="t = false; hoverTip = false"
+                                                            :disabled="row.distributeType !== 'limited' || row.status === 'expired'"
+                                                            class="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                                                            :class="(row.distributeType !== 'limited' || row.status === 'expired') ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-500 hover:text-primary'">
+                                                        <i class="ph ph-paper-plane-tilt text-lg"></i>
+                                                    </button>
+                                                    <div x-show="t" style="display:none;" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-gray-700 text-white text-[11px] rounded whitespace-nowrap pointer-events-none z-[999]">發放</div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 手機（< lg）：list icon + 下拉清單 -->
+                                            <div class="lg:hidden relative flex items-center justify-center">
+                                                <button @click.stop="opOpen = !opOpen" class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 flex items-center justify-center">
+                                                    <i class="ph ph-list text-lg"></i>
+                                                </button>
+                                                <div x-show="opOpen" @click.outside="opOpen = false" class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-[200] min-w-[120px] text-left" x-cloak>
+                                                    <button @click="openDetail(row); opOpen = false" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 flex items-center gap-2">
+                                                        <i class="ph ph-caret-right"></i>檢視
+                                                    </button>
+                                                    <button @click="triggerTakedown(row); opOpen = false" class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-gray-700 flex items-center gap-2">
+                                                        <i class="ph ph-arrow-fat-down text-red-500"></i>下架
+                                                    </button>
+                                                    <button @click="!(row.distributeType !== 'limited' || row.status === 'expired') && (openSend(row), opOpen = false)"
+                                                            :disabled="row.distributeType !== 'limited' || row.status === 'expired'"
+                                                            class="w-full text-left px-4 py-2 text-sm flex items-center gap-2"
+                                                            :class="(row.distributeType !== 'limited' || row.status === 'expired') ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-blue-50 text-gray-700'">
+                                                        <i class="ph ph-paper-plane-tilt"></i>發放
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                <template x-if="!pagedList.length">
+                                    <tr><td colspan="23" class="px-4 py-12 text-center text-gray-400">查無符合條件的序號設定</td></tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="p-4 border-t border-gray-200 flex flex-col md:flex-row items-end md:items-center justify-end gap-2 bg-white flex-shrink-0 sticky bottom-0 z-20">
+                        <div class="flex items-center gap-2 order-1">
+                            <div class="flex items-center gap-2 text-gray-400 mr-2">
+                                <button @click="currentPage = 1" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-back text-sm"></i></button>
+                                <button @click="currentPage > 1 && currentPage--" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-left text-sm"></i></button>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <template x-for="p in totalPages" :key="p">
+                                    <button @click="currentPage = p"
+                                            class="w-8 h-8 rounded-full text-sm font-medium flex items-center justify-center transition-colors"
+                                            :class="currentPage === p ? 'bg-primary text-white shadow-sm' : 'hover:bg-gray-100 text-gray-600'"
+                                            x-text="p"></button>
+                                </template>
+                            </div>
+                            <div class="flex items-center gap-2 text-gray-400 ml-2">
+                                <button @click="currentPage < totalPages && currentPage++" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-right text-sm"></i></button>
+                                <button @click="currentPage = totalPages" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-forward text-sm"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-gray-500 mb-2 md:mb-0 md:pl-4 md:border-l border-gray-200 order-2">
+                            <span>每頁筆數：</span>
+                            <select x-model="pageSize" @change="currentPage = 1" class="border border-gray-300 rounded px-2 py-1 outline-none text-gray-700 bg-white hover:border-gray-400">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                            <span class="ml-2" x-text="`${(currentPage-1)*pageSize+1} - ${Math.min(currentPage*pageSize, filteredList.length)} 共 ${filteredList.length}`"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 新增 / 詳細 Modal ── -->
+        <div x-show="detailOpen" style="display:none;"
+             class="fixed inset-0 z-[250] flex items-center justify-center bg-black/30 backdrop-blur-sm"
+             x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-2xl w-full max-w-3xl mx-4 overflow-hidden flex flex-col max-h-[92vh]"
+                 @click.outside="!isAddMode && !isEditMode && !showTakedownConfirm && !singleListModalOpen && (detailOpen = false)">
+
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center gap-3 bg-white flex-shrink-0">
+                    <h3 class="text-lg font-bold text-gray-800">序號設定</h3>
+                    <span class="text-sm text-gray-400 font-bold" x-show="isAddMode">新增</span>
+                    <span class="text-sm text-gray-400 font-bold truncate" x-show="!isAddMode" x-text="form.name"></span>
+                </div>
+
+                <div class="overflow-y-auto custom-scroll flex-1 p-6 bg-gray-50 space-y-4">
+
+                    <!-- 其他資訊 (readonly, 僅詳細顯示) -->
+                    <template x-if="!isAddMode">
+                        <div class="bg-[#dfe3e8] border border-[#cbd5e1] rounded-lg p-5 grid grid-cols-2 gap-y-4 text-sm">
+                            <!-- 狀態 -->
+                            <div class="space-y-1">
+                                <p class="text-gray-500 font-medium">狀態</p>
+                                <span class="px-2 py-0.5 rounded text-xs font-bold" :class="statusBadgeClass(form.status)" x-text="statusLabel(form.status)"></span>
+                            </div>
+                            <!-- 建立時間 -->
+                            <div class="space-y-1">
+                                <p class="text-gray-500 font-medium">建立時間</p>
+                                <div>
+                                    <div class="text-gray-700 font-medium font-mono text-xs" x-text="form.createdAt"></div>
+                                    <div class="text-gray-400 text-xs mt-0.5" x-text="relativeTime(form.createdAt)"></div>
+                                </div>
+                            </div>
+                            <!-- 最後異動時間 -->
+                            <div class="space-y-1">
+                                <p class="text-gray-500 font-medium">最後異動時間</p>
+                                <div>
+                                    <div class="text-gray-700 font-medium font-mono text-xs" x-text="form.updatedAt"></div>
+                                    <div class="text-gray-400 text-xs mt-0.5" x-text="relativeTime(form.updatedAt)"></div>
+                                </div>
+                            </div>
+                            <!-- 操作者 -->
+                            <div class="space-y-1">
+                                <p class="text-gray-500 font-medium">操作者</p>
+                                <div class="font-medium text-gray-800 text-sm" x-text="form.creator"></div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Card: 資訊 -->
+                    <template x-if="!isAddMode">
+                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm" x-data="{ cardOpen: true }">
+                            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer select-none hover:bg-gray-50 transition-colors" @click="cardOpen = !cardOpen">
+                                <div class="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                    <i class="ph-fill ph-chart-bar text-gray-400"></i>
+                                    <span>資訊</span>
+                                </div>
+                                <i class="ph text-gray-400 text-sm transition-transform" :class="cardOpen ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                            </div>
+                            <div x-show="cardOpen" class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5 text-sm">
+                                <!-- 人數 -->
+                                <div>
+                                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-right normal-case" data-tip="已兌換 / 上限">人數</span>
+                                    </label>
+                                    <div class="font-medium text-gray-800">
+                                        <span class="font-mono" x-text="(form.participants || 0).toLocaleString()"></span>
+                                        <span class="text-gray-300 mx-1">/</span>
+                                        <span class="font-mono" x-text="(form.limit || 0).toLocaleString()"></span>
+                                    </div>
+                                </div>
+                                <!-- 使用狀態 -->
+                                <div>
+                                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-right normal-case" data-tip="未用 / 已用 / 過期 / 作廢 / 凍結">使用狀態</span>
+                                    </label>
+                                    <div class="grid grid-cols-2 gap-1 text-[11px] max-w-[160px]">
+                                        <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700" x-text="(form.usageStatus?.unused||0).toLocaleString()"></span>
+                                        <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500" x-text="(form.usageStatus?.used||0).toLocaleString()"></span>
+                                        <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600" x-text="(form.usageStatus?.expired||0).toLocaleString()"></span>
+                                        <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-600" x-text="(form.usageStatus?.void||0).toLocaleString()"></span>
+                                        <span class="inline-flex items-center justify-center font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700" x-text="(form.usageStatus?.frozen||0).toLocaleString()"></span>
+                                    </div>
+                                </div>
+                                <!-- 使用率 -->
+                                <div>
+                                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">使用率</label>
+                                    <div class="font-mono text-gray-800 font-bold" x-text="usageRate(form)"></div>
+                                </div>
+                                <!-- 兌換發放 -->
+                                <div>
+                                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-right normal-case" data-tip="設定已發出的兌換累計">兌換發放</span>
+                                    </label>
+                                    <div class="flex flex-wrap gap-1.5 items-start">
+                                        <template x-if="(form.tokensPaid || 0) > 0">
+                                            <button @click="$dispatch('notify', '已帶入條件查詢交易紀錄：' + form.orderId)" class="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded text-xs font-medium hover:bg-orange-100 transition-colors" x-text="'代幣 $' + (form.tokensPaid || 0).toLocaleString()"></button>
+                                        </template>
+                                        <template x-if="(form.spinsPaid || 0) > 0">
+                                            <div>
+                                                <button @click="$dispatch('notify', '已帶入條件查詢活動遊戲紀錄：' + form.orderId)" class="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium hover:bg-purple-100 transition-colors inline-block" x-text="'免費旋轉 ' + (form.spinsPaid || 0).toLocaleString()"></button>
+                                                <div class="text-[11px] text-gray-400 mt-0.5" x-text="(form.spinWonTokens || 0) > 0 ? '派彩 $' + (form.spinWonTokens || 0).toLocaleString() : ''"></div>
+                                            </div>
+                                        </template>
+                                        <template x-if="!(form.tokensPaid || 0) && !(form.spinsPaid || 0)">
+                                            <span class="text-gray-400 text-xs">-</span>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Card: 基本 -->
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm" x-data="{ cardOpen: true }">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer select-none hover:bg-gray-50 transition-colors" @click="cardOpen = !cardOpen">
+                            <div class="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                <i class="ph-fill ph-identification-badge text-gray-400"></i>
+                                <span>基本</span>
+                            </div>
+                            <i class="ph text-gray-400 text-sm transition-transform" :class="cardOpen ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </div>
+                        <div x-show="cardOpen" class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5 text-sm">
+
+                            <!-- 單號 -->
+                            <div x-show="!isAddMode">
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">單號</label>
+                                <div class="flex items-center gap-2" x-data="{ copied: false }">
+                                    <span class="font-mono text-sm text-gray-700" x-text="form.orderId || '-'"></span>
+                                    <div class="relative" x-show="form.orderId">
+                                        <button @click="navigator.clipboard.writeText(form.orderId); copied = true; setTimeout(() => copied = false, 2000)" class="text-gray-400 hover:text-primary transition-colors focus:outline-none">
+                                            <i class="ph-bold ph-copy"></i>
+                                        </button>
+                                        <div x-show="copied" x-transition.opacity.duration.300ms class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg whitespace-nowrap z-50 pointer-events-none">
+                                            已複製
+                                            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 名稱 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                    <span class="text-red-500 mr-1" x-show="isAddMode">*</span>名稱
+                                </label>
+                                <template x-if="!isAddMode && !isEditMode">
+                                    <div class="font-medium text-gray-800" x-text="form.name || '-'"></div>
+                                </template>
+                                <template x-if="isAddMode || isEditMode">
+                                    <input type="text" x-model="form.name" placeholder="序號設定名稱"
+                                           class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px]">
+                                </template>
+                            </div>
+
+                            <!-- 來源 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                    <span class="text-red-500 mr-1" x-show="isAddMode">*</span>
+                                    <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-right normal-case" data-tip="「無償」為活動發送；「有價」為付費取得">來源</span>
+                                </label>
+                                <template x-if="!isAddMode && !isEditMode">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" :class="form.source === 'paid' ? 'bg-amber-50 text-amber-700' : 'bg-gray-100 text-gray-600'" x-text="sourceLabel(form.source)"></span>
+                                </template>
+                                <template x-if="isAddMode || isEditMode">
+                                    <div class="flex items-center gap-6 h-[38px]">
+                                        <template x-for="opt in sourceOptions" :key="opt.key">
+                                            <label class="flex items-center cursor-pointer">
+                                                <input type="radio" name="source" :value="opt.key" x-model="form.source" class="radio-item">
+                                                <span class="text-sm font-bold text-gray-700" x-text="opt.label"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 上限 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                    <span class="text-red-500 mr-1" x-show="isAddMode">*</span>
+                                    <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-right normal-case" data-tip="兌換次數限制：單一會員 / 總計">上限</span>
+                                </label>
+                                <template x-if="!isAddMode && !isEditMode">
+                                    <div class="font-mono text-gray-800" x-text="(form.limitPerMember || 0).toLocaleString() + ' / ' + (form.limit || 0).toLocaleString()"></div>
+                                </template>
+                                <template x-if="isAddMode || isEditMode">
+                                    <div class="flex items-center gap-1.5">
+                                        <input type="number" min="1" x-model="form.limitPerMember" @input="validateLimit"
+                                               class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px] font-mono text-center">
+                                        <span class="text-gray-400 flex-shrink-0">/</span>
+                                        <input type="number" min="1" x-model="form.limit" @input="validateLimit"
+                                               class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px] font-mono text-center">
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 活動時間 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                    <span class="text-red-500 mr-1" x-show="isAddMode">*</span>活動時間
+                                </label>
+                                <template x-if="!isAddMode && !isEditMode">
+                                    <div class="font-mono text-xs text-gray-600" x-text="form.effectiveStart + ' ~ ' + form.effectiveEnd"></div>
+                                </template>
+                                <template x-if="isAddMode || isEditMode">
+                                    <div class="flex items-center gap-1.5">
+                                        <input x-ref="formStart" type="text" x-model="form.effectiveStart"
+                                               class="border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:border-primary w-full text-center h-[38px]">
+                                        <span class="text-gray-400 flex-shrink-0">~</span>
+                                        <input x-ref="formEnd" type="text" x-model="form.effectiveEnd"
+                                               class="border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:border-primary w-full text-center h-[38px]">
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 圖片 -->
+                            <div class="sm:col-span-2" x-data="{ imgLang: 'zh' }">
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">圖片</label>
+                                <div class="flex gap-2 mb-3">
+                                    <button type="button" @click="imgLang = 'zh'"
+                                            :class="imgLang === 'zh' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                            class="px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1.5 transition-colors">
+                                        <img src="https://flagcdn.com/w20/tw.png" alt="TW" style="width:16px;height:auto;border-radius:2px"> 繁中
+                                    </button>
+                                    <button type="button" @click="imgLang = 'en'"
+                                            :class="imgLang === 'en' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                            class="px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1.5 transition-colors">
+                                        <img src="https://flagcdn.com/w20/us.png" alt="US" style="width:16px;height:auto;border-radius:2px"> 英文
+                                    </button>
+                                </div>
+                                <div class="flex gap-4">
+                                    <template x-for="theme in ['A', 'B', 'C']" :key="theme">
+                                        <div class="flex-1 bg-gray-50 rounded border border-gray-200 p-4 flex flex-col items-center justify-center min-h-[120px] cursor-pointer hover:bg-gray-100 transition-colors">
+                                            <p class="text-[10px] text-gray-400 self-start mb-3" x-text="theme === 'A' ? '主題A - 廣宣圖片' : theme === 'B' ? '主題B' : '主題C'"></p>
+                                            <i class="ph-bold text-3xl" :class="form.images && form.images[imgLang] && form.images[imgLang][theme] ? 'ph-image text-primary' : 'ph-image-plus text-gray-300'"></i>
+                                            <p class="text-[10px] text-gray-400 mt-2" x-text="form.images && form.images[imgLang] && form.images[imgLang][theme] ? '已上傳' : '上傳圖片'"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card: 設定 -->
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm" x-data="{ cardOpen: true }">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer select-none hover:bg-gray-50 transition-colors" @click="cardOpen = !cardOpen">
+                            <div class="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                <i class="ph-fill ph-sliders text-gray-400"></i>
+                                <span>設定</span>
+                            </div>
+                            <i class="ph text-gray-400 text-sm transition-transform" :class="cardOpen ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </div>
+                        <div x-show="cardOpen" class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5 text-sm">
+
+                            <!-- 序號規則 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                    <span class="text-red-500 mr-1" x-show="isAddMode">*</span>
+                                    <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-right normal-case" data-tip="「自訂」指定序號全部會員通用；「隨機」系統生成序號全部會員通用；「單一」系統生成各別會員專屬獨享序號">序號規則</span>
+                                </label>
+                                <template x-if="!isAddMode && !isEditMode">
+                                    <div>
+                                        <div class="text-gray-800 text-sm" x-text="ruleTypeLabel(form.ruleType)"></div>
+                                        <div class="text-xs text-gray-400 font-mono mt-0.5" x-text="form.customCode || '-'"></div>
+                                    </div>
+                                </template>
+                                <template x-if="isAddMode || isEditMode">
+                                    <div class="flex items-center gap-1.5">
+                                        <select x-model="form.ruleType" @change="onRuleTypeChange()"
+                                                class="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none focus:border-primary transition-colors h-[38px] appearance-none bg-white flex-shrink-0 w-24">
+                                            <template x-for="opt in ruleTypeOptions" :key="opt.key">
+                                                <option :value="opt.key" x-text="opt.label"></option>
+                                            </template>
+                                        </select>
+                                        <input type="text" x-model="form.customCode" :disabled="form.ruleType !== 'custom'"
+                                               :class="form.ruleType !== 'custom' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'"
+                                               placeholder="請輸入自訂序號"
+                                               class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px] font-mono">
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 發放形式 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                    <span class="text-red-500 mr-1" x-show="isAddMode">*</span>
+                                    <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-right normal-case" data-tip="「廣發」開放全站會員兌換；「限定」僅限指定對象兌換">發放形式</span>
+                                </label>
+                                <template x-if="!isAddMode && !isEditMode">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" :class="form.distributeType === 'public' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'" x-text="distributeTypeLabel(form.distributeType)"></span>
+                                </template>
+                                <template x-if="isAddMode || isEditMode">
+                                    <div class="flex items-center gap-6 h-[38px]">
+                                        <template x-for="opt in distributeTypeOptions" :key="opt.key">
+                                            <label class="flex items-center cursor-pointer">
+                                                <input type="radio" name="distributeType" :value="opt.key" x-model="form.distributeType" class="radio-item">
+                                                <span class="text-sm font-bold text-gray-700" x-text="opt.label"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 兌換規則 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                    <span class="text-red-500 mr-1" x-show="isAddMode">*</span>
+                                    <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-right normal-case" data-tip="「統一」將依據&quot;兌換內容&quot;進行兌換；「單獨」將依據&quot;會員清單-兌換內容&quot;進行兌換">兌換規則</span>
+                                </label>
+                                <template x-if="!isAddMode && !isEditMode">
+                                    <div class="text-gray-800 text-sm" x-text="exchangeRuleLabel(form.exchangeRule)"></div>
+                                </template>
+                                <template x-if="isAddMode || isEditMode">
+                                    <select x-model="form.exchangeRule"
+                                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors h-[38px] appearance-none bg-white w-full">
+                                        <template x-for="opt in exchangeRuleOptions" :key="opt.key">
+                                            <option :value="opt.key" x-text="opt.label"></option>
+                                        </template>
+                                    </select>
+                                </template>
+                            </div>
+
+                            <!-- 會員清單 -->
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">會員清單</label>
+                                    <button x-show="isAddMode || isEditMode" style="display:none;"
+                                            @click="$dispatch('notify',{message:'範本下載中'})"
+                                            class="px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded text-gray-600 hover:bg-gray-100 flex items-center gap-1">
+                                        <i class="ph ph-download-simple text-xs"></i>範本
+                                    </button>
+                                </div>
+                                <template x-if="!isAddMode && !isEditMode">
+                                    <div class="text-sm">
+                                        <span class="text-gray-800" x-show="form.distributeType === 'public'">全站會員</span>
+                                        <button x-show="form.distributeType !== 'public'" @click="openSingleList(form)" class="text-primary hover:underline" x-text="memberListCount(form) + ' 人'"></button>
+                                    </div>
+                                </template>
+                                <template x-if="isAddMode || isEditMode">
+                                    <div>
+                                        <div class="flex gap-2 items-start">
+                                            <input type="text" x-model="form.memberListText" :disabled="form.distributeType === 'public'"
+                                                   :class="form.distributeType === 'public' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'"
+                                                   placeholder="請輸入暱稱（逗號分隔），或上傳 Excel"
+                                                   class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors flex-1 h-[38px] min-w-0">
+                                            <label class="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm h-[38px] flex-shrink-0 transition-colors"
+                                                   :class="form.distributeType === 'public' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-50 cursor-pointer'">
+                                                <i class="ph ph-upload-simple text-sm"></i>
+                                                <span class="hidden sm:inline">上傳</span>
+                                                <input type="file" accept=".xlsx,.xls,.csv" class="hidden" :disabled="form.distributeType === 'public'" @change="$dispatch('notify','已匯入會員清單檔案')">
+                                            </label>
+                                        </div>
+                                        <div class="text-xs text-gray-400 mt-1" x-show="form.memberListText">共 <span class="font-bold text-primary" x-text="memberListCount(form)"></span> 名</div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 兌換內容 -->
+                            <div class="sm:col-span-2">
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">兌換內容</label>
+                                <template x-if="!isAddMode && !isEditMode && form.exchangeRule === 'individual'">
+                                    <button @click="openSingleList(form)" class="text-primary hover:underline text-sm">序號清單</button>
+                                </template>
+                                <template x-if="!(!isAddMode && !isEditMode && form.exchangeRule === 'individual')">
+                                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                    <table class="w-full text-left border-collapse text-sm">
+                                        <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200">
+                                            <tr>
+                                                <th class="px-4 py-2 w-1/2">代幣</th>
+                                                <th class="px-4 py-2">免費旋轉</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <template x-if="!isAddMode && !isEditMode">
+                                                    <td class="px-4 py-2 align-top">
+                                                        <div class="flex items-center gap-1.5" x-show="form.rewardTokens || (form.rewardTokenTiers && form.rewardTokenTiers.length)">
+                                                            <span class="relative" x-data="{ t: false }" @mouseenter="t = true" @mouseleave="t = false">
+                                                                <i class="ph-bold" :class="form.rewardTokenType === 'random' ? 'ph-shuffle text-gray-400' : 'ph-crosshair text-gray-400'"></i>
+                                                                <div x-show="t" style="display:none;" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-gray-700 text-white text-[11px] rounded whitespace-nowrap pointer-events-none z-[999]" x-text="form.rewardTokenType === 'random' ? '隨機' : '固定'"></div>
+                                                            </span>
+                                                            <template x-if="form.rewardTokenType !== 'random'">
+                                                                <span class="font-mono text-gray-800" x-text="tokenRewardLabel(form, '')"></span>
+                                                            </template>
+                                                            <template x-if="form.rewardTokenType === 'random'">
+                                                                <div class="space-y-0.5">
+                                                                    <template x-for="(tier, ti) in (form.rewardTokenTiers || [])" :key="ti">
+                                                                        <div class="font-mono text-gray-800 text-xs" x-text="'$' + tier.min + '~' + tier.max + '，' + tier.weight + '%'"></div>
+                                                                    </template>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                        <span class="text-gray-400 text-xs" x-show="!form.rewardTokens && !(form.rewardTokenTiers && form.rewardTokenTiers.length)">-</span>
+                                                    </td>
+                                                </template>
+                                                <template x-if="isAddMode || isEditMode">
+                                                    <td class="px-4 py-2 align-top">
+                                                        <div class="flex items-center gap-1.5">
+                                                            <select x-model="form.rewardTokenType" :disabled="(form.exchangeRule === 'individual' && form.distributeType === 'limited')"
+                                                                    :class="(form.exchangeRule === 'individual' && form.distributeType === 'limited') ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'"
+                                                                    class="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none focus:border-primary transition-colors h-[38px] appearance-none flex-shrink-0 w-20">
+                                                                <option value="fixed">固定</option>
+                                                                <option value="random">隨機</option>
+                                                            </select>
+                                                            <input x-show="form.rewardTokenType === 'fixed'" type="number" min="0" x-model="form.rewardTokens" :disabled="(form.exchangeRule === 'individual' && form.distributeType === 'limited')" placeholder="請輸入代幣點數"
+                                                                   :class="(form.exchangeRule === 'individual' && form.distributeType === 'limited') ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'"
+                                                                   class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px] font-mono">
+                                                        </div>
+                                                        <template x-if="form.rewardTokenType === 'random'">
+                                                            <div class="mt-2 space-y-2">
+                                                                <template x-for="(tier, ti) in (form.rewardTokenTiers || [])" :key="ti">
+                                                                    <div class="flex items-center gap-1.5">
+                                                                        <input type="number" min="0" x-model="tier.min" placeholder="起" :disabled="(form.exchangeRule === 'individual' && form.distributeType === 'limited')"
+                                                                               :class="(form.exchangeRule === 'individual' && form.distributeType === 'limited') ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'"
+                                                                               class="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none focus:border-primary w-16 text-center h-[36px] font-mono">
+                                                                        <span class="text-gray-400 flex-shrink-0">~</span>
+                                                                        <input type="number" min="0" x-model="tier.max" placeholder="迄" :disabled="(form.exchangeRule === 'individual' && form.distributeType === 'limited')"
+                                                                               :class="(form.exchangeRule === 'individual' && form.distributeType === 'limited') ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'"
+                                                                               class="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none focus:border-primary w-16 text-center h-[36px] font-mono">
+                                                                        <input type="number" min="0" max="100" x-model="tier.weight" placeholder="權重" :disabled="(form.exchangeRule === 'individual' && form.distributeType === 'limited')"
+                                                                               :class="(form.exchangeRule === 'individual' && form.distributeType === 'limited') ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'"
+                                                                               class="border border-gray-300 rounded-lg px-2 py-2 text-sm outline-none focus:border-primary w-16 text-center h-[36px] font-mono flex-shrink-0">
+                                                                        <span class="text-gray-400 text-xs flex-shrink-0">%</span>
+                                                                        <button type="button" @click="removeRewardTier(ti)" :disabled="(form.exchangeRule === 'individual' && form.distributeType === 'limited')" class="text-gray-400 hover:text-red-500 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed">
+                                                                            <i class="ph-bold ph-x"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </template>
+                                                                <button type="button" @click="addRewardTier()" :disabled="(form.exchangeRule === 'individual' && form.distributeType === 'limited')" class="text-xs text-primary hover:underline flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline">
+                                                                    <i class="ph ph-plus"></i>新增級距
+                                                                </button>
+                                                                <p class="text-[11px]" :class="rewardTierWeightTotal > 100 ? 'text-red-500' : 'text-gray-400'">
+                                                                    權重加總：<span x-text="rewardTierWeightTotal"></span>%
+                                                                    <span x-show="rewardTierWeightTotal > 100">（不可超過 100%）</span>
+                                                                </p>
+                                                            </div>
+                                                        </template>
+                                                    </td>
+                                                </template>
+                                                <template x-if="!isAddMode && !isEditMode">
+                                                    <td class="px-4 py-2 text-gray-800" x-text="form.rewardFreeSpinId ? freeSpinLabel(form.rewardFreeSpinId) : '-'"></td>
+                                                </template>
+                                                <template x-if="isAddMode || isEditMode">
+                                                    <td class="px-4 py-2 align-top">
+                                                        <div class="relative">
+                                                            <select x-model="form.rewardFreeSpinId" x-init="$nextTick(() => $el.value = form.rewardFreeSpinId)" :disabled="(form.exchangeRule === 'individual' && form.distributeType === 'limited')"
+                                                                    :class="(form.exchangeRule === 'individual' && form.distributeType === 'limited') ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'"
+                                                                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px] appearance-none">
+                                                                <option value="">（不設定）</option>
+                                                                <template x-for="fs in freeSpinOptions" :key="fs.id">
+                                                                    <option :value="fs.id" x-text="fs.name + ' - ' + fs.spinCount"></option>
+                                                                </template>
+                                                            </select>
+                                                            <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                                                        </div>
+                                                    </td>
+                                                </template>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card: 其他 -->
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm" x-data="{ cardOpen: true }">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer select-none hover:bg-gray-50 transition-colors" @click="cardOpen = !cardOpen">
+                            <div class="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                <i class="ph-fill ph-list-dashes text-gray-400"></i>
+                                <span>其他</span>
+                            </div>
+                            <i class="ph text-gray-400 text-sm transition-transform" :class="cardOpen ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </div>
+                        <div x-show="cardOpen" class="p-4 text-sm space-y-4">
+                            <template x-if="!isAddMode">
+                                <div>
+                                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">相關資訊</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button @click="$dispatch('notify', '已跳轉至應用場景')"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-blue-50 hover:border-primary hover:text-primary transition-colors">
+                                            <i class="ph ph-puzzle-piece text-base leading-none"></i>
+                                            <span>應用場景</span>
+                                            <i class="ph ph-arrow-square-out text-xs text-gray-400"></i>
+                                        </button>
+                                        <button @click="$dispatch('notify', '已帶入條件查詢序號兌換紀錄：' + form.orderId)"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-blue-50 hover:border-primary hover:text-primary transition-colors">
+                                            <i class="ph ph-ticket text-base leading-none"></i>
+                                            <span>序號兌換紀錄</span>
+                                            <i class="ph ph-arrow-square-out text-xs text-gray-400"></i>
+                                        </button>
+                                        <button @click="$dispatch('notify', '已帶入條件查詢交易紀錄：' + form.orderId)"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-emerald-50 hover:border-emerald-500 hover:text-emerald-700 transition-colors">
+                                            <i class="ph ph-receipt text-base leading-none"></i>
+                                            <span>交易紀錄</span>
+                                            <i class="ph ph-arrow-square-out text-xs text-gray-400"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">備註</label>
+                                <template x-if="!isAddMode && !isEditMode">
+                                    <div class="bg-gray-50 p-3 rounded text-sm min-h-[40px]" :class="form.remark ? 'text-gray-800' : 'text-gray-400'" x-text="form.remark || '(無)'"></div>
+                                </template>
+                                <template x-if="isAddMode || isEditMode">
+                                    <textarea x-model="form.remark" rows="3" class="w-full border border-gray-300 rounded p-3 text-sm outline-none focus:border-primary placeholder-gray-400 bg-input-base focus:bg-white transition-colors"></textarea>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 border-t border-gray-200 bg-[#e2e8f0] flex justify-end gap-3 flex-shrink-0">
+                    <!-- 新增模式 -->
+                    <template x-if="isAddMode">
+                        <div class="flex gap-3">
+                            <button @click="detailOpen = false" class="px-6 py-2 bg-[#94a3b8] text-white rounded hover:bg-slate-500 shadow-sm text-sm font-bold transition-colors">關閉</button>
+                            <button @click="saveNew()" class="px-6 py-2 bg-primary text-white rounded hover:bg-blue-600 shadow-sm text-sm font-bold transition-colors">儲存</button>
+                        </div>
+                    </template>
+                    <!-- 檢視模式：進行中，只允許下架 -->
+                    <template x-if="!isAddMode && !isEditMode && form.status === 'active'">
+                        <div class="flex gap-3">
+                            <button @click="detailOpen = false" class="px-6 py-2 bg-[#94a3b8] text-white rounded hover:bg-slate-500 shadow-sm text-sm font-bold transition-colors">關閉</button>
+                            <button @click="triggerImport()" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold transition-colors">匯入</button>
+                            <button @click="notifyExport()" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold transition-colors">匯出</button>
+                            <button @click="triggerTakedown(form)" class="px-6 py-2 bg-[#ff5a3d] text-white rounded hover:bg-orange-700 shadow-sm text-sm font-bold transition-colors">下架</button>
+                            <button @click="copySerial()" class="px-6 py-2 bg-teal-50 border border-teal-200 text-teal-700 rounded hover:bg-teal-100 shadow-sm text-sm font-bold transition-colors">複製</button>
+                            <button x-show="form.distributeType === 'limited'" @click="openSend(form)" class="px-6 py-2 bg-primary text-white rounded hover:bg-blue-600 shadow-sm text-sm font-bold transition-colors">發放</button>
+                        </div>
+                    </template>
+                    <!-- 檢視模式：已逾期，不可異動 -->
+                    <template x-if="!isAddMode && !isEditMode && form.status === 'expired'">
+                        <div class="flex gap-3">
+                            <button @click="detailOpen = false" class="px-6 py-2 bg-[#94a3b8] text-white rounded hover:bg-slate-500 shadow-sm text-sm font-bold transition-colors">關閉</button>
+                            <button @click="notifyExport()" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold transition-colors">匯出</button>
+                            <button @click="copySerial()" class="px-6 py-2 bg-teal-50 border border-teal-200 text-teal-700 rounded hover:bg-teal-100 shadow-sm text-sm font-bold transition-colors">複製</button>
+                        </div>
+                    </template>
+                    <!-- 檢視模式：未開始，可編輯 -->
+                    <template x-if="!isAddMode && !isEditMode && form.status === 'not_started'">
+                        <div class="flex gap-3">
+                            <button @click="detailOpen = false" class="px-6 py-2 bg-[#94a3b8] text-white rounded hover:bg-slate-500 shadow-sm text-sm font-bold transition-colors">關閉</button>
+                            <button @click="triggerImport()" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold transition-colors">匯入</button>
+                            <button @click="notifyExport()" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold transition-colors">匯出</button>
+                            <button @click="triggerTakedown(form)" class="px-6 py-2 bg-[#ff5a3d] text-white rounded hover:bg-orange-700 shadow-sm text-sm font-bold transition-colors">下架</button>
+                            <button @click="copySerial()" class="px-6 py-2 bg-teal-50 border border-teal-200 text-teal-700 rounded hover:bg-teal-100 shadow-sm text-sm font-bold transition-colors">複製</button>
+                            <button x-show="form.distributeType === 'limited'" @click="openSend(form)" class="px-6 py-2 bg-primary text-white rounded hover:bg-blue-600 shadow-sm text-sm font-bold transition-colors">發放</button>
+                            <button @click="isEditMode = true; $nextTick(() => initFormDatePickers())" class="px-6 py-2 bg-[#f59e0b] text-white rounded hover:bg-amber-600 shadow-sm text-sm font-bold transition-colors">編輯</button>
+                        </div>
+                    </template>
+                    <!-- 編輯模式 -->
+                    <template x-if="!isAddMode && isEditMode">
+                        <div class="flex gap-3">
+                            <button @click="detailOpen = false; isEditMode = false" class="px-6 py-2 bg-[#94a3b8] text-white rounded hover:bg-slate-500 shadow-sm text-sm font-bold transition-colors">關閉</button>
+                            <button @click="triggerTakedown(form)" class="px-6 py-2 bg-[#ff5a3d] text-white rounded hover:bg-orange-700 shadow-sm text-sm font-bold transition-colors">下架</button>
+                            <button @click="isEditMode = false" class="px-6 py-2 bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 shadow-sm text-sm font-bold transition-colors">取消</button>
+                            <button @click="saveEdit()" class="px-6 py-2 bg-[#2088ea] text-white rounded hover:bg-blue-700 shadow-sm text-sm font-bold transition-colors">確認</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 下架確認彈窗 -->
+        <div x-show="showTakedownConfirm" style="display:none;" class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50" x-transition.opacity>
+            <div class="bg-gray-100 rounded-xl shadow-xl w-[320px] overflow-hidden flex flex-col">
+                <div class="px-5 py-4 flex items-baseline gap-2">
+                    <span class="text-lg font-bold">提示</span>
+                    <span class="text-xs text-gray-400 font-mono" x-text="takedownTarget.name"></span>
+                </div>
+                <div class="px-5 py-8 bg-white/50 border-y border-gray-200 text-center">
+                    <p class="text-gray-800 font-bold">【 <span x-text="takedownTarget.name"></span> 】 確認下架？</p>
+                </div>
+                <div class="p-4 bg-gray-100 flex justify-end gap-3">
+                    <button @click="showTakedownConfirm = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">取消</button>
+                    <button @click="confirmTakedown()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 shadow-sm text-sm font-medium">確認</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 凍結確認彈窗 -->
+        <div x-show="showFreezeConfirm" style="display:none;" class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50" x-transition.opacity @click.stop>
+            <div class="bg-gray-100 rounded-xl shadow-xl w-[320px] overflow-hidden flex flex-col">
+                <div class="px-5 py-4 flex items-baseline gap-2">
+                    <span class="text-lg font-bold">提示</span>
+                    <span class="text-xs text-gray-400 font-mono" x-text="freezeTarget?.code"></span>
+                </div>
+                <div class="px-5 py-8 bg-white/50 border-y border-gray-200 text-center">
+                    <p class="text-gray-800 font-bold">【 <span x-text="freezeTarget?.code"></span> 】 確認凍結？</p>
+                </div>
+                <div class="p-4 bg-gray-100 flex justify-end gap-3">
+                    <button @click="showFreezeConfirm = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">取消</button>
+                    <button @click="confirmFreeze()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 shadow-sm text-sm font-medium">確認</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 序號兌換紀錄 Modal -->
+        <div x-show="redemptionOpen" style="display:none;" class="fixed inset-0 z-[350] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity @click.stop>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 overflow-hidden flex flex-col" @click.outside="redemptionOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                    <h3 class="text-base font-bold text-gray-800">序號兌換紀錄</h3>
+                </div>
+                <div class="p-6 space-y-4 text-sm">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <p class="text-xs text-gray-500">暱稱</p>
+                            <p class="font-medium text-blue-600" x-text="redemptionTarget.account"></p>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-xs text-gray-500">序號</p>
+                            <p class="font-mono text-xs text-gray-700" x-text="redemptionTarget.code"></p>
+                        </div>
+                        <div class="space-y-1 col-span-2">
+                            <p class="text-xs text-gray-500">兌換內容</p>
+                            <div class="flex flex-wrap gap-1.5 mt-1">
+                                <template x-if="(redemptionTarget.rewardTokens || 0) > 0">
+                                    <span class="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded text-xs font-medium" x-text="'代幣 $' + redemptionTarget.rewardTokens.toLocaleString()"></span>
+                                </template>
+                                <template x-if="redemptionTarget.rewardSpin && currentSingleRow.rewardFreeSpinId">
+                                    <span class="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium" x-text="'免費旋轉：' + freeSpinLabel(currentSingleRow.rewardFreeSpinId)"></span>
+                                </template>
+                                <template x-if="!((redemptionTarget.rewardTokens || 0) > 0) && !(redemptionTarget.rewardSpin && currentSingleRow.rewardFreeSpinId)">
+                                    <span class="text-gray-400 text-xs">-</span>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-xs text-gray-500">狀態</p>
+                            <span class="inline-block px-1.5 py-0.5 rounded text-xs font-bold" :class="codeStatusBadgeClass(redemptionTarget.status)" x-text="codeStatusLabel(redemptionTarget.status)"></span>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-xs text-gray-500">兌換時間</p>
+                            <p class="font-mono text-xs text-gray-700" x-text="redemptionTarget.redeemedAt || '-'"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end flex-shrink-0 rounded-b-lg">
+                    <button @click="redemptionOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">關閉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 序號設定 - 發放 Modal -->
+        <div x-show="sendModalOpen" style="display:none;" class="fixed inset-0 z-[350] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity @click.stop>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 overflow-hidden flex flex-col" @click.outside="sendModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center gap-3 bg-gray-50 flex-shrink-0">
+                    <h3 class="text-base font-bold text-gray-800">序號設定 - 發放</h3>
+                    <span class="text-sm text-gray-400 font-bold truncate" x-text="form.name"></span>
+                </div>
+                <div class="p-6 text-sm">
+                    <!-- 會員清單 -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide">會員清單</label>
+                            <button @click="$dispatch('notify',{message:'範本下載中'})"
+                                    class="px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded text-gray-600 hover:bg-gray-100 flex items-center gap-1">
+                                <i class="ph ph-download-simple text-xs"></i>範本
+                            </button>
+                        </div>
+                        <div class="flex gap-2 items-start">
+                            <input type="text" x-model="sendMemberListText" placeholder="請輸入暱稱（逗號分隔），或上傳 Excel"
+                                   class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors flex-1 h-[38px] min-w-0">
+                            <label class="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 cursor-pointer h-[38px] flex-shrink-0 transition-colors">
+                                <i class="ph ph-upload-simple text-sm"></i>
+                                <span class="hidden sm:inline">上傳</span>
+                                <input type="file" accept=".xlsx,.xls,.csv" class="hidden" @change="$dispatch('notify','已匯入會員清單檔案')">
+                            </label>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-1" x-show="sendMemberListText">共 <span class="font-bold text-primary" x-text="sendMemberListText.split(',').map(s => s.trim()).filter(Boolean).length"></span> 名</div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end gap-3 flex-shrink-0">
+                    <button @click="sendModalOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">關閉</button>
+                    <button @click="confirmSend()" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600 shadow-sm text-sm font-medium transition-colors">發放</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用戶詳細 Modal -->
+        <div x-show="userDetailOpen" style="display:none;" class="fixed inset-0 z-[350] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 overflow-hidden flex flex-col" @click.outside="userDetailOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                    <h3 class="text-base font-bold text-gray-800">用戶詳細</h3>
+                </div>
+                <div class="p-6 space-y-4 text-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <i class="ph ph-user text-primary text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-800 text-base" x-text="userDetailName"></div>
+                            <div class="text-xs text-gray-400 mt-0.5">暱稱</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+                        <div class="space-y-1">
+                            <p class="text-xs text-gray-500">角色</p>
+                            <p class="font-medium text-gray-800" x-text="userDetailName === 'admin' ? '系統管理員' : '系統帳號'"></p>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-xs text-gray-500">狀態</p>
+                            <span class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700">啟用中</span>
+                        </div>
+                        <div class="space-y-1 col-span-2">
+                            <p class="text-xs text-gray-500">最後登入</p>
+                            <p class="font-mono text-xs text-gray-700">2026/07/10 08:30:00</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end flex-shrink-0 rounded-b-lg">
+                    <button @click="userDetailOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">關閉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 序號清單 Modal -->
+        <div x-show="singleListModalOpen" style="display:none;" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 overflow-hidden flex flex-col max-h-[85vh]" @click.outside="!redemptionOpen && !showFreezeConfirm && (singleListModalOpen = false)">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center gap-3 bg-gray-50 justify-start">
+                    <h3 class="text-lg font-bold text-gray-800">序號清單</h3>
+                    <span class="text-sm text-gray-400 font-bold truncate" x-text="currentSingleRow.name"></span>
+                </div>
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/60 flex-shrink-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                        <!-- 暱稱/錢包帳號 -->
+                        <div class="floating-input-group">
+                            <label class="floating-label z-10" x-text="singleListQuery.searchType"></label>
+                            <div class="flex relative">
+                                <button @click="singleListQuery.searchType = singleListQuery.searchType === '暱稱' ? '錢包帳號' : '暱稱'"
+                                        class="flex items-center justify-center w-10 bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg hover:bg-gray-100 transition-colors flex-shrink-0" title="點擊切換類型">
+                                    <i class="ph text-lg text-gray-500" :class="singleListQuery.searchType === '暱稱' ? 'ph-text-aa' : 'ph-wallet'"></i>
+                                </button>
+                                <input type="text" x-model="singleListQuery.searchText" class="floating-input rounded-l-none bg-input-base focus:bg-white text-xs min-w-0">
+                            </div>
+                        </div>
+                        <!-- 序號 -->
+                        <div class="floating-input-group">
+                            <label class="floating-label">序號</label>
+                            <input type="text" x-model="singleListQuery.code" class="floating-input bg-input-base focus:bg-white text-xs font-mono">
+                        </div>
+                        <!-- 兌換內容 -->
+                        <div class="floating-input-group">
+                            <label class="floating-label z-10">兌換內容</label>
+                            <div class="relative">
+                                <select x-model="singleListQuery.rewardType" class="floating-input bg-input-base focus:bg-white appearance-none text-xs">
+                                    <option value="">全部</option>
+                                    <option value="token">代幣</option>
+                                    <option value="freespin">免費旋轉</option>
+                                </select>
+                                <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                            </div>
+                        </div>
+                        <!-- 狀態 (複選) -->
+                        <div class="floating-input-group relative" x-data="{ open: false }">
+                            <label class="floating-label">狀態</label>
+                            <button @click="open = !open" @click.outside="open = false" class="floating-input bg-input-base focus:bg-white text-left flex justify-between items-center text-xs">
+                                <span class="truncate" x-text="singleListQuery.status.length > 0 ? '已選 ' + singleListQuery.status.length + ' 項' : '全部'"></span>
+                                <i class="ph ph-caret-down text-gray-400"></i>
+                            </button>
+                            <div x-show="open" @click.outside="open = false" class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 shadow-lg rounded z-[310] p-2 max-h-48 overflow-y-auto" x-cloak>
+                                <template x-for="opt in ['unused','used','expired','void','frozen']" :key="opt">
+                                    <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded">
+                                        <input type="checkbox" class="checkbox-item" :value="opt" x-model="singleListQuery.status">
+                                        <span class="text-sm" x-text="codeStatusLabel(opt)"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end mt-3">
+                        <button @click="doSingleListSearch()" class="w-10 h-10 bg-primary hover:bg-blue-600 text-white rounded-lg shadow flex items-center justify-center transition-colors">
+                            <i class="ph ph-magnifying-glass text-lg font-bold"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="px-6 py-2.5 border-b border-gray-100 bg-white flex-shrink-0 flex items-center justify-end">
+                    <div class="text-xs text-gray-500">
+                        共 <span class="font-bold text-primary" x-text="filteredSingleCodeList.length"></span> 筆
+                    </div>
+                </div>
+                <div class="overflow-y-auto custom-scroll flex-1">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                            <tr>
+                                <th class="px-4 py-3 table-cell-nowrap">暱稱</th>
+                                <th class="px-4 py-3 table-cell-nowrap">序號</th>
+                                <th class="px-4 py-3 table-cell-nowrap">兌換內容</th>
+                                <th class="px-4 py-3 table-cell-nowrap">狀態</th>
+                                <th class="px-4 py-3 table-cell-nowrap text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600 divide-y divide-gray-100 bg-white">
+                            <template x-for="item in pagedSingleCodeList" :key="item.account">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 table-cell-nowrap text-blue-600 font-medium" x-text="item.account"></td>
+                                    <td class="px-4 py-3 table-cell-nowrap font-mono text-xs text-gray-700" x-text="item.code"></td>
+                                    <td class="px-4 py-3 table-cell-nowrap">
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <template x-if="(item.rewardTokens || 0) > 0">
+                                                <span class="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded text-xs font-medium" x-text="'代幣 $' + item.rewardTokens.toLocaleString()"></span>
+                                            </template>
+                                            <template x-if="item.rewardSpin && currentSingleRow.rewardFreeSpinId">
+                                                <span class="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium" x-text="'免費旋轉：' + freeSpinLabel(currentSingleRow.rewardFreeSpinId)"></span>
+                                            </template>
+                                            <template x-if="!((item.rewardTokens || 0) > 0) && !(item.rewardSpin && currentSingleRow.rewardFreeSpinId)">
+                                                <span class="text-gray-400 text-xs">-</span>
+                                            </template>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 table-cell-nowrap">
+                                        <span class="px-1.5 py-0.5 rounded text-xs font-bold" :class="codeStatusBadgeClass(item.status)" x-text="codeStatusLabel(item.status)"></span>
+                                    </td>
+                                    <td class="px-4 py-3 table-cell-nowrap text-center" x-data="{ opOpen: false }" :class="{'!z-[50]': opOpen}">
+                                        <!-- 桌面（lg+）：個別 icon 按鈕 -->
+                                        <div class="hidden lg:inline-flex items-center justify-center gap-0.5">
+                                            <button @click="openRedemption(item)" class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-primary flex items-center justify-center transition-colors tooltip" data-tip="檢視">
+                                                <i class="ph ph-eye text-lg"></i>
+                                            </button>
+                                            <button @click="triggerFreeze(item)" :disabled="item.status === 'frozen'"
+                                                    class="w-8 h-8 rounded-full flex items-center justify-center transition-colors tooltip"
+                                                    :class="item.status === 'frozen' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:bg-gray-100 hover:text-red-500'"
+                                                    data-tip="凍結">
+                                                <i class="ph ph-lock text-lg"></i>
+                                            </button>
+                                        </div>
+                                        <!-- 手機（< lg）：list icon + 下拉清單 -->
+                                        <div class="lg:hidden relative flex items-center justify-center">
+                                            <button @click.stop="opOpen = !opOpen" class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 flex items-center justify-center">
+                                                <i class="ph ph-list text-lg"></i>
+                                            </button>
+                                            <div x-show="opOpen" @click.outside="opOpen = false" class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-[200] min-w-[120px] text-left" x-cloak>
+                                                <button @click="openRedemption(item); opOpen = false" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 flex items-center gap-2">
+                                                    <i class="ph ph-eye"></i>檢視
+                                                </button>
+                                                <button @click="!(item.status === 'frozen') && (triggerFreeze(item), opOpen = false)" class="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-gray-700 flex items-center gap-2" :class="{'opacity-40 cursor-not-allowed': item.status === 'frozen'}">
+                                                    <i class="ph ph-lock text-red-500"></i>凍結
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-if="!filteredSingleCodeList.length">
+                                <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">查無符合條件的序號</td></tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                <div class="px-6 py-3 border-t border-gray-200 flex flex-col md:flex-row items-end md:items-center justify-end gap-2 bg-white flex-shrink-0">
+                    <div class="flex items-center gap-2 order-1">
+                        <div class="flex items-center gap-1 text-gray-400 mr-1">
+                            <button @click="singleListPage = 1" :disabled="singleListPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-back text-sm"></i></button>
+                            <button @click="singleListPage > 1 && singleListPage--" :disabled="singleListPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-left text-sm"></i></button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <template x-for="p in singleListTotalPages" :key="p">
+                                <button @click="singleListPage = p"
+                                        class="w-7 h-7 rounded-full text-xs font-medium flex items-center justify-center transition-colors"
+                                        :class="singleListPage === p ? 'bg-primary text-white shadow-sm' : 'hover:bg-gray-100 text-gray-600'"
+                                        x-text="p"></button>
+                            </template>
+                        </div>
+                        <div class="flex items-center gap-1 text-gray-400 ml-1">
+                            <button @click="singleListPage < singleListTotalPages && singleListPage++" :disabled="singleListPage === singleListTotalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-right text-sm"></i></button>
+                            <button @click="singleListPage = singleListTotalPages" :disabled="singleListPage === singleListTotalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-forward text-sm"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-gray-500 md:pl-3 md:border-l border-gray-200 order-2">
+                        <span>每頁筆數：</span>
+                        <select x-model="singleListPageSize" @change="singleListPage = 1" class="border border-gray-300 rounded px-1.5 py-1 outline-none text-gray-700 bg-white hover:border-gray-400">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span class="ml-1" x-text="`${filteredSingleCodeList.length ? (singleListPage-1)*singleListPageSize+1 : 0} - ${Math.min(singleListPage*singleListPageSize, filteredSingleCodeList.length)} 共 ${filteredSingleCodeList.length}`"></span>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end flex-shrink-0">
+                    <button @click="singleListModalOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">關閉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column Selection Modal -->
+        <div x-show="isColumnModalOpen" style="display:none;" class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]" @click.outside="isColumnModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                    <h3 class="text-lg font-bold text-gray-800">選擇顯示欄位</h3>
+                    <div class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-bold font-mono">
+                        <span x-text="selectedColCount"></span> / <span x-text="totalColCount"></span>
+                    </div>
+                </div>
+                <div class="p-6 overflow-y-auto custom-scroll space-y-4 bg-gray-50 flex-1">
+
+                    <div class="flex items-center gap-3 cursor-pointer select-none mb-2 w-fit" @click="toggleAllCols()">
+                        <div class="w-5 h-5 rounded flex items-center justify-center transition-colors shadow-sm"
+                             :class="{ 'bg-primary': isAllColsChecked() || isAllColsIndeterminate(), 'bg-white border-2 border-gray-300': !isAllColsChecked() && !isAllColsIndeterminate() }">
+                            <i class="ph-bold text-white text-sm" :class="{ 'ph-check': isAllColsChecked(), 'ph-minus': isAllColsIndeterminate(), 'hidden': !isAllColsChecked() && !isAllColsIndeterminate() }"></i>
+                        </div>
+                        <span class="font-bold text-gray-800">全選</span>
+                    </div>
+
+                    <!-- 資訊 -->
+                    <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                        <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleColGroup('info')">
+                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                 :class="{ 'bg-primary': isColGroupChecked('info') || isColGroupIndeterminate('info'), 'bg-white border-2 border-gray-300': !isColGroupChecked('info') && !isColGroupIndeterminate('info') }">
+                                <i class="ph-bold text-white text-sm" :class="{ 'ph-check': isColGroupChecked('info'), 'ph-minus': isColGroupIndeterminate('info'), 'hidden': !isColGroupChecked('info') && !isColGroupIndeterminate('info') }"></i>
+                            </div>
+                            <span class="font-bold text-gray-800">資訊</span>
+                        </div>
+                        <div class="pl-2 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2">
+                            <template x-for="item in [
+                                { key: 'status',       label: '狀態' },
+                                { key: 'participants', label: '人數' },
+                                { key: 'usageStatus',  label: '使用狀態' },
+                                { key: 'usageRate',    label: '使用率' },
+                                { key: 'totalReward',  label: '兌換發放' },
+                                { key: 'updatedAt',    label: '最後異動時間' },
+                                { key: 'operator',     label: '操作者' }
+                            ]" :key="item.key">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors" :class="tempColStatus[item.key] ? 'bg-primary' : 'bg-white border-2 border-gray-300'">
+                                        <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[item.key]"></i>
+                                    </div>
+                                    <input type="checkbox" x-model="tempColStatus[item.key]" class="hidden">
+                                    <span class="text-sm text-gray-700" x-text="item.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 基本 -->
+                    <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                        <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleColGroup('basic')">
+                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                 :class="{ 'bg-primary': isColGroupChecked('basic') || isColGroupIndeterminate('basic'), 'bg-white border-2 border-gray-300': !isColGroupChecked('basic') && !isColGroupIndeterminate('basic') }">
+                                <i class="ph-bold text-white text-sm" :class="{ 'ph-check': isColGroupChecked('basic'), 'ph-minus': isColGroupIndeterminate('basic'), 'hidden': !isColGroupChecked('basic') && !isColGroupIndeterminate('basic') }"></i>
+                            </div>
+                            <span class="font-bold text-gray-800">基本</span>
+                        </div>
+                        <div class="pl-2 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2">
+                            <template x-for="item in [
+                                { key: 'orderId',         label: '單號' },
+                                { key: 'effectiveTime',   label: '活動時間' },
+                                { key: 'source',          label: '來源' },
+                                { key: 'limit',           label: '上限' }
+                            ]" :key="item.key">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors" :class="tempColStatus[item.key] ? 'bg-primary' : 'bg-white border-2 border-gray-300'">
+                                        <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[item.key]"></i>
+                                    </div>
+                                    <input type="checkbox" x-model="tempColStatus[item.key]" class="hidden">
+                                    <span class="text-sm text-gray-700" x-text="item.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 設定 -->
+                    <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                        <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleColGroup('setting')">
+                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                 :class="{ 'bg-primary': isColGroupChecked('setting') || isColGroupIndeterminate('setting'), 'bg-white border-2 border-gray-300': !isColGroupChecked('setting') && !isColGroupIndeterminate('setting') }">
+                                <i class="ph-bold text-white text-sm" :class="{ 'ph-check': isColGroupChecked('setting'), 'ph-minus': isColGroupIndeterminate('setting'), 'hidden': !isColGroupChecked('setting') && !isColGroupIndeterminate('setting') }"></i>
+                            </div>
+                            <span class="font-bold text-gray-800">設定</span>
+                        </div>
+                        <div class="pl-2 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2">
+                            <template x-for="item in [
+                                { key: 'ruleType',       label: '序號規則' },
+                                { key: 'distributeType', label: '發放形式' },
+                                { key: 'exchangeRule',   label: '兌換規則' },
+                                { key: 'reward',         label: '兌換內容' }
+                            ]" :key="item.key">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors" :class="tempColStatus[item.key] ? 'bg-primary' : 'bg-white border-2 border-gray-300'">
+                                        <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[item.key]"></i>
+                                    </div>
+                                    <input type="checkbox" x-model="tempColStatus[item.key]" class="hidden">
+                                    <span class="text-sm text-gray-700" x-text="item.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 其他 -->
+                    <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                        <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleColGroup('other')">
+                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                 :class="{ 'bg-primary': isColGroupChecked('other') || isColGroupIndeterminate('other'), 'bg-white border-2 border-gray-300': !isColGroupChecked('other') && !isColGroupIndeterminate('other') }">
+                                <i class="ph-bold text-white text-sm" :class="{ 'ph-check': isColGroupChecked('other'), 'ph-minus': isColGroupIndeterminate('other'), 'hidden': !isColGroupChecked('other') && !isColGroupIndeterminate('other') }"></i>
+                            </div>
+                            <span class="font-bold text-gray-800">其他</span>
+                        </div>
+                        <div class="pl-2 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2">
+                            <template x-for="item in [
+                                { key: 'relatedInfo', label: '相關資訊' },
+                                { key: 'remark',      label: '備註' }
+                            ]" :key="item.key">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors" :class="tempColStatus[item.key] ? 'bg-primary' : 'bg-white border-2 border-gray-300'">
+                                        <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[item.key]"></i>
+                                    </div>
+                                    <input type="checkbox" x-model="tempColStatus[item.key]" class="hidden">
+                                    <span class="text-sm text-gray-700" x-text="item.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 rounded-b-lg">
+                    <button @click="isColumnModalOpen = false" class="px-6 py-2 bg-[#f1f5f9] text-[#475569] rounded hover:bg-[#e2e8f0] shadow-sm text-sm font-bold transition-colors">取消</button>
+                    <button @click="confirmColumnModal()" class="px-6 py-2 bg-[#3b82f6] text-white rounded hover:bg-[#2563eb] shadow-sm text-sm font-bold transition-colors">確定</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = {
+            title:  '序號設定',
+            parent: '活動管理'
+        };
+    </script>
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+    <script>
+        function relativeTime(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr.replace(/\//g, '-').replace(' ', 'T'));
+            const now = new Date('2026-07-10');
+            const days = Math.floor((now - d) / 86400000);
+            if (days < 0) return '';
+            if (days < 1) return '今天';
+            if (days < 30) return days + ' 天前';
+            const m = Math.floor(days / 30);
+            if (m < 12) return m + ' 個月前';
+            return Math.floor(m / 12) + ' 年前';
+        }
+
+        function serialCodePage() {
+            return {
+                searchOpen: false,
+                advancedSearch: false,
+                isMobile: window.innerWidth < 1024,
+                isColumnModalOpen: false,
+                currentPage: 1,
+                pageSize: 20,
+                selectedIds: [],
+                rewardContentOpen: false,
+                rewardPaidOpen: false,
+
+                detailOpen: false,
+                isAddMode: false,
+                isEditMode: false,
+                showTakedownConfirm: false,
+                takedownTarget: {},
+                form: {},
+                singleListModalOpen: false,
+                currentSingleRow: {},
+                currentCodeListData: [],
+                singleListQuery: { searchType: '暱稱', searchText: '', code: '', rewardType: '', status: [] },
+                singleListPage: 1,
+                singleListPageSize: 10,
+                showFreezeConfirm: false,
+                freezeTarget: null,
+                redemptionOpen: false,
+                redemptionTarget: {},
+                sendModalOpen: false,
+                sendMemberListText: '',
+                userDetailOpen: false,
+                userDetailName: '',
+
+                statusOptions: [
+                    { key: 'active',       label: '進行中' },
+                    { key: 'not_started',  label: '未開始' },
+                    { key: 'expired',      label: '已逾期' }
+                ],
+                distributeTypeOptions: [
+                    { key: 'public',  label: '廣發' },
+                    { key: 'limited', label: '限定' }
+                ],
+                ruleTypeOptions: [
+                    { key: 'custom', label: '自訂' },
+                    { key: 'random', label: '隨機' },
+                    { key: 'single', label: '單一' }
+                ],
+                sourceOptions: [
+                    { key: 'free', label: '無償' },
+                    { key: 'paid', label: '有價' }
+                ],
+                exchangeRuleOptions: [
+                    { key: 'unified',    label: '統一' },
+                    { key: 'individual', label: '單獨' }
+                ],
+                freeSpinOptions: [
+                    { id: 'FS-2026-001', name: '端午好禮旋轉送', spinCount: 25 },
+                    { id: 'FS-2026-004', name: '夏日清涼大旋轉', spinCount: 18 },
+                    { id: 'FS-2026-009', name: '全民歡樂旋轉',   spinCount: 15 }
+                ],
+
+                search: {
+                    name: '', status: [], timeStart: '', timeEnd: '',
+                    distributeType: [],
+                    orderId: '', source: '', rewardType: '', limitMin: '', limitMax: '', exchangeRule: '', ruleType: '', serialCode: '', updatedStart: '', updatedEnd: '', operator: ''
+                },
+                appliedSearch: {},
+
+                list: [
+                    { id:1,  orderId:'SN2026010001', name:'新春紅包序號',       status:'expired',     effectiveStart:'2026/01/20 00:00:00', effectiveEnd:'2026/02/10 23:59:59', distributeType:'public',  source:'free', ruleType:'random', customCode:'RND-8K2P91',            limitPerMember:1, limit:2000, exchangeRule:'unified', memberListText:'', participants:1850, usageStatus:{ unused:0, used:1850, expired:150, void:0, frozen:0 },  images:{zh:{A:true, B:true,  C:false}, en:{A:false, B:false, C:false}}, remark:'農曆新年活動序號', rewardTokenType:'fixed', rewardTokens:100, rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-001', tokensPaid:185000, spinsPaid:46250, spinWonTokens:277500, creator:'admin',      createdAt:'2026/01/10 09:00:00', updatedAt:'2026/02/10 23:59:59' },
+                    { id:2,  orderId:'SN2026030002', name:'元宵猜燈謎序號',     status:'expired',     effectiveStart:'2026/02/25 00:00:00', effectiveEnd:'2026/03/05 23:59:59', distributeType:'public',  source:'free', ruleType:'custom', customCode:'LANTERN2026', limitPerMember:1, limit:800, exchangeRule:'unified', memberListText:'', participants:720,  usageStatus:{ unused:0, used:720, expired:65, void:15, frozen:0 },  images:{zh:{A:true, B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'fixed', rewardTokens:100, rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-009', tokensPaid:72000, spinsPaid:10800, spinWonTokens:64800, creator:'operator01',  createdAt:'2026/02/15 10:00:00', updatedAt:'2026/03/05 23:59:59' },
+                    { id:3,  orderId:'SN2026040003', name:'清明追思禮序號',     status:'expired',     effectiveStart:'2026/03/28 00:00:00', effectiveEnd:'2026/04/07 23:59:59', distributeType:'limited', source:'free', ruleType:'single', customCode:'',            limitPerMember:1, limit:300, exchangeRule:'unified', memberListText:'member003001,member003002,member003003', participants:265,  usageStatus:{ unused:0, used:265, expired:35, void:0, frozen:0 },  images:{zh:{A:false,B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'限定既有會員',     rewardTokenType:'fixed', rewardTokens:200, rewardTokenTiers:[], rewardFreeSpinId:'', tokensPaid:53000, spinsPaid:0, spinWonTokens:0, creator:'admin',      createdAt:'2026/03/18 14:00:00', updatedAt:'2026/04/07 23:59:59' },
+                    { id:4,  orderId:'SN2026050004', name:'母親節感恩序號',     status:'expired',     effectiveStart:'2026/05/01 00:00:00', effectiveEnd:'2026/05/15 23:59:59', distributeType:'public',  source:'free', ruleType:'random', customCode:'RND-3F7Q02',            limitPerMember:1, limit:1200, exchangeRule:'unified', memberListText:'', participants:980,  usageStatus:{ unused:0, used:980, expired:220, void:0, frozen:0 },  images:{zh:{A:true, B:true,  C:true}, en:{A:false, B:false, C:false}},  remark:'',                 rewardTokenType:'fixed', rewardTokens:'', rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-004', tokensPaid:0, spinsPaid:17640, spinWonTokens:105840, creator:'operator02',  createdAt:'2026/04/20 09:30:00', updatedAt:'2026/05/15 23:59:59' },
+                    { id:5,  orderId:'SN2026060005', name:'端午佳節序號',       status:'expired',     effectiveStart:'2026/06/10 00:00:00', effectiveEnd:'2026/06/20 23:59:59', distributeType:'public',  source:'free', ruleType:'custom', customCode:'DRAGON2026',  limitPerMember:1, limit:1500, exchangeRule:'unified', memberListText:'', participants:1340, usageStatus:{ unused:0, used:1340, expired:160, void:0, frozen:0 },  images:{zh:{A:true, B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'端午限定活動',     rewardTokenType:'random', rewardTokens:'', rewardTokenTiers:[{min:20,max:60,weight:20},{min:61,max:100,weight:15}], rewardFreeSpinId:'FS-2026-004', tokensPaid:80400, spinsPaid:24120, spinWonTokens:144720, creator:'admin',      createdAt:'2026/05/28 10:00:00', updatedAt:'2026/06/20 23:59:59' },
+                    { id:6,  orderId:'SN2026060006', name:'夏日暢遊序號',       status:'active',      effectiveStart:'2026/06/25 00:00:00', effectiveEnd:'2026/07/25 23:59:59', distributeType:'public',  source:'free', ruleType:'random', customCode:'RND-A1B2C3',            limitPerMember:2, limit:2500, exchangeRule:'unified', memberListText:'', participants:960,  usageStatus:{ unused:1540, used:960, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:true,  C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'fixed', rewardTokens:80, rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-001', tokensPaid:76800, spinsPaid:24000, spinWonTokens:144000, creator:'admin',      createdAt:'2026/06/15 09:00:00', updatedAt:'2026/06/25 08:00:00' },
+                    { id:7,  orderId:'SN2026070007', name:'VIP尊榮回饋序號',   status:'active',      effectiveStart:'2026/07/01 00:00:00', effectiveEnd:'2026/07/31 23:59:59', distributeType:'limited', source:'paid', ruleType:'single', customCode:'',            limitPerMember:1, limit:50, exchangeRule:'individual', memberListText:'member007001,member007002', participants:18,   usageStatus:{ unused:32, used:18, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'限 VIP5 以上',    rewardTokenType:'fixed', rewardTokens:150, rewardTokenTiers:[], rewardFreeSpinId:'', tokensPaid:2700, spinsPaid:0, spinWonTokens:0, creator:'admin',      createdAt:'2026/06/20 11:00:00', updatedAt:'2026/07/01 00:00:00' },
+                    { id:8,  orderId:'SN2026070008', name:'新會員見面禮序號',   status:'active',      effectiveStart:'2026/07/05 00:00:00', effectiveEnd:'2026/08/05 23:59:59', distributeType:'public',  source:'free', ruleType:'random', customCode:'RND-9Z8Y7X',            limitPerMember:1, limit:3000, exchangeRule:'unified', memberListText:'', participants:540,  usageStatus:{ unused:2460, used:540, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:true,  C:true}, en:{A:false, B:false, C:false}},  remark:'首次登入即可兌換', rewardTokenType:'fixed', rewardTokens:'', rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-009', tokensPaid:0, spinsPaid:8100, spinWonTokens:48600, creator:'operator01',  createdAt:'2026/06/25 10:00:00', updatedAt:'2026/07/05 00:00:00' },
+                    { id:9,  orderId:'SN2026070009', name:'儲值加碼序號',       status:'active',      effectiveStart:'2026/07/08 00:00:00', effectiveEnd:'2026/07/22 23:59:59', distributeType:'public',  source:'paid', ruleType:'custom', customCode:'DEPOSIT888',  limitPerMember:3, limit:1000, exchangeRule:'unified', memberListText:'', participants:412,  usageStatus:{ unused:588, used:412, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'random', rewardTokens:'', rewardTokenTiers:[{min:150,max:250,weight:25},{min:251,max:350,weight:20}], rewardFreeSpinId:'FS-2026-009', tokensPaid:103000, spinsPaid:6180, spinWonTokens:37080, creator:'admin',      createdAt:'2026/06/28 09:00:00', updatedAt:'2026/07/08 00:00:00' },
+                    { id:10, orderId:'SN2026070010', name:'鑽石會員專屬序號', status:'active',      effectiveStart:'2026/07/01 00:00:00', effectiveEnd:'2026/07/31 23:59:59', distributeType:'limited', source:'paid', ruleType:'single', customCode:'',            limitPerMember:1, limit:20, exchangeRule:'unified', memberListText:'member010001,member010002,member010003', participants:6,    usageStatus:{ unused:14, used:6, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:true,  C:false}, en:{A:false, B:false, C:false}}, remark:'限定鑽石等級名單', rewardTokenType:'random', rewardTokens:'', rewardTokenTiers:[{min:30,max:60,weight:30},{min:61,max:90,weight:20}], rewardFreeSpinId:'FS-2026-004', tokensPaid:360, spinsPaid:108, spinWonTokens:648, creator:'admin',      createdAt:'2026/06/22 14:00:00', updatedAt:'2026/07/01 00:00:00' },
+                    { id:11, orderId:'SN2026070011', name:'週末狂歡序號',       status:'active',      effectiveStart:'2026/07/09 00:00:00', effectiveEnd:'2026/07/12 23:59:59', distributeType:'public',  source:'free', ruleType:'random', customCode:'RND-Q4W5E6',            limitPerMember:1, limit:600, exchangeRule:'unified', memberListText:'', participants:120,  usageStatus:{ unused:480, used:120, expired:0, void:0, frozen:0 },  images:{zh:{A:false,B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'fixed', rewardTokens:100, rewardTokenTiers:[], rewardFreeSpinId:'', tokensPaid:12000, spinsPaid:0, spinWonTokens:0, creator:'operator02',  createdAt:'2026/07/01 09:00:00', updatedAt:'2026/07/09 00:00:00' },
+                    { id:12, orderId:'SN2026080012', name:'父親節感恩序號',     status:'not_started', effectiveStart:'2026/08/01 00:00:00', effectiveEnd:'2026/08/10 23:59:59', distributeType:'public',  source:'free', ruleType:'random', customCode:'RND-T7Y8U9',            limitPerMember:1, limit:1200, exchangeRule:'unified', memberListText:'', participants:0,    usageStatus:{ unused:0, used:0, expired:0, void:0, frozen:0 },  images:{zh:{A:false,B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'fixed', rewardTokens:'', rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-001', tokensPaid:0, spinsPaid:0, spinWonTokens:0, creator:'admin',      createdAt:'2026/07/06 10:00:00', updatedAt:'2026/07/06 10:00:00' },
+                    { id:13, orderId:'SN2026080013', name:'中元普渡祈福序號',   status:'not_started', effectiveStart:'2026/08/15 00:00:00', effectiveEnd:'2026/08/22 23:59:59', distributeType:'public',  source:'free', ruleType:'custom', customCode:'GHOST2026',   limitPerMember:4, limit:800, exchangeRule:'unified', memberListText:'', participants:0,    usageStatus:{ unused:0, used:0, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'random', rewardTokens:'', rewardTokenTiers:[{min:100,max:200,weight:20},{min:201,max:300,weight:10}], rewardFreeSpinId:'', tokensPaid:0, spinsPaid:0, spinWonTokens:0, creator:'operator01',  createdAt:'2026/07/05 15:00:00', updatedAt:'2026/07/05 15:00:00' },
+                    { id:14, orderId:'SN2026080014', name:'七夕情人序號',       status:'not_started', effectiveStart:'2026/08/17 00:00:00', effectiveEnd:'2026/08/19 23:59:59', distributeType:'limited', source:'paid', ruleType:'single', customCode:'',            limitPerMember:1, limit:200, exchangeRule:'individual', memberListText:'member014001,member014002', participants:0,    usageStatus:{ unused:0, used:0, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:true,  C:false}, en:{A:false, B:false, C:false}}, remark:'情侶雙人組限定',   rewardTokenType:'fixed', rewardTokens:'', rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-009', tokensPaid:0, spinsPaid:0, spinWonTokens:0, creator:'admin',      createdAt:'2026/07/04 11:00:00', updatedAt:'2026/07/04 11:00:00' },
+                    { id:15, orderId:'SN2026090015', name:'開學季回饋序號',     status:'not_started', effectiveStart:'2026/09/01 00:00:00', effectiveEnd:'2026/09/07 23:59:59', distributeType:'public',  source:'free', ruleType:'random', customCode:'RND-M1N2B3',            limitPerMember:1, limit:1500, exchangeRule:'unified', memberListText:'', participants:0,    usageStatus:{ unused:0, used:0, expired:0, void:0, frozen:0 },  images:{zh:{A:false,B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'fixed', rewardTokens:50, rewardTokenTiers:[], rewardFreeSpinId:'', tokensPaid:0, spinsPaid:0, spinWonTokens:0, creator:'admin',      createdAt:'2026/07/03 09:00:00', updatedAt:'2026/07/03 09:00:00' },
+                    { id:16, orderId:'SN2026090016', name:'中秋團圓序號',       status:'not_started', effectiveStart:'2026/09/20 00:00:00', effectiveEnd:'2026/09/27 23:59:59', distributeType:'public',  source:'free', ruleType:'custom', customCode:'MOON2026',    limitPerMember:1, limit:2000, exchangeRule:'unified', memberListText:'', participants:0,    usageStatus:{ unused:0, used:0, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:true,  C:true}, en:{A:false, B:false, C:false}},  remark:'中秋佳節活動序號', rewardTokenType:'fixed', rewardTokens:'', rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-004', tokensPaid:0, spinsPaid:0, spinWonTokens:0, creator:'operator02',  createdAt:'2026/07/02 10:00:00', updatedAt:'2026/07/02 10:00:00' },
+                    { id:17, orderId:'SN2026100017', name:'雙十國慶序號',       status:'not_started', effectiveStart:'2026/10/08 00:00:00', effectiveEnd:'2026/10/12 23:59:59', distributeType:'public',  source:'free', ruleType:'random', customCode:'RND-L4K5J6',            limitPerMember:2, limit:1000, exchangeRule:'unified', memberListText:'', participants:0,    usageStatus:{ unused:0, used:0, expired:0, void:0, frozen:0 },  images:{zh:{A:false,B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'random', rewardTokens:'', rewardTokenTiers:[{min:80,max:150,weight:25},{min:151,max:220,weight:15}], rewardFreeSpinId:'', tokensPaid:0, spinsPaid:0, spinWonTokens:0, creator:'admin',      createdAt:'2026/07/01 14:00:00', updatedAt:'2026/07/01 14:00:00' },
+                    { id:18, orderId:'SN2026110018', name:'萬聖狂歡序號',       status:'not_started', effectiveStart:'2026/10/29 00:00:00', effectiveEnd:'2026/11/02 23:59:59', distributeType:'public',  source:'free', ruleType:'single', customCode:'',            limitPerMember:1, limit:600, exchangeRule:'unified', memberListText:'', participants:0,    usageStatus:{ unused:0, used:0, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'fixed', rewardTokens:'', rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-001', tokensPaid:0, spinsPaid:0, spinWonTokens:0, creator:'operator01',  createdAt:'2026/06/30 09:00:00', updatedAt:'2026/06/30 09:00:00' },
+                    { id:19, orderId:'SN2025120019', name:'耶誕交換禮序號',     status:'expired',     effectiveStart:'2025/12/20 00:00:00', effectiveEnd:'2025/12/26 23:59:59', distributeType:'public',  source:'free', ruleType:'random', customCode:'RND-H7G8F9',            limitPerMember:1, limit:1800, exchangeRule:'unified', memberListText:'', participants:1590, usageStatus:{ unused:0, used:1590, expired:210, void:0, frozen:0 },  images:{zh:{A:true, B:true,  C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'fixed', rewardTokens:250, rewardTokenTiers:[], rewardFreeSpinId:'', tokensPaid:397500, spinsPaid:0, spinWonTokens:0, creator:'admin',      createdAt:'2025/12/10 10:00:00', updatedAt:'2025/12/26 23:59:59' },
+                    { id:20, orderId:'SN2026010020', name:'元旦跨年序號',       status:'expired',     effectiveStart:'2026/01/01 00:00:00', effectiveEnd:'2026/01/05 23:59:59', distributeType:'public',  source:'free', ruleType:'custom', customCode:'NEWYEAR26',   limitPerMember:1, limit:2200, exchangeRule:'unified', memberListText:'', participants:2050, usageStatus:{ unused:0, used:2050, expired:125, void:25, frozen:0 },  images:{zh:{A:true, B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'',                 rewardTokenType:'fixed', rewardTokens:'', rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-009', tokensPaid:0, spinsPaid:30750, spinWonTokens:184500, creator:'admin',      createdAt:'2025/12/25 09:00:00', updatedAt:'2026/01/05 23:59:59' },
+                    { id:21, orderId:'SN2026070021', name:'風控凍結測試序號', status:'active',      effectiveStart:'2026/07/01 00:00:00', effectiveEnd:'2026/07/31 23:59:59', distributeType:'limited', source:'paid', ruleType:'single', customCode:'',            limitPerMember:1, limit:100, exchangeRule:'individual', memberListText:'member021001,member021002,member021003', participants:40,   usageStatus:{ unused:35, used:40, expired:0, void:10, frozen:15 }, images:{zh:{A:false,B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'測試風控凍結名單', rewardTokenType:'random', rewardTokens:'', rewardTokenTiers:[{min:50,max:100,weight:20},{min:101,max:150,weight:10}], rewardFreeSpinId:'', tokensPaid:4000, spinsPaid:0, spinWonTokens:0, creator:'admin',      createdAt:'2026/06/26 10:00:00', updatedAt:'2026/07/02 00:00:00' },
+                    { id:22, orderId:'SN2026070022', name:'限量搶購序號',       status:'active',      effectiveStart:'2026/07/06 00:00:00', effectiveEnd:'2026/07/13 23:59:59', distributeType:'public',  source:'paid', ruleType:'random', customCode:'RND-D1S2A3',            limitPerMember:3, limit:500, exchangeRule:'unified', memberListText:'', participants:498,  usageStatus:{ unused:2, used:498, expired:0, void:0, frozen:0 },  images:{zh:{A:true, B:false, C:false}, en:{A:false, B:false, C:false}}, remark:'即將額滿',         rewardTokenType:'fixed', rewardTokens:'', rewardTokenTiers:[], rewardFreeSpinId:'FS-2026-004', tokensPaid:0, spinsPaid:8964, spinWonTokens:53784, creator:'operator02',  createdAt:'2026/06/29 09:00:00', updatedAt:'2026/07/06 00:00:00' }
+                ],
+
+                filteredList: [],
+
+                colStatus: {
+                    orderId: true, status: true, effectiveTime: true, distributeType: true, source: true, limit: true, ruleType: true, reward: true, totalReward: true,
+                    participants: true, usageStatus: true, usageRate: true, updatedAt: false, operator: false, relatedInfo: true, remark: false,
+                    exchangeRule: true
+                },
+                tempColStatus: {},
+                columnGroups: {
+                    info:    ['status', 'participants', 'usageStatus', 'usageRate', 'totalReward', 'updatedAt', 'operator'],
+                    basic:   ['orderId', 'effectiveTime', 'source', 'limit'],
+                    setting: ['ruleType', 'distributeType', 'exchangeRule', 'reward'],
+                    other:   ['relatedInfo', 'remark']
+                },
+
+                get totalColCount() { return 17; },
+                get selectedColCount() { return Object.values(this.tempColStatus).filter(Boolean).length; },
+                get totalPages() { return Math.max(1, Math.ceil(this.filteredList.length / this.pageSize)); },
+                get pagedList() {
+                    const start = (this.currentPage - 1) * this.pageSize;
+                    return this.filteredList.slice(start, start + this.pageSize);
+                },
+
+                init() {
+                    this.filteredList = [...this.list];
+                    this.$nextTick(() => this.initDatePickers());
+                    window.addEventListener('resize', () => { this.isMobile = window.innerWidth < 1024; });
+                },
+
+                initDatePickers() {
+                    const fp = { dateFormat: 'Y/m/d H:i', enableTime: true, time_24hr: true, locale: 'zh-tw' };
+                    ['timeStart', 'timeEnd', 'timeStartMobile', 'timeEndMobile'].forEach(ref => {
+                        if (this.$refs[ref]) flatpickr(this.$refs[ref], fp);
+                    });
+                },
+                initAdvancedDatePickers() {
+                    const fp = { dateFormat: 'Y/m/d H:i', enableTime: true, time_24hr: true, locale: 'zh-tw' };
+                    ['updatedStart', 'updatedEnd', 'updatedStartMobile', 'updatedEndMobile'].forEach(ref => {
+                        if (this.$refs[ref]) flatpickr(this.$refs[ref], fp);
+                    });
+                },
+                initFormDatePickers() {
+                    const fp = { dateFormat: 'Y/m/d H:i', enableTime: true, time_24hr: true, locale: 'zh-tw' };
+                    if (this.$refs.formStart) flatpickr(this.$refs.formStart, fp);
+                    if (this.$refs.formEnd) flatpickr(this.$refs.formEnd, fp);
+                },
+                generateRandomCode() {
+                    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                    let code = '';
+                    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+                    return code;
+                },
+                onRuleTypeChange() {
+                    this.form.customCode = this.form.ruleType === 'custom' ? '' : this.generateRandomCode();
+                },
+
+                statusLabel(s) { return { active: '進行中', not_started: '未開始', expired: '已逾期' }[s] || s; },
+                statusBadgeClass(s) {
+                    return {
+                        'bg-green-100 text-green-700': s === 'active',
+                        'bg-blue-100 text-blue-700':   s === 'not_started',
+                        'bg-red-100 text-red-600':     s === 'expired'
+                    };
+                },
+                distributeTypeLabel(t) { return t === 'public' ? '廣發' : '限定'; },
+                ruleTypeLabel(t) { return { custom: '自訂', random: '隨機', single: '單一' }[t] || t; },
+                ruleTypeBadgeClass(t) {
+                    return {
+                        'bg-indigo-50 text-indigo-700': t === 'custom',
+                        'bg-cyan-50 text-cyan-700':     t === 'random',
+                        'bg-pink-50 text-pink-700':     t === 'single'
+                    };
+                },
+                sourceLabel(t) { return t === 'paid' ? '有價' : '無償'; },
+                codeStatusLabel(s) { return { unused: '未用', used: '已用', expired: '過期', void: '作廢', frozen: '凍結' }[s] || s; },
+                codeStatusBadgeClass(s) {
+                    return {
+                        'bg-green-100 text-green-700':   s === 'unused',
+                        'bg-gray-100 text-gray-500':     s === 'used',
+                        'bg-red-100 text-red-600':       s === 'expired',
+                        'bg-indigo-100 text-indigo-600': s === 'void',
+                        'bg-amber-100 text-amber-700':   s === 'frozen'
+                    };
+                },
+                freeSpinLabel(id) {
+                    const fs = this.freeSpinOptions.find(f => f.id === id);
+                    return fs ? fs.name + ' - ' + fs.spinCount : '-';
+                },
+                usageRate(row) {
+                    if (!row || !row.limit) return '-';
+                    return ((row.participants / row.limit) * 100).toFixed(1) + '%';
+                },
+                tokenRewardLabel(f, prefix) {
+                    if (!f) return '-';
+                    if (f.rewardTokenType === 'random') {
+                        const tiers = f.rewardTokenTiers || [];
+                        if (!tiers.length) return '-';
+                        return (prefix || '') + tiers.map(t => '$' + Number(t.min || 0).toLocaleString() + '~' + Number(t.max || 0).toLocaleString() + '，' + (t.weight || 0) + '%').join('、');
+                    }
+                    return f.rewardTokens ? (prefix || '') + '$' + Number(f.rewardTokens).toLocaleString() : '-';
+                },
+                exchangeRuleLabel(t) { return t === 'individual' ? '單獨' : '統一'; },
+                memberListCount(row) {
+                    return (row.memberListText || '').split(',').map(s => s.trim()).filter(Boolean).length;
+                },
+                get rewardTierWeightTotal() {
+                    return (this.form.rewardTokenTiers || []).reduce((s, t) => s + (parseFloat(t.weight) || 0), 0);
+                },
+                addRewardTier() {
+                    if (!this.form.rewardTokenTiers) this.form.rewardTokenTiers = [];
+                    this.form.rewardTokenTiers.push({ min: '', max: '', weight: '' });
+                },
+                removeRewardTier(i) {
+                    this.form.rewardTokenTiers.splice(i, 1);
+                },
+
+                toggleAll() {
+                    this.selectedIds = (this.selectedIds.length === this.filteredList.length && this.filteredList.length > 0)
+                        ? [] : this.filteredList.map(r => r.id);
+                },
+                doSearch() {
+                    this.appliedSearch = { ...this.search };
+                    this._applyFilter();
+                    this.currentPage = 1;
+                },
+                _applyFilter() {
+                    const s = this.appliedSearch;
+                    this.filteredList = this.list.filter(r => {
+                        if (s.name && !r.name.toLowerCase().includes(s.name.toLowerCase())) return false;
+                        if (s.status && s.status.length && !s.status.includes(r.status)) return false;
+                        if (s.timeStart && r.effectiveEnd < s.timeStart) return false;
+                        if (s.timeEnd && r.effectiveStart > s.timeEnd) return false;
+                        if (s.distributeType && s.distributeType.length && !s.distributeType.includes(r.distributeType)) return false;
+                        if (s.orderId && !r.orderId.toLowerCase().includes(s.orderId.toLowerCase())) return false;
+                        if (s.source && r.source !== s.source) return false;
+                        if (s.rewardType === 'token' && !r.rewardTokens) return false;
+                        if (s.rewardType === 'freespin' && !r.rewardFreeSpinId) return false;
+                        if (s.limitMin !== '' && r.limit < parseInt(s.limitMin)) return false;
+                        if (s.limitMax !== '' && r.limit > parseInt(s.limitMax)) return false;
+                        if (s.exchangeRule && r.exchangeRule !== s.exchangeRule) return false;
+                        if (s.ruleType && r.ruleType !== s.ruleType) return false;
+                        if (s.serialCode && !(r.customCode || '').toLowerCase().includes(s.serialCode.toLowerCase())) return false;
+                        if (s.updatedStart && r.updatedAt < s.updatedStart) return false;
+                        if (s.updatedEnd && r.updatedAt > s.updatedEnd) return false;
+                        if (s.operator && !r.creator.toLowerCase().includes(s.operator.toLowerCase())) return false;
+                        return true;
+                    });
+                },
+
+                singleListCount(row) { return Math.min(row.limit || 0, 30); },
+                offsetDateTime(baseStr, hoursOffset) {
+                    const d = new Date(baseStr.replace(/\//g, '-'));
+                    d.setHours(d.getHours() + hoursOffset);
+                    const pad = n => String(n).padStart(2, '0');
+                    return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                },
+                generateCodeList(row) {
+                    const count = this.singleListCount(row);
+                    const states = ['unused', 'used', 'expired', 'void', 'frozen'];
+                    const tiers = row.rewardTokenTiers || [];
+                    const hasTokenReward = !!(row.rewardTokens || tiers.length);
+                    const hasSpinReward = !!row.rewardFreeSpinId;
+                    return Array.from({ length: count }, (_, i) => {
+                        const status = states[i % states.length];
+                        const tokenAmount = row.rewardTokenType === 'random'
+                            ? (() => {
+                                if (!tiers.length) return 0;
+                                const tier = tiers[i % tiers.length];
+                                const min = parseInt(tier.min) || 0, max = parseInt(tier.max) || min;
+                                return min + ((i * 37) % (max - min + 1 || 1));
+                              })()
+                            : (parseInt(row.rewardTokens) || 0);
+                        return {
+                            account: 'member' + String(row.id * 1000 + i + 1).padStart(6, '0'),
+                            code: row.orderId + '-' + String(i + 1).padStart(3, '0'),
+                            status,
+                            rewardTokens: hasTokenReward && i % 4 !== 3 ? tokenAmount : 0,
+                            rewardSpin: hasSpinReward && i % 3 !== 2,
+                            redeemedAt: status === 'unused' ? '' : this.offsetDateTime(row.effectiveStart, i * 5 + 1)
+                        };
+                    });
+                },
+                openSingleList(row) {
+                    this.currentSingleRow = row;
+                    this.singleListQuery = { searchType: '暱稱', searchText: '', code: '', rewardType: '', status: [] };
+                    this.singleListPage = 1;
+                    this.currentCodeListData = this.generateCodeList(row);
+                    this.singleListModalOpen = true;
+                },
+                get currentSingleCodeList() {
+                    return this.currentCodeListData;
+                },
+                get filteredSingleCodeList() {
+                    const q = this.singleListQuery;
+                    return this.currentSingleCodeList.filter(item => {
+                        if (q.searchText && !item.account.toLowerCase().includes(q.searchText.toLowerCase())) return false;
+                        if (q.code && !item.code.toLowerCase().includes(q.code.toLowerCase())) return false;
+                        if (q.rewardType === 'token' && !((item.rewardTokens || 0) > 0)) return false;
+                        if (q.rewardType === 'freespin' && !item.rewardSpin) return false;
+                        if (q.status.length && !q.status.includes(item.status)) return false;
+                        return true;
+                    });
+                },
+                doSingleListSearch() {
+                    this.singleListPage = 1;
+                },
+                get singleListTotalPages() {
+                    return Math.max(1, Math.ceil(this.filteredSingleCodeList.length / this.singleListPageSize));
+                },
+                get pagedSingleCodeList() {
+                    const start = (this.singleListPage - 1) * this.singleListPageSize;
+                    return this.filteredSingleCodeList.slice(start, start + this.singleListPageSize);
+                },
+                triggerFreeze(item) {
+                    this.freezeTarget = item;
+                    this.showFreezeConfirm = true;
+                },
+                confirmFreeze() {
+                    if (this.freezeTarget) this.freezeTarget.status = 'frozen';
+                    this.$dispatch('notify', `已凍結：${this.freezeTarget.code}`);
+                    this.showFreezeConfirm = false;
+                    this.freezeTarget = null;
+                },
+                openRedemption(item) {
+                    this.redemptionTarget = item;
+                    this.redemptionOpen = true;
+                },
+
+                isColGroupChecked(g) { return this.columnGroups[g].every(k => this.tempColStatus[k]); },
+                isColGroupIndeterminate(g) {
+                    const n = this.columnGroups[g].filter(k => this.tempColStatus[k]).length;
+                    return n > 0 && n < this.columnGroups[g].length;
+                },
+                toggleColGroup(g) {
+                    const checked = this.isColGroupChecked(g);
+                    this.columnGroups[g].forEach(k => this.tempColStatus[k] = !checked);
+                },
+                isAllColsChecked() { return this.selectedColCount === this.totalColCount; },
+                isAllColsIndeterminate() { return this.selectedColCount > 0 && this.selectedColCount < this.totalColCount; },
+                toggleAllCols() {
+                    const checked = this.isAllColsChecked();
+                    Object.keys(this.columnGroups).forEach(g => this.columnGroups[g].forEach(k => this.tempColStatus[k] = !checked));
+                },
+                openColumnModal() {
+                    this.tempColStatus = { ...this.colStatus };
+                    this.isColumnModalOpen = true;
+                },
+                confirmColumnModal() {
+                    if (!Object.values(this.tempColStatus).some(v => v)) {
+                        this.$dispatch('notify', { message: '至少選取 1 個項目' });
+                        return;
+                    }
+                    this.colStatus = { ...this.tempColStatus };
+                    this.isColumnModalOpen = false;
+                },
+
+                blankForm() {
+                    return {
+                        name: '', effectiveStart: '', effectiveEnd: '',
+                        distributeType: 'public',
+                        source: 'free',
+                        ruleType: 'custom', customCode: '',
+                        limitPerMember: '', limit: '',
+                        images: { zh: { A: false, B: false, C: false }, en: { A: false, B: false, C: false } },
+                        rewardTokenType: 'fixed', rewardTokens: '', rewardTokenTiers: [], rewardFreeSpinId: '',
+                        exchangeRule: 'unified', memberListText: '',
+                        remark: '',
+                        status: 'not_started', participants: 0,
+                        usageStatus: { unused: 0, used: 0, expired: 0, void: 0, frozen: 0 },
+                        creator: '', createdAt: '', updatedAt: ''
+                    };
+                },
+                openAdd() {
+                    this.form = this.blankForm();
+                    this.isAddMode = true;
+                    this.isEditMode = false;
+                    this.detailOpen = true;
+                    this.$nextTick(() => this.initFormDatePickers());
+                },
+                openDetail(row) {
+                    this.form = JSON.parse(JSON.stringify(row));
+                    this.isAddMode = false;
+                    this.isEditMode = false;
+                    this.detailOpen = true;
+                },
+                validateLimit() {
+                    this.form.limit = String(this.form.limit).replace(/[^0-9]/g, '');
+                    if (this.form.limit === '0') this.form.limit = '';
+                    this.form.limitPerMember = String(this.form.limitPerMember).replace(/[^0-9]/g, '');
+                    if (this.form.limitPerMember === '0') this.form.limitPerMember = '';
+                },
+                saveNew() {
+                    if (!this.form.name || !this.form.effectiveStart || !this.form.effectiveEnd || !this.form.limit) {
+                        this.$dispatch('notify', { message: '請填寫所有必填欄位' });
+                        return;
+                    }
+                    this.$dispatch('notify', '新增成功');
+                    this.detailOpen = false;
+                },
+                saveEdit() {
+                    this.$dispatch('notify', '更新成功');
+                    this.isEditMode = false;
+                },
+                copySerial() {
+                    const src = this.form;
+                    this.form = {
+                        ...this.blankForm(),
+                        name: src.name,
+                        effectiveStart: src.effectiveStart, effectiveEnd: src.effectiveEnd,
+                        distributeType: src.distributeType, source: src.source, ruleType: src.ruleType, customCode: src.customCode,
+                        limitPerMember: src.limitPerMember, limit: src.limit, remark: src.remark,
+                        images: { zh: { ...src.images.zh }, en: { ...src.images.en } },
+                        rewardTokenType: src.rewardTokenType, rewardTokens: src.rewardTokens,
+                        rewardTokenTiers: JSON.parse(JSON.stringify(src.rewardTokenTiers || [])),
+                        rewardFreeSpinId: src.rewardFreeSpinId,
+                        exchangeRule: src.exchangeRule, memberListText: src.memberListText
+                    };
+                    this.isAddMode = true;
+                    this.isEditMode = false;
+                    this.$dispatch('notify', '已複製設定，請確認後儲存');
+                    this.$nextTick(() => this.initFormDatePickers());
+                },
+                openSend(target) {
+                    this.form = target;
+                    this.sendMemberListText = '';
+                    this.sendModalOpen = true;
+                },
+                confirmSend() {
+                    const added = (this.sendMemberListText || '').split(',').map(s => s.trim()).filter(Boolean);
+                    if (added.length) {
+                        const existing = (this.form.memberListText || '').split(',').map(s => s.trim()).filter(Boolean);
+                        this.form.memberListText = [...existing, ...added].join(',');
+                    }
+                    this.$dispatch('notify', `已發放：${this.form.name}`);
+                    this.sendModalOpen = false;
+                },
+                triggerTakedown(row) {
+                    this.takedownTarget = row;
+                    this.showTakedownConfirm = true;
+                },
+                openUserDetail(name) {
+                    this.userDetailName = name;
+                    this.userDetailOpen = true;
+                },
+                confirmTakedown() {
+                    this.$dispatch('notify', `已下架：${this.takedownTarget.name}`);
+                    this.showTakedownConfirm = false;
+                    this.detailOpen = false;
+                }
+            };
+        }
+    </script>
+</body>
+</html>
