@@ -1,0 +1,238 @@
+/* ===== Base ===== */
+body { font-family: 'Microsoft JhengHei', sans-serif; }
+
+/* ===== Scrollbar ===== */
+.custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ===== Sidebar ===== */
+.active-indicator {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    width: 4px; height: 24px; background-color: #2088ea;
+    border-top-left-radius: 4px; border-bottom-left-radius: 4px;
+    opacity: 0; transition: opacity 0.2s; z-index: 20;
+}
+.menu-btn:hover .active-indicator { opacity: 1; }
+
+.sidebar-tooltip-content {
+    background-color: #111827; color: white;
+    font-size: 0.75rem; padding: 0.375rem 0.625rem;
+    border-radius: 0.375rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    white-space: nowrap; position: relative;
+}
+.sidebar-tooltip-content::before {
+    content: ''; position: absolute; top: 50%; right: 100%;
+    transform: translateY(-50%); border-width: 4px; border-style: solid;
+    border-color: transparent #111827 transparent transparent;
+}
+
+/* ===== Floating Input ===== */
+.floating-input-group { position: relative; }
+.floating-label {
+    position: absolute; top: -0.6rem; left: 0.75rem;
+    background-color: white; padding: 0 0.25rem;
+    font-size: 0.75rem; font-weight: 600; color: #6b7280;
+    line-height: 1; z-index: 10; pointer-events: none;
+}
+.floating-input {
+    width: 100%; border: 1px solid #e5e7eb; border-radius: 0.5rem;
+    padding: 0.6rem 0.75rem; font-size: 0.875rem; outline: none;
+    transition: border-color 0.2s; background-color: #f9fafb;
+    min-height: 42px; display: flex; align-items: center;
+}
+.floating-input:focus,
+.floating-input:focus-within { border-color: #2088ea; background-color: white; }
+.bg-input-base { background-color: #f9fafb; }
+
+/* ===== Table ===== */
+.sticky-left-0  { position: sticky; left: 0;    z-index: 35; background-color: #f9fafb !important; }
+.sticky-left-1  { position: sticky; left: 44px; z-index: 35; background-color: #f9fafb !important; }
+.sticky-right-0 { position: sticky; right: 0;   z-index: 35; background-color: #f9fafb !important; }
+tr:hover .sticky-left-0,
+tr:hover .sticky-left-1,
+tr:hover .sticky-right-0 { background-color: #eff6ff !important; }
+.sticky-header { position: sticky; top: 0; z-index: 10; }
+.cell-metric { display: block; line-height: 1.4; white-space: nowrap; }
+
+/* ===== Button Tip (hover label for icon buttons) ===== */
+.btn-tip {
+    position: absolute;
+    bottom: calc(100% + 5px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #374151;
+    color: white;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+}
+.group:hover .btn-tip { opacity: 1; }
+
+/* ===== Tooltip ===== */
+.tooltip { position: relative; }
+.tooltip:before {
+    content: attr(data-tip);
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    padding: 4px 8px; background-color: #374151; color: white;
+    font-size: 0.75rem; border-radius: 4px; white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    margin-bottom: 5px; z-index: 400;
+}
+.tooltip:hover:before { opacity: 1; }
+.tooltip-down:before { bottom: auto; top: 100%; margin-bottom: 0; margin-top: 5px; }
+.tooltip-bottom:before { bottom: auto; top: 100%; margin-bottom: 0; margin-top: 5px; }
+.tooltip-right:before { bottom: auto; top: 50%; left: 100%; transform: translateY(-50%); margin-bottom: 0; margin-left: 8px; }
+
+/* ===== Form Controls ===== */
+.radio-item    { accent-color: #2088ea; width: 16px; height: 16px; margin-right: 0.5rem; cursor: pointer; }
+.checkbox-item { accent-color: #2088ea; width: 18px; height: 18px; cursor: pointer; border-radius: 4px; }
+.compound-box  {
+    position: absolute; top: 105%; width: 340px;
+    background: white; border: 1px solid #e5e7eb; border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); z-index: 200; padding: 1.25rem;
+}
+@media (max-width: 1023px) {
+    .compound-box { width: calc(100vw - 2rem) !important; }
+}
+
+/* ===== Text ===== */
+.text-dashed-tip {
+    text-decoration: underline; text-decoration-style: dashed;
+    text-decoration-color: #9ca3af; text-underline-offset: 4px; cursor: help;
+}
+
+/* ===== Dashboard 3D Flip ===== */
+.perspective-1000    { perspective: 1000px; }
+.transform-style-3d  { transform-style: preserve-3d; }
+.backface-hidden     { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.rotate-y-180        { transform: rotateY(180deg); }
+
+/* ===== Custom Checkbox ===== */
+.checkbox-custom {
+    appearance: none; -webkit-appearance: none;
+    width: 16px; height: 16px; min-width: 16px;
+    border: 2px solid #d1d5db; border-radius: 4px;
+    cursor: pointer; position: relative; vertical-align: middle;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+.checkbox-custom:checked { background-color: #2088ea; border-color: #2088ea; }
+.checkbox-custom:checked::after {
+    content: ''; position: absolute; left: 3px; top: 0px;
+    width: 6px; height: 10px; border: 2px solid white;
+    border-top: none; border-left: none; transform: rotate(45deg);
+}
+.checkbox-custom:hover:not(:checked) { border-color: #2088ea; }
+
+/* ===== Icon Group Tooltip ===== */
+.icon-group { position: relative; display: inline-flex; }
+.icon-tip {
+    position: absolute; bottom: calc(100% + 4px); left: 50%;
+    transform: translateX(-50%); background: #374151; color: white;
+    font-size: 0.625rem; padding: 3px 8px; border-radius: 4px;
+    white-space: nowrap; pointer-events: none; opacity: 0;
+    transition: opacity 0.15s; z-index: 400;
+}
+.icon-group:hover .icon-tip { opacity: 1; }
+
+/* ===== Table Utilities ===== */
+.table-cell-nowrap { white-space: nowrap; }
+.sticky-col { position: sticky; left: 0; z-index: 5; box-shadow: 2px 0 4px -2px rgba(0,0,0,0.08); }
+thead .sticky-col { background-color: #f9fafb !important; }
+tr:hover .sticky-col { background-color: #eff6ff !important; }
+/* 展開子選單常與 Tailwind .relative 併用（定位連接線裝飾），.relative 同樣設定 position 會蓋掉 sticky，須提高優先度 */
+.sticky-col.relative { position: sticky; }
+/* 凍結欄位標題（同時凍結左方與上方）：z-index 需高於一般 sticky-header，避免被左右捲動經過的欄位標題覆蓋 */
+.sticky-col.sticky-header { z-index: 20; }
+
+/* ===== Commission: Token Detail Column Highlights ===== */
+.token-details-header { background-color: #dbeafe !important; }
+.token-details-content { background-color: #eff6ff !important; }
+.token-minus-details-header { background-color: #fee2e2 !important; }
+.token-minus-details-content { background-color: #fff1f2 !important; }
+.diff-highlight { background-color: #fef9c3 !important; }
+.col-highlight-primary { background-color: #eff6ff !important; }
+
+/* ===== Modal Buttons ===== */
+.btn-modal-secondary {
+    padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 700;
+    color: #374151; background: white; border: 1px solid #d1d5db;
+    border-radius: 0.375rem; cursor: pointer; transition: background-color 0.15s;
+}
+.btn-modal-secondary:hover { background-color: #f9fafb; }
+.btn-modal-primary {
+    padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 700;
+    color: white; background: #2088ea; border: none;
+    border-radius: 0.375rem; cursor: pointer; transition: background-color 0.15s;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+}
+.btn-modal-primary:hover { background-color: #1d78d4; }
+.btn-modal-danger {
+    padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 700;
+    color: white; background: #ef4444; border: none;
+    border-radius: 0.375rem; cursor: pointer; transition: background-color 0.15s;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+}
+.btn-modal-danger:hover { background-color: #dc2626; }
+
+/* ===== Modal Base ===== */
+.modal-backdrop {
+    position: fixed; inset: 0; z-index: 160;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+}
+.modal-content {
+    background: white; border-radius: 0.5rem;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    width: 100%; max-width: 720px; margin: 0 1rem; overflow: hidden;
+    display: flex; flex-direction: column; max-height: 90vh;
+}
+.modal-header {
+    padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb; flex-shrink: 0;
+}
+.modal-body {
+    overflow-y: auto; flex: 1; padding: 1.5rem;
+}
+.modal-footer {
+    padding: 1rem 1.5rem; border-top: 1px solid #e5e7eb;
+    background: #f9fafb; display: flex; justify-content: flex-end;
+    gap: 0.75rem; flex-shrink: 0;
+}
+
+/* ===== Popover Arrow ===== */
+.popover-arrow::before {
+    content: ''; position: absolute; top: -8px; right: 14px;
+    border-left: 8px solid transparent; border-right: 8px solid transparent;
+    border-bottom: 8px solid #fcd34d;
+}
+
+/* ===== Alpine.js ===== */
+[x-cloak] { display: none !important; }
+
+/* ===== Tag Input ===== */
+.tag-input-container { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 8px; background: #f9fafb; min-height: 42px; cursor: text; transition: border-color 0.2s; }
+.tag-input-container:focus-within { border-color: #2088ea; background: white; }
+.tag-item { display: inline-flex; align-items: center; gap: 4px; background: #dbeafe; color: #1d4ed8; border-radius: 4px; padding: 2px 8px; font-size: 0.75rem; font-weight: 600; }
+.tag-item button { color: #93c5fd; line-height: 1; cursor: pointer; }
+.tag-item button:hover { color: #dc2626; }
+.tag-input { flex: 1; min-width: 120px; outline: none; background: transparent; font-size: 0.875rem; border: none; }
+
+/* ===== Award Badges ===== */
+.badge-grand { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 10px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+.badge-major { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; padding: 2px 10px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+.badge-mini  { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 2px 10px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+
+/* ===== Step Wizard ===== */
+.step-line { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); height: 2px; background: #e5e7eb; z-index: 0; }
+.step-node { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.step-circle { width: 36px; height: 36px; border-radius: 50%; background: #e5e7eb; color: #9ca3af; font-weight: 700; font-size: 0.875rem; display: flex; align-items: center; justify-content: center; border: 2px solid #d1d5db; transition: all 0.2s; }
+.step-circle.active { background: #2088ea; color: white; border-color: #2088ea; box-shadow: 0 0 0 4px rgba(32,136,234,0.15); }

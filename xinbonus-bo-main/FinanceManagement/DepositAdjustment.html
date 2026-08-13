@@ -1,0 +1,657 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 系統存提紀錄</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Date Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#2088ea', hover: '#1a7acb' },
+                        dark: { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../_shared/styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden"
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()"
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full" x-data="depositAdjustmentPage()">
+
+        <div id="layout-header"></div>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-auto p-4 md:p-6 flex flex-col">
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+
+                <!-- Breadcrumb & Actions -->
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="text-gray-500">財務管理</span>
+                        <i class="ph ph-caret-right text-gray-300 text-xs"></i>
+                        <span class="font-semibold text-primary">系統存提紀錄</span>
+                    </nav>
+                    <div class="flex items-center gap-2">
+                        <!-- Add Button -->
+                        <button class="w-8 h-8 rounded-full bg-primary text-white hover:bg-blue-600 shadow-md active:scale-95 transition-all flex items-center justify-center tooltip" @click="openAdjustmentModal()" data-tip="新增">
+                            <i class="ph ph-plus text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Grid -->
+                <div class="lg:hidden flex-shrink-0">
+                    <div @click="searchOpen = true" class="bg-white border border-gray-200 rounded-lg shadow-sm p-3 flex items-center justify-between cursor-pointer active:bg-gray-50">
+                        <div class="flex items-center gap-2 text-gray-600 font-bold"><i class="ph ph-magnifying-glass text-lg"></i> 搜尋</div>
+                        <i class="ph ph-caret-right text-gray-400"></i>
+                    </div>
+                </div>
+
+                <!-- Search Container -->
+                <div :class="{
+                        'fixed inset-0 z-[150] bg-white flex flex-col': isMobile && searchOpen,
+                        'bg-white border border-gray-200 rounded-lg shadow-sm p-5 flex-shrink-0 lg:block': !isMobile || !searchOpen,
+                        'hidden': isMobile && !searchOpen
+                     }">
+
+                    <div class="lg:hidden px-4 py-3 border-b border-gray-100 flex justify-between items-center mb-4 flex-shrink-0" x-show="isMobile">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-lg text-gray-800">系統存提紀錄</span>
+                            <span class="text-gray-400 font-normal text-sm">搜尋</span>
+                        </div>
+                        <button @click="searchOpen = false" class="text-gray-500 hover:text-gray-700 p-1"><i class="ph ph-x text-2xl"></i></button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start lg:items-end px-4 lg:px-0 pt-4 lg:pt-0" :class="{'overflow-y-auto flex-1 pb-20': isMobile}">
+                        <div class="floating-input-group" >
+                            <label class="floating-label z-10" x-text="search.targetType === 'nickname' ? '暱稱' : '錢包帳號'"></label>
+                            <div class="flex relative">
+                                <button @click="search.targetType = search.targetType === 'nickname' ? 'wallet' : 'nickname'" class="flex items-center justify-center w-12 bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg hover:bg-gray-100 transition-colors" :title="search.targetType === 'nickname' ? '切換為錢包帳號' : '切換為暱稱'">
+                                    <i class="ph text-2xl text-gray-500" :class="search.targetType === 'nickname' ? 'ph-smiley' : 'ph-wallet'"></i>
+                                </button>
+                                <input type="text" x-model="search.targetValue" class="floating-input rounded-l-none bg-input-base focus:bg-white">
+                            </div>
+                        </div>
+
+                        <div class="floating-input-group" >
+                            <label class="floating-label">代幣</label>
+                            <div class="flex items-center gap-1"><input type="number" x-model="search.amountMin" class="floating-input bg-input-base focus:bg-white"><span class="text-gray-400">~</span><input type="number" x-model="search.amountMax" class="floating-input bg-input-base focus:bg-white"></div>
+                        </div>
+
+                        <div class="floating-input-group relative" x-data="{ open: false }" >
+                            <label class="floating-label">類型</label>
+                            <button @click="open = !open" @click.outside="open = false" class="floating-input bg-input-base focus:bg-white text-left flex items-center justify-between">
+                                <span class="truncate text-gray-700" x-text="search.type.length > 0 ? `已選 ${search.type.length} 項` : '全部'"></span>
+                                <i class="ph ph-caret-down text-gray-400"></i>
+                            </button>
+                            <div x-show="open" class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 shadow-lg rounded z-[60] p-2 max-h-48 overflow-y-auto">
+                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded"><input type="checkbox" class="checkbox-item" value="deposit" x-model="search.type"><span class="text-sm">存入 - 系統存入</span></label>
+                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded"><input type="checkbox" class="checkbox-item" value="withdraw" x-model="search.type"><span class="text-sm">提出 - 系統提出</span></label>
+                            </div>
+                        </div>
+
+                        <div class="floating-input-group" >
+                            <label class="floating-label">時間</label>
+                            <div class="hidden md:flex items-center">
+                                <input x-ref="dateStart" type="text" class="floating-input rounded-r-none border-r-0 text-center bg-input-base focus:bg-white">
+                                <div class="px-2 py-2.5 text-gray-400 text-xs">~</div>
+                                <input x-ref="dateEnd" type="text" class="floating-input rounded-l-none border-l-0 text-center bg-input-base focus:bg-white">
+                            </div>
+                            <div class="flex flex-col md:hidden w-full">
+                                <input x-ref="dateStartMobile" type="text" class="floating-input rounded-b-none border-b-0 text-center bg-input-base focus:bg-white w-full">
+                                <input x-ref="dateEndMobile" type="text" class="floating-input rounded-t-none text-center bg-input-base focus:bg-white w-full">
+                            </div>
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label">單號</label>
+                            <input type="text" x-model="search.id" class="floating-input bg-input-base focus:bg-white">
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label">調節</label>
+                            <select x-model="search.adjustment" class="floating-input bg-input-base focus:bg-white appearance-none">
+                                <option value=""></option>
+                                <option value="存入">存入</option>
+                                <option value="提出">提出</option>
+                            </select>
+                            <i class="ph ph-caret-down absolute right-3 top-3.5 text-gray-400 pointer-events-none"></i>
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label">操作者</label>
+                            <input type="text" x-model="search.operator" class="floating-input bg-input-base focus:bg-white">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between" :class="isMobile ? 'fixed bottom-4 left-0 right-0 px-4 bg-white pt-2 border-t border-gray-100 z-50' : 'mt-4 px-4 lg:px-0'">
+                        <button @click="advancedSearch = !advancedSearch" class="text-sm text-gray-500 hover:text-primary items-center gap-1 transition-colors hidden lg:flex">
+                            <span x-text="advancedSearch ? '隱藏條件' : '進階'"></span>
+                            <i class="ph" :class="advancedSearch ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </button>
+                        <button @click="searchData(); searchOpen = false" class="lg:w-10 lg:h-10 w-full h-11 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow transition-colors flex items-center justify-center gap-2">
+                            <span class="lg:hidden">搜尋</span><i class="ph ph-magnifying-glass text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 relative">
+                    <div class="bg-gray-100 p-3 border-b border-gray-200 flex-shrink-0 flex items-center justify-end text-gray-800">
+                         <div class="flex gap-8 items-center px-4 whitespace-nowrap overflow-x-auto no-scrollbar custom-scroll ml-auto">
+                             <div class="flex flex-col text-right"><span class="text-xs text-gray-500">筆數</span><span class="text-sm font-bold text-gray-800" x-text="records.length"></span></div>
+                             <div class="flex flex-col text-right"><span class="text-xs text-gray-500">人數</span><span class="text-sm font-bold text-gray-800" x-text="records.reduce((acc, r) => acc + r.accounts.length, 0)"></span></div>
+                             <div class="flex flex-col text-right"><span class="text-xs text-gray-500">差異</span><span class="text-sm font-bold" :class="records.reduce((sum, r) => sum + r.totalAmount, 0) < 0 ? 'text-red-600' : 'text-green-600'" x-text="(records.reduce((sum, r) => sum + r.totalAmount, 0) < 0 ? '-' : '') + '$' + Math.abs(records.reduce((sum, r) => sum + r.totalAmount, 0)).toLocaleString()"></span></div>
+                             <div class="flex flex-col text-right"><span class="text-xs text-gray-500">存入</span><span class="text-sm font-bold text-gray-800" x-text="'$' + records.filter(r => r.totalAmount > 0).reduce((sum, r) => sum + r.totalAmount, 0).toLocaleString()"></span></div>
+                             <div class="flex flex-col text-right"><span class="text-xs text-gray-500">提出</span><span class="text-sm font-bold text-gray-800" x-text="'-$' + Math.abs(records.filter(r => r.totalAmount < 0).reduce((sum, r) => sum + r.totalAmount, 0)).toLocaleString()"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-auto custom-scroll relative z-0 h-full p-0">
+                         <table class="w-full text-left border-collapse min-w-[1000px]">
+                            <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap">單號</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap">暱稱</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap">調節</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap">類型</th>
+                                    <th class="px-4 py-3 bg-gray-50 text-right table-cell-nowrap z-50 relative" x-data="{ show: false, top: 0, left: 0 }"
+                                        @mouseenter="show = true; const rect = $el.getBoundingClientRect(); top = rect.top - 30; left = rect.left + (rect.width/2) - 30;"
+                                        @mouseleave="show = false">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help">代幣</span>
+                                        <template x-teleport="body">
+                                            <div x-show="show" class="fixed z-[9999] px-2 py-1 text-xs text-white bg-gray-800 rounded shadow-lg pointer-events-none transition-opacity"
+                                                 :style="`top: ${top}px; left: ${left}px;`">
+                                                總計 / 單一
+                                            </div>
+                                        </template>
+                                    </th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap">時間</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap">操作者</th>
+                                    <th class="px-4 py-3 bg-gray-50 text-center table-cell-nowrap">其他</th>
+                                    <th class="px-4 py-3 bg-gray-50 text-center table-cell-nowrap">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-gray-600 divide-y divide-gray-100 bg-white">
+                                <template x-for="record in displayedRecords" :key="record.id">
+                                    <tr class="hover:bg-blue-50/50">
+                                        <td class="px-4 py-3 table-cell-nowrap">
+                                            <div class="flex items-center gap-2" x-data="{ copied: false }">
+                                                <span class="font-mono text-gray-500" x-text="record.id"></span>
+                                                <div class="relative">
+                                                    <button @click="navigator.clipboard.writeText(record.id); copied = true; setTimeout(() => copied = false, 2000)" class="text-gray-400 hover:text-primary transition-colors focus:outline-none">
+                                                        <i class="ph ph-copy"></i>
+                                                    </button>
+                                                    <div x-show="copied" x-transition.opacity.duration.300ms class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg whitespace-nowrap z-50 pointer-events-none">
+                                                        已複製
+                                                        <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap">
+                                            <template x-if="record.accounts.length === 1">
+                                                <a href="#" class="text-blue-600 hover:underline font-medium" x-text="record.accounts[0]"></a>
+                                            </template>
+                                            <template x-if="record.accounts.length > 1">
+                                                <button @click="openAccountModal(record)" class="text-blue-600 hover:underline font-bold flex items-center gap-1">
+                                                    <i class="ph-bold ph-users"></i>
+                                                    <span x-text="record.accounts.length + ' 人'"></span>
+                                                </button>
+                                            </template>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap">
+                                            <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                  :class="record.action === '存入' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                                                  x-text="record.action"></span>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-gray-700" x-text="record.typeString"></td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap">
+                                            <div class="flex flex-col items-end gap-0.5 font-mono">
+                                                <span class="font-bold text-sm" :class="record.action === '提出' ? 'text-red-600' : 'text-green-600'">
+                                                    <span x-show="record.action === '提出'">-</span>$<span x-text="Math.abs(record.totalAmount).toLocaleString()"></span>
+                                                </span>
+                                                <span class="text-xs text-gray-400 font-medium">
+                                                    / $<span x-text="record.unitAmount.toLocaleString()"></span>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-xs table-cell-nowrap">
+                                            <div class="font-mono text-gray-700" x-text="record.time"></div>
+                                            <div class="text-[11px] text-gray-400 mt-0.5" x-text="record.relativeTime"></div>
+                                        </td>
+                                        <td class="px-4 py-3 text-xs table-cell-nowrap">
+                                            <div class="flex items-center gap-1.5">
+                                                <template x-if="getOperatorInfo(record.operator).isSystem">
+                                                    <div class="flex items-center gap-1.5">
+                                                        <i class="ph-fill ph-robot text-gray-500 text-lg" title="系統自動"></i>
+                                                        <span class="text-gray-800 font-medium font-mono" x-text="getOperatorInfo(record.operator).account"></span>
+                                                    </div>
+                                                </template>
+                                                <template x-if="!getOperatorInfo(record.operator).isSystem">
+                                                    <div class="flex items-center gap-1.5">
+                                                        <i class="ph-fill ph-user-circle text-gray-400 text-lg"></i>
+                                                        <a href="#" class="text-blue-600 hover:underline font-medium font-mono" x-text="getOperatorInfo(record.operator).account"></a>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-center table-cell-nowrap">
+                                            <div class="tooltip" data-tip="交易紀錄">
+                                                <i class="ph ph-link cursor-pointer hover:text-primary text-lg text-gray-400"></i>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-center table-cell-nowrap">
+                                            <button @click="openDetailModal(record)" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors tooltip" data-tip="檢視">
+                                                <i class="ph ph-caret-right text-lg"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-4 border-t border-gray-200 flex flex-col md:flex-row items-end md:items-center justify-end gap-2 bg-white flex-shrink-0 sticky bottom-0 z-20">
+                        <div class="flex items-center gap-2 order-1 md:order-1">
+                             <div class="flex items-center gap-2 text-gray-400 mr-2">
+                                <button @click="changePage(1)" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-back text-sm"></i></button>
+                                <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-left text-sm"></i></button>
+                             </div>
+                             <div class="flex items-center gap-1">
+                                <template x-for="p in totalPages" :key="p">
+                                    <button @click="changePage(p)" class="w-8 h-8 rounded-full text-sm font-medium flex items-center justify-center transition-colors" :class="currentPage === p ? 'bg-primary text-white shadow-sm' : 'hover:bg-gray-100 text-gray-600'" x-text="p"></button>
+                                </template>
+                             </div>
+                             <div class="flex items-center gap-2 text-gray-400 ml-2">
+                                <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-right text-sm"></i></button>
+                                <button @click="changePage(totalPages)" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-forward text-sm"></i></button>
+                             </div>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-gray-500 mb-2 md:mb-0 md:pl-4 md:border-l border-gray-200 order-2 md:order-2">
+                            <span>每頁筆數：</span>
+                            <select x-model="pageSize" class="border border-gray-300 rounded px-2 py-1 outline-none text-gray-700 bg-white hover:border-gray-400">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                            <span class="ml-2" x-text="`${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, records.length)} 共 ${records.length}`"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deposit Adjustment Modal -->
+        <div x-show="isAdjustmentModalOpen" style="display: none;" class="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 overflow-hidden flex flex-col max-h-[90vh] relative" @click.outside="isAdjustmentModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 bg-white flex items-center gap-3">
+                    <h3 class="text-lg font-bold text-gray-800">系統存提</h3>
+                    <span class="text-sm text-gray-400 font-bold">新增</span>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scroll p-6 bg-gray-50 space-y-4">
+                    <div class="bg-white rounded border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                            <div class="flex items-center gap-2 font-bold text-gray-800"><i class="ph-fill ph-user-list text-gray-500"></i> 基本</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" x-collapse class="p-4 space-y-5">
+                            <div class="space-y-2">
+                                <label class="text-sm font-medium text-gray-500">調節</label>
+                                <div class="flex items-center gap-6">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="adjAction" value="increase" x-model="form.action" class="radio-item">
+                                        <span class="text-sm font-bold text-gray-700">存入</span>
+                                    </label>
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="adjAction" value="decrease" x-model="form.action" class="radio-item">
+                                        <span class="text-sm font-bold text-gray-700">提出</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="floating-input-group" x-data="{
+                                    input: '',
+                                    showDropdown: false,
+                                    suggestions: [],
+                                    allUsers: ['player123', 'test_user', 'vip_king', 'demo001', 'david_wang'],
+                                    addTag() {
+                                        if(this.input.trim() && !this.form.targets.includes(this.input.trim())) {
+                                            this.form.targets.push(this.input.trim());
+                                            this.input = '';
+                                            this.showDropdown = false;
+                                        }
+                                    },
+                                    removeTag(index) { this.form.targets.splice(index, 1); },
+                                    filterSuggestions() {
+                                        this.showDropdown = true;
+                                        this.suggestions = this.allUsers.filter(u => u.toLowerCase().includes(this.input.toLowerCase()) && !this.form.targets.includes(u));
+                                    },
+                                    selectSuggestion(val) {
+                                        this.input = val;
+                                        this.addTag();
+                                    }
+                                }">
+                                <label class="floating-label z-10" x-text="form.targetType === 'nickname' ? '暱稱' : '錢包帳號'"></label>
+                                <div class="flex relative">
+                                    <button @click="toggleTargetType" class="flex items-center justify-center w-12 bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg hover:bg-gray-100 transition-colors" :title="form.targetType === 'nickname' ? '切換為錢包帳號' : '切換為暱稱'">
+                                        <i class="ph text-2xl text-gray-500" :class="form.targetType === 'nickname' ? 'ph-smiley' : 'ph-wallet'"></i>
+                                    </button>
+                                    <div class="tag-input-container flex-1 rounded-l-none bg-input-base focus-within:bg-white" @click="$refs.tagInput.focus()">
+                                        <template x-for="(tag, index) in form.targets" :key="index">
+                                            <div class="tag-item">
+                                                <span x-text="tag"></span>
+                                                <button @click.stop="removeTag(index)" class="hover:text-red-600"><i class="ph-bold ph-x"></i></button>
+                                            </div>
+                                        </template>
+                                        <input x-ref="tagInput" type="text" class="tag-input"
+                                               x-model="input"
+                                               @input="filterSuggestions()"
+                                               @keydown.enter.prevent="addTag()"
+                                               @keydown.backspace="if(input === '' && form.targets.length > 0) removeTag(form.targets.length - 1)"
+                                               placeholder="">
+                                    </div>
+                                    <div x-show="showDropdown && input.length > 0" @click.outside="showDropdown = false" class="autocomplete-dropdown">
+                                        <template x-for="s in suggestions" :key="s">
+                                            <div class="autocomplete-item" @click="selectSuggestion(s)" x-text="s"></div>
+                                        </template>
+                                        <div x-show="suggestions.length === 0" class="p-2 text-xs text-gray-400">無相符結果</div>
+                                    </div>
+                                </div>
+                                <div x-show="form.targets.length > 0" class="text-xs text-gray-500 mt-1 px-1">
+                                    共 <span class="font-bold text-primary" x-text="form.targets.length"></span> 名
+                                </div>
+                            </div>
+
+                            <div class="floating-input-group relative">
+                                <label class="floating-label">類型</label>
+                                <button disabled class="floating-input bg-gray-100 border-gray-200 text-left flex items-center justify-between cursor-not-allowed text-gray-500">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-gray-500 font-medium" x-text="form.category || '請選擇類型'"></span>
+                                    </div>
+                                    <i class="ph ph-lock-key text-gray-400"></i>
+                                </button>
+                            </div>
+
+                            <div class="floating-input-group">
+                                <label class="floating-label">代幣</label>
+                                <input type="number" min="1" x-model="form.amount" @input="validateAmount" class="floating-input bg-input-base focus:bg-white" placeholder="針對單一暱稱">
+                                <div x-show="form.amount && form.targets.length > 0" class="text-xs text-gray-500 mt-1 px-1">
+                                    共 <span class="font-bold text-primary" x-text="'$ ' + (form.targets.length * parseInt(form.amount || 0)).toLocaleString()"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                            <div class="flex items-center gap-2 font-bold text-gray-800"><i class="ph-fill ph-list-dashes text-gray-500"></i> 其他</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" x-collapse class="p-4 space-y-4">
+                            <div class="floating-input-group">
+                                <label class="floating-label">用戶備註</label>
+                                <textarea x-model="form.userRemark" rows="3" class="w-full border border-gray-300 rounded p-3 text-sm outline-none focus:border-primary placeholder-gray-400 bg-input-base focus:bg-white transition-colors"></textarea>
+                            </div>
+                            <div class="floating-input-group">
+                                <label class="floating-label">後台備註</label>
+                                <textarea x-model="form.adminRemark" rows="3" class="w-full border border-gray-300 rounded p-3 text-sm outline-none focus:border-primary placeholder-gray-400 bg-input-base focus:bg-white transition-colors"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end gap-3">
+                    <button @click="isAdjustmentModalOpen = false" class="px-6 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">關閉</button>
+                    <button @click="submitAdjustment" class="px-6 py-2 bg-primary text-white rounded hover:bg-blue-600 shadow-md text-sm font-bold transition-all active:scale-95">確認</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nickname List Modal -->
+        <div x-show="isAccountModalOpen" style="display: none;" class="fixed inset-0 z-[160] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 overflow-hidden flex flex-col" @click.outside="isAccountModalOpen = false">
+                <div class="px-4 py-3 border-b border-gray-200 flex justify-start items-center gap-3 bg-gray-50">
+                    <h3 class="text-base font-bold text-gray-800">暱稱</h3>
+                    <span class="text-sm text-gray-400 font-mono" x-text="currentDetail?.id"></span>
+                </div>
+                <div class="p-4">
+                    <div class="mb-3 text-sm text-gray-500 font-bold">共 <span class="text-primary" x-text="currentAccounts.length"></span> 人</div>
+                    <div class="overflow-y-auto max-h-80 custom-scroll">
+                        <ul class="space-y-2">
+                            <template x-for="acc in currentAccounts" :key="acc">
+                                <li class="flex items-center justify-between p-2 bg-gray-50 rounded hover:bg-blue-50 cursor-pointer group">
+                                    <a href="#" class="font-medium text-blue-600 hover:underline" x-text="acc"></a>
+                                    <button class="text-gray-400 hover:text-primary group-hover:text-primary transition-colors"><i class="ph ph-copy"></i></button>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+                 <div class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex justify-end">
+                    <button @click="isAccountModalOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">關閉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Modal -->
+        <div x-show="isDetailModalOpen" style="display: none;" class="fixed inset-0 z-[160] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-xl mx-4 overflow-hidden flex flex-col" @click.outside="isDetailModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center gap-3 bg-gray-50 justify-start">
+                    <h3 class="text-lg font-bold text-gray-800">系統存提紀錄詳細</h3>
+                    <span class="text-sm text-gray-400 font-mono" x-text="currentDetail?.id"></span>
+                </div>
+                <div class="p-6 overflow-y-auto custom-scroll space-y-4">
+                     <div class="grid grid-cols-2 gap-y-5 gap-x-4 text-sm mb-6">
+                        <div class="col-span-2">
+                            <span class="text-gray-500 block text-xs mb-1" x-text="'暱稱 (共 ' + (currentDetail?.accounts?.length || 0) + ' 人)'"></span>
+                            <div class="text-sm break-all leading-6">
+                                <template x-for="(acc, index) in currentDetail?.accounts || []" :key="index">
+                                    <span>
+                                        <a href="#" class="text-blue-600 hover:underline font-medium" x-text="acc"></a>
+                                        <span x-show="index < (currentDetail?.accounts.length - 1)" class="text-gray-800 font-sans mr-1">,</span>
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="col-span-2 sm:col-span-1">
+                            <span class="text-gray-500 block text-xs mb-1">調節</span>
+                            <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                  :class="currentDetail?.action === '存入' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                                  x-text="currentDetail?.action"></span>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1"><span class="text-gray-500 block text-xs mb-1">類型</span><span class="text-gray-800 font-bold" x-text="currentDetail?.typeString"></span></div>
+
+                        <div class="col-span-2 sm:col-span-1">
+                            <span class="text-gray-500 text-xs mb-1 inline-block border-b border-dashed border-gray-400 cursor-help relative"
+                                  x-data="{ show: false, top: 0, left: 0 }"
+                                  @mouseenter="show = true; const rect = $el.getBoundingClientRect(); top = rect.top - 30; left = rect.left + (rect.width/2) - 30;"
+                                  @mouseleave="show = false">
+                                代幣
+                                <template x-teleport="body">
+                                     <div x-show="show" class="fixed z-[9999] px-2 py-1 text-xs text-white bg-gray-800 rounded shadow-lg pointer-events-none transition-opacity"
+                                          :style="`top: ${top}px; left: ${left}px;`">
+                                         總計 / 單一
+                                     </div>
+                                </template>
+                            </span>
+                            <div class="font-mono text-sm flex flex-col items-start mt-1">
+                                 <span :class="currentDetail?.action === '提出' ? 'text-red-600' : 'text-green-600'" class="font-bold">
+                                    <span x-show="currentDetail?.action === '提出'">-</span>$<span x-text="Math.abs(currentDetail?.totalAmount || 0).toLocaleString()"></span>
+                                 </span>
+                                 <span class="text-xs text-gray-400">
+                                     / $<span x-text="currentDetail?.unitAmount?.toLocaleString()"></span>
+                                 </span>
+                            </div>
+                        </div>
+
+                        <div class="col-span-2 sm:col-span-1"><span class="text-gray-500 block text-xs mb-1">時間</span><div><div class="font-mono text-gray-700" x-text="currentDetail?.time"></div><div class="text-[11px] text-gray-400 mt-0.5" x-text="currentDetail?.relativeTime"></div></div></div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <span class="text-gray-500 block text-xs mb-1">操作者</span>
+                            <div class="flex items-center gap-1.5">
+                                <template x-if="getOperatorInfo(currentDetail?.operator).isSystem">
+                                    <div class="flex items-center gap-1.5">
+                                        <i class="ph-fill ph-robot text-gray-500 text-lg" title="系統自動"></i>
+                                        <span class="text-gray-800 font-medium font-mono" x-text="getOperatorInfo(currentDetail?.operator || '').account"></span>
+                                    </div>
+                                </template>
+                                <template x-if="!getOperatorInfo(currentDetail?.operator).isSystem">
+                                    <div class="flex items-center gap-1.5">
+                                        <i class="ph-fill ph-user-circle text-gray-400 text-lg"></i>
+                                        <span class="text-blue-600 font-medium font-mono" x-text="getOperatorInfo(currentDetail?.operator || '').account"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <span class="text-gray-500 block text-xs mb-1">其他</span>
+                            <div class="flex items-center gap-3 text-gray-400">
+                                <div class="tooltip" data-tip="交易紀錄">
+                                    <i class="ph ph-link text-lg cursor-pointer hover:text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-gray-500 block text-xs mb-1">用戶備註</span>
+                            <div class="bg-gray-50 p-3 rounded text-sm min-h-[40px]"
+                                 :class="currentDetail?.userRemark ? 'text-gray-800' : 'text-gray-400'"
+                                 x-text="currentDetail?.userRemark || '(無)'"></div>
+                        </div>
+                        <div class="col-span-2">
+                            <span class="text-gray-500 block text-xs mb-1">後台備註</span>
+                            <div class="bg-gray-50 p-3 rounded text-sm min-h-[40px]"
+                                 :class="currentDetail?.adminRemark ? 'text-gray-800' : 'text-gray-400'"
+                                 x-text="currentDetail?.adminRemark || '(無)'"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+                    <button @click="isDetailModalOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">關閉</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = {
+            title:  '系統存提紀錄',
+            parent: '財務管理'
+        };
+    </script>
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+    <script>
+        function depositAdjustmentPage() {
+            return {
+                isAdjustmentModalOpen: false,
+                isTypeSelectorOpen: false,
+                isAccountModalOpen: false,
+                isDetailModalOpen: false,
+                searchOpen: false,
+                isMobile: window.innerWidth < 1024,
+                advancedSearch: false,
+                currentAccounts: [],
+                currentDetail: null,
+                search: { id: '', adjustment: '', type: [], targetType: 'nickname', targetValue: '', amountMin: '', amountMax: '', operator: '' },
+                form: { action: 'increase', targetType: 'nickname', targets: [], category: '系統存入', amount: '', userRemark: '', adminRemark: '' },
+                currentPage: 1,
+                pageSize: 10,
+                typeData: {
+                    increase: [{ name: '存入', items: ['系統存入'] }],
+                    decrease: [{ name: '提出', items: ['系統提出'] }]
+                },
+                records: [],
+                get currentTypeOptions() { return this.form.action === 'increase' ? this.typeData.increase : this.typeData.decrease; },
+                get totalPages() { return Math.ceil(this.records.length / this.pageSize); },
+                get displayedRecords() {
+                    const start = (this.currentPage - 1) * this.pageSize;
+                    return this.records.slice(start, start + parseInt(this.pageSize));
+                },
+                init() {
+                    window.addEventListener('resize', () => { this.isMobile = window.innerWidth < 1024; });
+                    this.$watch('form.action', (val) => {
+                         if (val === 'increase') this.form.category = '系統存入';
+                         else if (val === 'decrease') this.form.category = '系統提出';
+                    });
+                    const users = ['player123', 'test_user', 'vip_king', 'demo001', 'david_wang', 'apple_fan', 'google_user'];
+                    for(let i = 0; i < 25; i++) {
+                        const isIncrease = Math.random() > 0.4;
+                        const action = isIncrease ? '存入' : '提出';
+                        const type = isIncrease ? '系統存入' : '系統提出';
+                        const accountCount = Math.floor(Math.random() * 3) + 1;
+                        const accounts = [];
+                        for(let j=0; j<accountCount; j++) {
+                            let user = users[Math.floor(Math.random()*users.length)];
+                            if(!accounts.includes(user)) accounts.push(user);
+                        }
+                        if(accounts.length === 0) accounts.push(users[0]);
+                        const unitAmt = (Math.floor(Math.random() * 10) + 1) * 100;
+                        const totalAmt = unitAmt * accounts.length * (isIncrease ? 1 : -1);
+                        const randomId = '693' + Array.from({length: 21}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+                        this.records.push({
+                            id: randomId, action: action, typeString: action + ' - ' + type, accounts: accounts, unitAmount: unitAmt, totalAmount: totalAmt,
+                            time: `2025/12/${10 + i} 10:00:00`, relativeTime: `- ${i} 天前`,
+                            operator: Math.random() > 0.3 ? 'Admin (admin01)' : 'System',
+                            userRemark: i % 3 === 0 ? 'User remark example' : '', adminRemark: i % 2 === 0 ? 'Admin remark example' : ''
+                        });
+                    }
+                    flatpickr(this.$refs.dateStart, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: 'zh-tw' });
+                    flatpickr(this.$refs.dateEnd, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: 'zh-tw' });
+                    flatpickr(this.$refs.dateStartMobile, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: 'zh-tw' });
+                    flatpickr(this.$refs.dateEndMobile, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: 'zh-tw' });
+                    window.addEventListener('open-adjustment-modal', () => { this.openAdjustmentModal(); });
+                },
+                changePage(page) { if (page >= 1 && page <= this.totalPages) this.currentPage = page; },
+                openAdjustmentModal() { this.resetForm(); this.form.category = '系統存入'; this.isAdjustmentModalOpen = true; },
+                resetForm() { this.form = { action: 'increase', targetType: 'nickname', targets: [], category: '系統存入', amount: '', userRemark: '', adminRemark: '' }; this.isTypeSelectorOpen = false; },
+                toggleTargetType() { this.form.targetType = this.form.targetType === 'nickname' ? 'wallet' : 'nickname'; },
+                selectType(item) { this.form.category = item; },
+                validateAmount() { this.form.amount = this.form.amount.replace(/[^0-9]/g, ''); if(this.form.amount === '0') this.form.amount = ''; },
+                submitAdjustment() {
+                    if(this.form.targets.length === 0) { this.$dispatch('notify', '請輸入對象'); return; }
+                    if(!this.form.category) { this.$dispatch('notify', '請選擇類型'); return; }
+                    if(!this.form.amount) { this.$dispatch('notify', '請輸入代幣'); return; }
+                    this.$dispatch('notify', '調整申請已送出');
+                    this.isAdjustmentModalOpen = false;
+                },
+                openAccountModal(record) { this.currentDetail = record; this.currentAccounts = record.accounts; this.isAccountModalOpen = true; },
+                openDetailModal(record) { this.currentDetail = record; this.isDetailModalOpen = true; },
+                searchData() { this.currentPage = 1; },
+                getOperatorInfo(operatorStr) {
+                    if(!operatorStr) return { isSystem: false, account: '' };
+                    if(operatorStr === 'System') return { isSystem: true, account: 'System' };
+                    const match = operatorStr.match(/\(([^)]+)\)/);
+                    if(match) return { isSystem: false, account: match[1] };
+                    return { isSystem: false, account: operatorStr };
+                }
+            }
+        }
+    </script>
+</body>
+</html>

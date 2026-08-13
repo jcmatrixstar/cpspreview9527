@@ -1,0 +1,436 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 金流設定</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#2088ea', hover: '#1a7acb' },
+                        dark: { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="../_shared/styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden" 
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()" 
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <!-- Modals Container -->
+    <div x-data="paymentModalData()" 
+         @open-type-detail.window="openTypeDetail($event.detail)" 
+         @open-type-add.window="openTypeAdd()"
+         @open-pf-detail.window="openPfDetail($event.detail)"
+         @open-pf-add.window="openPfAdd()"
+         @open-pf-url.window="openPfUrl($event.detail)"
+         @open-pf-pm.window="openPfPm($event.detail)">
+        
+        <!-- 金流設定 - 類型彈窗 (詳細/新增/編輯) -->
+        <div x-show="type.isOpen" style="display: none;" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/30 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-[#f8fafc] rounded-lg shadow-2xl w-full max-w-5xl mx-4 overflow-hidden flex flex-col max-h-[92vh]" @click.outside="!type.isEditMode && !type.isAddMode && (type.isOpen = false)">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white flex-shrink-0">
+                    <h3 class="text-lg font-bold text-gray-700">金流設定 - 類型 <span class="text-gray-400 font-normal text-sm" x-text="type.isAddMode ? '新增' : (type.isEditMode ? '編輯' : type.form.name)"></span></h3>
+                </div>
+                <div class="overflow-y-auto custom-scroll flex-1 p-6 space-y-4">
+                    <template x-if="!type.isAddMode">
+                        <div class="bg-[#dfe3e8] border border-[#cbd5e1] rounded-lg p-5 grid grid-cols-2 gap-y-4 text-sm">
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">建立時間</p><div class="text-gray-700 font-medium">2025/11/13 10:42:25 - 2 個月前</div></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">最後異動時間</p><div class="text-gray-700 font-medium">2025/11/13 14:10:19 - 2 個月前</div></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">操作者</p><div class="text-gray-700 font-medium">(無)</div></div>
+                        </div>
+                    </template>
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm" x-data="{ open: true }">
+                        <div class="px-4 py-3 bg-white border-b border-gray-100 flex justify-between items-center font-bold text-gray-700 cursor-pointer select-none" @click="open = !open"><div><i class="ph-fill ph-notebook"></i> 一般</div><i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i></div>
+                        <div class="p-6 grid grid-cols-2 gap-x-12 gap-y-6" x-show="open">
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>排序</label><template x-if="type.isAddMode || type.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" x-model="type.form.order"></template><template x-if="!type.isAddMode && !type.isEditMode"><div class="text-sm font-medium" x-text="type.form.order"></div></template></div>
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>Key</label><template x-if="type.isAddMode || type.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" x-model="type.form.key"></template><template x-if="!type.isAddMode && !type.isEditMode"><div class="text-sm font-medium" x-text="type.form.key"></div></template></div>
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>名稱</label><template x-if="type.isAddMode || type.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" x-model="type.form.name"></template><template x-if="!type.isAddMode && !type.isEditMode"><div class="text-sm font-medium" x-text="type.form.name"></div></template></div>
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>狀態</label><template x-if="type.isAddMode || type.isEditMode"><select class="w-full border rounded p-2 text-sm bg-gray-50/50"><option>啟用</option><option>停用</option></select></template><template x-if="!type.isAddMode && !type.isEditMode">
+                                <span class="px-2 py-0.5 rounded text-xs font-bold" :class="type.form.status === '停用' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'" x-text="type.form.status || '啟用'"></span>
+                            </template></div>
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>分類</label><template x-if="type.isAddMode || type.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" x-model="type.form.category"></template><template x-if="!type.isAddMode && !type.isEditMode"><div class="text-sm font-medium" x-text="type.form.category"></div></template></div>
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>裝置</label><template x-if="type.isAddMode || type.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" value="1, 2"></template><template x-if="!type.isAddMode && !type.isEditMode"><div class="flex gap-2 text-gray-600"><i class="ph ph-desktop text-xl"></i><i class="ph ph-phone text-xl"></i><i class="ph ph-puzzle-piece text-xl text-gray-200"></i></div></template></div>
+                            <div class="col-span-2 space-y-4">
+                                <label class="text-xs font-bold text-gray-500">圖片</label>
+                                <div class="flex gap-4">
+                                    <div class="w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center bg-gray-50 cursor-pointer"><p class="text-[10px] font-bold text-gray-400 mb-2">A. 類型 Icon</p><i class="ph ph-plus-circle text-2xl text-gray-300"></i></div>
+                                    <div class="w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center bg-gray-50 cursor-pointer"><p class="text-[10px] font-bold text-gray-400 mb-2">B. (無)</p><i class="ph ph-plus-circle text-2xl text-gray-300"></i></div>
+                                    <div class="w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center bg-gray-50 cursor-pointer"><p class="text-[10px] font-bold text-gray-400 mb-2">C. (無)</p><i class="ph ph-plus-circle text-2xl text-gray-300"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 其他區塊 (PS_Type_Detail.jpg) -->
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm" x-data="{ open: true }">
+                        <div class="px-4 py-3 border-b border-gray-100 flex justify-between items-center font-bold text-gray-700 cursor-pointer select-none" @click="open = !open"><div><i class="ph-fill ph-note"></i> 其他</div><i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i></div>
+                        <div class="p-6" x-show="open">
+                            <label class="text-xs font-bold text-gray-500 block mb-2">備註</label>
+                            <template x-if="type.isAddMode || type.isEditMode"><textarea class="w-full border rounded p-4 text-sm bg-gray-50/50 min-h-[120px] outline-none focus:border-blue-500"></textarea></template>
+                            <template x-if="!type.isAddMode && !type.isEditMode"><div class="text-sm text-gray-700" x-text="type.form.remark || '(無)'"></div></template>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t bg-[#e2e8f0] flex justify-end gap-3 flex-shrink-0">
+                    <button @click="type.isOpen = false" class="px-8 py-2 bg-[#94a3b8] text-white rounded font-bold text-sm">關閉</button>
+                    <template x-if="!type.isAddMode && !type.isEditMode"><button @click="type.isEditMode = true" class="px-8 py-2 bg-[#f59e0b] text-white rounded font-bold text-sm">編輯</button></template>
+                    <template x-if="type.isAddMode || type.isEditMode"><button @click="type.isOpen = false; addToast('儲存成功')" class="px-8 py-2 bg-blue-500 text-white rounded font-bold text-sm">儲存</button></template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 金流設定 - 平台彈窗 (詳細/新增/編輯) -->
+        <div x-show="pf.isOpen" style="display: none;" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/30 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-[#f8fafc] rounded-lg shadow-2xl w-full max-w-[1200px] mx-4 overflow-hidden flex flex-col max-h-[95vh]" @click.outside="!pf.isEditMode && !pf.isAddMode && (pf.isOpen = false)">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white flex-shrink-0">
+                    <h3 class="text-lg font-bold text-gray-700">金流設定 - 平台 <span class="text-gray-400 font-normal text-sm" x-text="pf.isAddMode ? '新增' : (pf.isEditMode ? '編輯' : pf.form.name)"></span></h3>
+                </div>
+
+                <div class="overflow-y-auto custom-scroll flex-1 p-6 space-y-6">
+                    <!-- 新增模式 Step 控制 -->
+                    <template x-if="pf.isAddMode">
+                        <div class="bg-[#f1f5f9] px-24 py-10 border rounded shadow-inner mb-6">
+                            <div class="relative max-w-2xl mx-auto flex justify-between items-center">
+                                <div class="step-line"></div>
+                                <div class="step-node flex flex-col items-center gap-2"><div class="step-circle" :class="pf.step >= 1 ? 'active' : ''">1</div><span class="text-xs font-bold text-gray-700">一般</span></div>
+                                <div class="step-node flex flex-col items-center gap-2"><div class="step-circle" :class="pf.step >= 2 ? 'active' : ''">2</div><span class="text-xs font-bold text-gray-400">API URL</span></div>
+                                <div class="step-node flex flex-col items-center gap-2"><div class="step-circle" :class="pf.step >= 3 ? 'active' : ''">3</div><span class="text-xs font-bold text-gray-400">商戶資料</span></div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- 詳細模式 資訊盒 -->
+                    <template x-if="!pf.isAddMode">
+                        <div class="bg-[#dfe3e8] border border-[#cbd5e1] rounded-lg p-5 grid grid-cols-2 gap-y-4 text-sm">
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">建立時間</p><div class="text-gray-700 font-medium">2025/11/13 17:03:34 - 2 個月前</div></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">最後異動時間</p><div class="text-gray-700 font-medium">2026/02/03 09:58:14 - 6 天前</div></div>
+                            <div class="space-y-1"><p class="text-gray-500 font-medium">操作者</p><div class="text-gray-700 font-medium">yvonne</div></div>
+                        </div>
+                    </template>
+
+                    <!-- 基本 (Step 1) -->
+                    <div x-show="pf.step === 1" class="space-y-6">
+                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" x-data="{ open: true }">
+                            <div class="px-4 py-3 border-b bg-white font-bold text-gray-700 flex justify-between items-center cursor-pointer select-none" @click="open = !open"><span>基本</span><i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i></div>
+                            <div class="p-6 grid grid-cols-2 gap-x-12 gap-y-6" x-show="open">
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>Key</label><template x-if="pf.isAddMode || pf.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" x-model="pf.form.key"></template><template x-if="!pf.isAddMode && !pf.isEditMode"><div class="text-sm font-medium" x-text="pf.form.key"></div></template></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>名稱</label><template x-if="pf.isAddMode || pf.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" x-model="pf.form.name"></template><template x-if="!pf.isAddMode && !pf.isEditMode"><div class="text-sm font-medium" x-text="pf.form.name"></div></template></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>狀態</label><template x-if="pf.isAddMode || pf.isEditMode"><select class="w-full border rounded p-2 text-sm bg-gray-50/50"><option>啟用</option><option>停用</option></select></template><template x-if="!pf.isAddMode && !pf.isEditMode">
+                                    <span class="px-2 py-0.5 rounded text-xs font-bold" :class="pf.form.status === '停用' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'" x-text="pf.form.status || '啟用'"></span>
+                                </template></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>幣別</label><template x-if="pf.isAddMode || pf.isEditMode"><select class="w-full border rounded p-2 text-sm bg-gray-50/50"><option>TWD</option></select></template><template x-if="!pf.isAddMode && !pf.isEditMode"><div class="text-sm font-medium" x-text="pf.form.currency"></div></template></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500"><span class="text-red-500">*</span>回調</label><template x-if="pf.isAddMode || pf.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" value="https://lab-rr-portal.hnymmy.com"></template><template x-if="!pf.isAddMode && !pf.isEditMode"><div class="text-sm font-medium truncate" x-text="pf.form.callback"></div></template></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500 border-b border-dashed border-gray-400 inline-block cursor-help"><span class="text-red-500">*</span>有效分鐘數</label><template x-if="pf.isAddMode || pf.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" value="1440"></template><template x-if="!pf.isAddMode && !pf.isEditMode"><div class="text-sm font-medium">1,440</div></template></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500">單筆金額警示</label><template x-if="pf.isAddMode || pf.isEditMode"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" value="0"></template><template x-if="!pf.isAddMode && !pf.isEditMode"><div class="text-sm font-medium">0</div></template></div>
+                                <div class="space-y-2"><label class="text-xs font-bold text-gray-500 border-b border-dashed border-gray-400 inline-block cursor-help"><span class="text-red-500">*</span>白名單</label><template x-if="pf.isAddMode || pf.isEditMode"><textarea class="w-full border rounded p-2 text-sm bg-gray-50/50 min-h-[80px]">0.0.0.0&#10;34.84.57.242&#10;54.207.183.47&#10;112.121.66.12</textarea></template><template x-if="!pf.isAddMode && !pf.isEditMode"><div class="text-sm font-medium leading-relaxed font-mono">0.0.0.0<br>34.84.57.242<br>54.207.183.47<br>112.121.66.12</div></template></div>
+                                <div class="col-span-2 space-y-2"><label class="text-xs font-bold text-gray-500">維護時間</label><div class="flex items-center gap-3"><input type="text" class="border rounded p-2 text-sm bg-gray-50/50 w-48" value="2025/11/01 00:00:00" :disabled="!pf.isAddMode && !pf.isEditMode"><span class="text-gray-400">-</span><input type="text" class="border rounded p-2 text-sm bg-gray-50/50 w-48" value="2025/11/02 00:00:00" :disabled="!pf.isAddMode && !pf.isEditMode"></div></div>
+                                <div class="col-span-2 space-y-4"><label class="text-xs font-bold text-gray-500">圖片</label><div class="flex gap-4"><div class="bg-[#f1f5f9] border rounded-lg p-4 w-40 flex flex-col items-center"><p class="text-[10px] font-bold text-gray-400 mb-3 w-full">A. 平台 Logo</p><div class="w-24 h-20 border-2 border-dashed bg-white rounded flex flex-col items-center justify-center relative"><template x-if="!pf.isAddMode"><div class="flex flex-col items-center"><div class="bg-red-500 text-white font-black px-2 py-1 rounded text-xs">GASH</div><span class="absolute bottom-1 right-1 bg-gray-600 text-[8px] text-white px-1 rounded font-mono">jpeg</span></div></template><template x-if="pf.isAddMode"><i class="ph ph-image-plus text-2xl text-gray-300"></i></template></div></div></div></div>
+                            </div>
+                        </div>
+
+                        <!-- 通道 -->
+                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden" x-data="{ open: true }">
+                            <div class="px-4 py-3 border-b bg-white font-bold text-gray-700 flex justify-between items-center cursor-pointer select-none" @click="open = !open"><span class="header-dashed">通道</span><div class="flex items-center gap-4"><button x-show="pf.isAddMode || pf.isEditMode" class="text-blue-500" @click.stop><i class="ph-bold ph-plus-circle text-xl"></i></button><i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i></div></div>
+                            <div class="overflow-x-auto custom-scroll" x-show="open">
+                                <div class="bg-gray-50/50 px-6 py-2 border-b flex justify-end"><div class="text-right flex flex-col"><span class="text-[10px] text-gray-400 font-bold">筆數</span><span class="text-sm font-bold text-gray-600">13</span></div></div>
+                                <table class="w-full text-xs text-left min-w-[1600px]">
+                                    <thead class="bg-gray-50 text-gray-500 border-b">
+                                        <tr><th class="px-4 py-4"><span class="text-red-500">*</span>類型</th><th class="px-4 py-4">狀態</th><th class="px-4 py-4">禮包限用</th><th class="px-4 py-4">名稱</th><th class="px-4 py-4">副標</th><th class="px-4 py-4 header-dashed">代碼 (PAID)</th><th class="px-4 py-4 header-dashed">快速</th><th class="px-4 py-4"><span class="text-red-500">*</span>單筆限額</th><th class="px-4 py-4">推薦金額</th><th class="px-4 py-4">文案</th><th class="px-4 py-4">備註</th><th class="px-4 py-4 text-center">操作</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y text-gray-600">
+                                        <template x-for="i in (pf.isAddMode || pf.isEditMode ? 4 : 13)" :key="i">
+                                            <tr>
+                                                <td class="px-4 py-3"><template x-if="pf.isAddMode || pf.isEditMode"><select class="border rounded p-1"><option>玉山銀行 WebATM</option></select></template><template x-if="!pf.isAddMode && !pf.isEditMode"><span>ATM提款卡</span></template></td>
+                                                <td class="px-4 py-3"><template x-if="pf.isAddMode || pf.isEditMode"><select class="border rounded p-1"><option>啟用</option></select></template><template x-if="!pf.isAddMode && !pf.isEditMode"><span class="px-2 bg-green-100 text-green-600 font-bold rounded">啟用</span></template></td>
+                                                <td class="px-4 py-3 text-center"><label class="toggle-switch"><input type="checkbox" checked><span class="toggle-slider"></span></label></td>
+                                                <td class="px-4 py-3"><template x-if="pf.isAddMode || pf.isEditMode"><div class="flex items-center gap-1 border rounded p-1 bg-white"><img src="https://flagcdn.com/w20/tw.png" alt="TW" style="width:16px;height:auto;border-radius:2px"><input type="text" value="玉山銀行"></div></template><template x-if="!pf.isAddMode && !pf.isEditMode"><span class="flex items-center gap-1"><img src="https://flagcdn.com/w20/tw.png" alt="TW" style="width:16px;height:auto;border-radius:2px"> 玉山銀行</span></template></td>
+                                                <td class="px-4 py-3 text-gray-400">WebATM</td>
+                                                <td class="px-4 py-3 font-mono">BNK80801</td>
+                                                <td class="px-4 py-3">0</td>
+                                                <td class="px-4 py-3">30 ~ 30,000</td>
+                                                <td class="px-4 py-3"><div class="flex gap-1 flex-wrap"><span class="px-2 py-0.5 bg-blue-500 text-white rounded-full text-[10px]">300</span><span class="px-2 py-0.5 bg-blue-500 text-white rounded-full text-[10px]">500</span></div></td>
+                                                <td class="px-4 py-3">zh</td>
+                                                <td class="px-4 py-3 italic">玉山提款卡</td>
+                                                <td class="px-4 py-3 text-center text-red-400"><i class="ph ph-minus-circle text-xl"></i></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API URL (Step 2) -->
+                    <div x-show="pf.step === 2" class="space-y-6">
+                        <div class="bg-white border rounded-lg shadow-sm" x-data="{ open: true }">
+                            <div class="px-4 py-3 border-b font-bold text-gray-700 flex justify-between items-center cursor-pointer select-none" @click="open = !open"><span>API URL</span><i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i></div>
+                            <div class="p-6" x-show="open"><label class="text-xs font-bold text-gray-500 mb-2 block">Deposit</label><textarea class="w-full border rounded p-4 text-sm bg-gray-50/50 min-h-[100px] font-mono">https://stage-api.eg.gashplus.com/CP_Module/order.aspx</textarea></div>
+                        </div>
+                    </div>
+
+                    <!-- 商戶資料 (Step 3) -->
+                    <div x-show="pf.step === 3" class="space-y-6">
+                        <div class="bg-white border rounded-lg shadow-sm" x-data="{ open: true }">
+                            <div class="px-4 py-3 border-b font-bold text-gray-700 flex justify-between items-center cursor-pointer select-none" @click="open = !open"><span class="header-dashed">商戶資料</span><i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i></div>
+                            <div class="p-0" x-show="open">
+                                <div class="bg-gray-50/50 px-6 py-2 border-b flex justify-end"><div class="text-right flex flex-col"><span class="text-[10px] text-gray-400 font-bold">筆數</span><span class="text-sm font-bold text-gray-600">8</span></div></div>
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-50 border-b text-gray-500"><tr><th class="px-6 py-4 text-left">Key</th><th class="px-6 py-4 text-left header-dashed">名稱</th></tr></thead>
+                                    <tbody class="divide-y">
+                                        <template x-for="k in ['password','mid','risk','iv','key','productName','username','cid']" :key="k">
+                                            <tr><td class="px-6 py-4 font-mono text-gray-400 text-xs" x-text="k"></td><td class="px-6 py-4"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50" :placeholder="'輸入 ' + k"></td></tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 其他 (詳細/編輯) -->
+                    <div x-show="!pf.isAddMode || pf.step === 1" class="bg-white border rounded-lg shadow-sm" x-data="{ open: true }">
+                        <div class="px-4 py-3 border-b font-bold text-gray-700 flex justify-between items-center cursor-pointer select-none" @click="open = !open"><span>其他</span><i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i></div>
+                        <div class="p-6 space-y-4" x-show="open">
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500">文案</label><div class="flex items-center gap-2 border rounded p-2 bg-gray-50/50"><img src="https://flagcdn.com/w20/tw.png" alt="TW" style="width:16px;height:auto;border-radius:2px"><input type="text" class="w-full outline-none bg-transparent" placeholder="(無)"></div></div>
+                            <div class="space-y-2"><label class="text-xs font-bold text-gray-500">備註</label><textarea class="w-full border rounded p-4 text-sm bg-gray-50/50 min-h-[100px]" placeholder="(無)"></textarea></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t bg-[#e2e8f0] flex justify-end gap-3 flex-shrink-0">
+                    <button @click="pf.isOpen = false; pf.step = 1;" class="px-8 py-2 bg-[#94a3b8] text-white rounded font-bold text-sm">關閉</button>
+                    <template x-if="pf.isAddMode">
+                        <div class="flex gap-3">
+                            <button x-show="pf.step > 1" @click="pf.step--" class="px-8 py-2 border border-blue-500 text-blue-500 bg-white rounded font-bold text-sm">上一步</button>
+                            <button x-show="pf.step < 3" @click="pf.step++" class="px-8 py-2 bg-blue-500 text-white rounded font-bold text-sm">下一步</button>
+                            <button x-show="pf.step === 3" @click="pf.isOpen = false; addToast('新增成功')" class="px-8 py-2 bg-blue-500 text-white rounded font-bold text-sm">確認</button>
+                        </div>
+                    </template>
+                    <template x-if="!pf.isAddMode && !pf.isEditMode"><button @click="pf.isEditMode = true" class="px-8 py-2 bg-amber-500 text-white rounded font-bold text-sm">編輯</button></template>
+                    <template x-if="pf.isEditMode"><button @click="pf.isOpen = false; addToast('儲存成功')" class="px-8 py-2 bg-blue-500 text-white rounded font-bold text-sm">儲存</button></template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 子彈窗: API URL -->
+        <div x-show="pfUrl.isOpen" style="display: none;" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col">
+                <div class="px-6 py-4 border-b flex justify-between items-center font-bold text-gray-700"><span>金流設定 - 平台 <span class="text-xs text-gray-400 font-normal ml-1">API URL - GASH 樂點</span></span></div>
+                <div class="p-6"><div class="border rounded-lg overflow-hidden" x-data="{ open: true }"><div class="px-4 py-3 bg-gray-50 border-b font-bold text-gray-600 flex justify-between items-center cursor-pointer select-none" @click="open = !open"><span>API URL</span><i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i></div><div class="p-6" x-show="open"><p class="text-[10px] font-bold text-blue-500 mb-1 uppercase">Deposit</p>
+                    <template x-if="!pfUrl.isEdit"><div class="text-sm font-mono text-gray-700">https://stage-api.eg.gashplus.com/CP_Module/order.aspx</div></template>
+                    <template x-if="pfUrl.isEdit"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50 font-mono outline-none" value="https://stage-api.eg.gashplus.com/CP_Module/order.aspx"></template>
+                </div></div></div>
+                <div class="px-6 py-4 border-t bg-gray-100 flex justify-end gap-3">
+                    <button @click="pfUrl.isOpen = false; pfUrl.isEdit = false;" class="px-8 py-2 bg-[#94a3b8] text-white rounded font-bold text-sm">關閉</button>
+                    <template x-if="!pfUrl.isEdit"><button @click="pfUrl.isEdit = true" class="px-8 py-2 bg-amber-500 text-white rounded font-bold text-sm">編輯</button></template>
+                    <template x-if="pfUrl.isEdit"><button @click="pfUrl.isOpen = false; pfUrl.isEdit = false; addToast('儲存成功')" class="px-8 py-2 bg-blue-500 text-white rounded font-bold text-sm">儲存</button></template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 子彈窗: 商戶資料 -->
+        <div x-show="pfPm.isOpen" style="display: none;" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
+                <div class="px-6 py-4 border-b flex justify-between items-center font-bold text-gray-700"><span>金流設定 - 平台 <span class="text-xs text-gray-400 font-normal ml-1">商戶資料 - GASH 樂點</span></span></div>
+                <div class="p-6 overflow-y-auto custom-scroll">
+                    <div class="border rounded-lg overflow-hidden" x-data="{ open: true }"><div class="px-4 py-3 bg-gray-50 border-b font-bold text-gray-600 flex justify-between items-center cursor-pointer select-none" @click="open = !open"><span class="header-dashed">商戶資料</span><i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i></div>
+                    <div x-show="open">
+                    <div class="bg-gray-50/50 px-6 py-2 border-b flex justify-end"><div class="text-right flex flex-col"><span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">筆數</span><span class="text-sm font-bold text-gray-600">8</span></div></div>
+                    <table class="w-full text-sm text-left"><thead class="bg-gray-50 border-b text-gray-500"><tr><th class="px-6 py-4">Key</th><th class="px-6 py-4 header-dashed">名稱</th></tr></thead>
+                        <tbody class="divide-y">
+                            <template x-for="k in ['password','mid','risk','iv','key','productName','username','cid']" :key="k">
+                                <tr><td class="px-6 py-4 font-mono text-gray-400 text-xs" x-text="k"></td><td class="px-6 py-4"><template x-if="!pfPm.isEdit"><span class="text-gray-400">(無)</span></template><template x-if="pfPm.isEdit"><input type="text" class="w-full border rounded p-2 text-sm bg-gray-50/50"></template></td></tr>
+                            </template>
+                        </tbody>
+                    </table></div></div>
+                </div>
+                <div class="px-6 py-4 border-t bg-gray-100 flex justify-end gap-3">
+                    <button @click="pfPm.isOpen = false; pfPm.isEdit = false;" class="px-8 py-2 bg-[#94a3b8] text-white rounded font-bold text-sm">關閉</button>
+                    <template x-if="!pfPm.isEdit"><button @click="pfPm.isEdit = true" class="px-8 py-2 bg-amber-500 text-white rounded font-bold text-sm">編輯</button></template>
+                    <template x-if="pfPm.isEdit"><button @click="pfPm.isOpen = false; pfPm.isEdit = false; addToast('儲存成功')" class="px-8 py-2 bg-blue-500 text-white rounded font-bold text-sm">儲存</button></template>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full bg-[#f3f4f6]" x-data="paymentPage()">
+
+        <div id="layout-header"></div>
+
+        <div class="flex-1 overflow-auto p-4 md:p-6">
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+                
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="text-gray-500">儲值管理</span>
+                        <i class="ph ph-caret-right text-gray-300 text-xs"></i>
+                        <span class="font-semibold text-primary">金流設定</span>
+                    </nav>
+                    <div class="flex items-center gap-2">
+                        <div class="relative group" x-data="{ showHelp: false }">
+                            <button @click="showHelp = !showHelp" class="w-8 h-8 rounded-full bg-yellow-400 text-white hover:bg-yellow-500 flex items-center justify-center shadow-sm"><i class="ph-fill ph-lightbulb text-lg"></i></button>
+                            <div x-show="showHelp" @click.outside="showHelp = false" class="absolute right-0 top-full mt-2 w-80 p-5 bg-[#fff9db] shadow-xl rounded-lg z-[120] border border-yellow-200 text-xs text-yellow-900 leading-relaxed" x-cloak>
+                                <p class="font-bold mb-2 flex items-center gap-1"><i class="ph-fill ph-lightbulb"></i> 說明：</p>
+                                <ul class="list-disc pl-5 space-y-2"><li>[客端] 商城-通路：依據 「類型」 攤平顯示</li><li>[客端] 商城-限額 / 推薦金額：依據 「平台」 設定顯示</li><li>[客端] 商城-快速：依據 「平台」 設定顯示，不分平台上限僅可設定 3 筆</li></ul>
+                            </div>
+                        </div>
+                        <button @click="activeTab === 'type' ? $dispatch('open-type-add') : $dispatch('open-pf-add')" class="w-8 h-8 rounded-full bg-blue-500 text-white hover:bg-blue-600 flex items-center justify-center shadow-sm"><i class="ph-bold ph-plus text-lg"></i></button>
+                    </div>
+                </div>
+
+                <div class="flex gap-1 border-b border-gray-200 px-4 pt-2">
+                    <button @click="activeTab = 'type'" class="px-8 py-2.5 text-sm font-bold border-b-2 transition-all" :class="activeTab === 'type' ? 'border-primary text-primary bg-white rounded-t-md shadow-sm' : 'border-transparent text-gray-400 hover:text-gray-600'">類型</button>
+                    <button @click="activeTab = 'platform'" class="px-8 py-2.5 text-sm font-bold border-b-2 transition-all" :class="activeTab === 'platform' ? 'border-primary text-primary bg-white rounded-t-md shadow-sm' : 'border-transparent text-gray-400 hover:text-gray-600'">平台</button>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-b-lg shadow-sm flex flex-col flex-1 min-h-0">
+                    <!-- 類型列表 -->
+                    <template x-if="activeTab === 'type'">
+                        <div class="flex-1 overflow-auto custom-scroll">
+                            <table class="w-full text-left border-collapse min-w-[1200px]">
+                                <thead class="bg-gray-50 text-xs text-gray-500 font-bold border-b sticky top-0 z-10">
+                                    <tr><th class="px-6 py-4 w-16">排序</th><th class="px-6 py-4 w-24">Key</th><th class="px-6 py-4">名稱</th><th class="px-6 py-4 w-24">狀態</th><th class="px-6 py-4">圖片</th><th class="px-6 py-4 flex items-center gap-1">分類 <i class="ph ph-funnel text-gray-400 cursor-pointer hover:text-primary"></i></th><th class="px-6 py-4">裝置</th><th class="px-6 py-4">備註</th><th class="px-6 py-4 text-center sticky right-0 bg-gray-50 shadow-sm">操作</th></tr>
+                                </thead>
+                                <tbody class="text-sm text-gray-600 divide-y">
+                                    <template x-for="item in typeList" :key="item.key">
+                                        <tr class="hover:bg-blue-50/30 group">
+                                            <td class="px-6 py-4" x-text="item.order"></td>
+                                            <td class="px-6 py-4 font-mono text-xs" x-text="item.key"></td>
+                                            <td class="px-6 py-4 font-bold text-gray-700" x-text="item.name"></td>
+                                            <td class="px-6 py-4">
+                                                <span class="px-2 py-0.5 rounded font-bold" :class="item.status === '停用' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'" x-text="item.status"></span>
+                                            </td>
+                                            <td class="px-6 py-4"><div class="bg-gray-50 border rounded p-2 w-fit relative"><div class="text-[9px] font-bold text-gray-400 mb-1">A. 類型 Icon</div><div class="w-14 h-10 bg-white border border-gray-100 rounded flex items-center justify-center opacity-70"><i class="ph ph-bank text-xl"></i></div></div></td>
+                                            <td class="px-6 py-4" x-text="item.category"></td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex gap-2 text-xl" :class="item.allBlack ? 'text-gray-800' : 'text-gray-300'">
+                                                    <i class="ph ph-desktop" :class="!item.allBlack && item.device.pc ? 'text-gray-700' : ''"></i>
+                                                    <i class="ph ph-phone" :class="!item.allBlack && item.device.mobile ? 'text-gray-700' : ''"></i>
+                                                    <i class="ph ph-puzzle-piece" :class="!item.allBlack && item.device.ext ? 'text-gray-700' : ''"></i>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-gray-400 italic" x-text="item.remark"></td>
+                                            <td class="px-6 py-4 text-center sticky right-0 bg-white group-hover:bg-[#fbfcfe] shadow-sm">
+                                                <button @click="$dispatch('open-type-detail', item)" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors tooltip mx-auto" data-tip="檢視">
+                                                    <i class="ph ph-caret-right text-lg"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+
+                    <!-- 平台列表 -->
+                    <template x-if="activeTab === 'platform'">
+                        <div class="flex-1 overflow-auto custom-scroll">
+                            <table class="w-full text-left border-collapse min-w-[1300px]">
+                                <thead class="bg-gray-50 text-xs text-gray-500 font-bold border-b sticky top-0 z-10">
+                                    <tr><th class="px-6 py-4">Key</th><th class="px-6 py-4">名稱</th><th class="px-6 py-4 w-24">狀態</th><th class="px-6 py-4">幣別</th><th class="px-6 py-4">回調</th><th class="px-6 py-4">白名單</th><th class="px-6 py-4">圖片</th><th class="px-6 py-4"><span class="header-dashed">通道</span></th><th class="px-6 py-4 text-center sticky right-0 bg-gray-50 shadow-sm">操作</th></tr>
+                                </thead>
+                                <tbody class="text-sm divide-y">
+                                    <template x-for="pfItem in pfList" :key="pfItem.key">
+                                        <tr class="hover:bg-blue-50/30 group">
+                                            <td class="px-6 py-4 font-mono text-xs" x-text="pfItem.key"></td>
+                                            <td class="px-6 py-4 font-bold text-gray-700" x-text="pfItem.name"></td>
+                                            <td class="px-6 py-4">
+                                                <span class="px-2 py-0.5 rounded font-bold" :class="pfItem.status === '停用' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'" x-text="pfItem.status"></span>
+                                            </td>
+                                            <td class="px-6 py-4" x-text="pfItem.currency"></td>
+                                            <td class="px-6 py-4 truncate max-w-[150px] text-gray-400" x-text="pfItem.callback"></td>
+                                            <td class="px-6 py-4 text-[10px] text-gray-400 font-mono" x-text="pfItem.whitelist"></td>
+                                            <td class="px-6 py-4">
+                                                <div class="bg-gray-50 border rounded p-2 w-fit relative">
+                                                    <div class="text-[9px] font-bold text-gray-400 mb-1">A. 平台 Logo</div>
+                                                    <div class="w-16 h-12 flex items-center justify-center text-[10px] rounded text-white font-black" :class="pfItem.color || 'bg-blue-500'" x-text="pfItem.key.toUpperCase()"></div>
+                                                    <span class="absolute bottom-2 right-3 bg-gray-600 text-[8px] text-white px-1 leading-tight rounded-tl font-mono">jpeg</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <div class="flex flex-col gap-1.5">
+                                                    <div class="flex gap-1.5"><span class="w-5 h-5 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-[10px] font-bold" x-text="pfItem.channels.active"></span><span class="w-5 h-5 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-[10px] font-bold" x-text="pfItem.channels.disabled"></span><span class="w-5 h-5 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-[10px] font-bold">0</span><span class="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold">0</span></div>
+                                                    <div class="flex gap-1.5"><span class="w-5 h-5 rounded-full bg-green-50 text-green-400 flex items-center justify-center text-[10px] font-bold">7</span><span class="w-5 h-5 rounded-full bg-red-50 text-red-400 flex items-center justify-center text-[10px] font-bold">6</span></div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-center sticky right-0 bg-white group-hover:bg-[#fbfcfe] shadow-sm">
+                                                <div class="flex justify-center gap-3">
+                                                    <button @click="$dispatch('open-pf-detail', pfItem)" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors tooltip mx-auto" data-tip="檢視"><i class="ph ph-caret-right text-lg"></i></button>
+                                                    <div class="relative group/tip"><button @click="$dispatch('open-pf-url')" class="text-gray-400 hover:text-primary"><i class="ph ph-link text-2xl"></i></button><span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/tip:opacity-100 pointer-events-none whitespace-nowrap">API URL</span></div>
+                                                    <div class="relative group/tip"><button @click="$dispatch('open-pf-pm')" class="text-gray-400 hover:text-primary"><i class="ph ph-house text-2xl"></i></button><span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/tip:opacity-100 pointer-events-none whitespace-nowrap">商戶資料</span></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = {
+            title:  '金流設定',
+            parent: '儲值管理'
+        };
+    </script>
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+    <script>
+        function paymentModalData() {
+            return {
+                type: { isOpen: false, isAddMode: false, isEditMode: false, form: {} },
+                pf: { isOpen: false, isAddMode: false, isEditMode: false, step: 1, form: { name: 'GASH 樂點' } },
+                pfUrl: { isOpen: false, isEdit: false },
+                pfPm: { isOpen: false, isEdit: false },
+                openTypeDetail(item) { this.type = { isOpen: true, isAddMode: false, isEditMode: false, form: {...item} }; },
+                openTypeAdd() { this.type = { isOpen: true, isAddMode: true, isEditMode: false, form: { order: '17', status: '啟用' } }; },
+                openPfDetail(item) { this.pf = { isOpen: true, isAddMode: false, isEditMode: false, step: 1, form: item }; },
+                openPfAdd() { this.pf = { isOpen: true, isAddMode: true, isEditMode: false, step: 1, form: { name: '新增平台', status: '啟用', currency: 'TWD' } }; },
+                openPfUrl() { this.pfUrl.isOpen = true; this.pfUrl.isEdit = false; },
+                openPfPm() { this.pfPm.isOpen = true; this.pfPm.isEdit = false; }
+            }
+        }
+
+        function paymentPage() {
+            return {
+                activeTab: 'type',
+                typeList: [
+                    { key: 'atm',    order: 1, name: 'ATM',      status: '啟用', category: '銀行',   remark: '(無)', device: { pc: true,  mobile: true,  ext: false } },
+                    { key: 'cvs',    order: 2, name: '超商',     status: '啟用', category: '超商',   remark: '(無)', device: { pc: true,  mobile: true,  ext: false } },
+                    { key: 'credit', order: 3, name: '信用卡',   status: '啟用', category: '卡片',   remark: '(無)', device: { pc: true,  mobile: true,  ext: true  } },
+                    { key: 'gash',   order: 4, name: 'GASH 樂點',status: '啟用', category: '點數',   remark: '(無)', device: { pc: true,  mobile: false, ext: false } },
+                    { key: 'jko',    order: 5, name: '街口支付', status: '停用', category: '電子支付',remark: '(無)', device: { pc: false, mobile: true,  ext: false } },
+                    { key: 'line',   order: 6, name: 'LINE Pay', status: '啟用', category: '電子支付',remark: '(無)', device: { pc: false, mobile: true,  ext: false } },
+                ],
+                pfList: [
+                    { key: 'gash', name: 'GASH 樂點', status: '啟用', currency: 'TWD', callback: 'https://lab-rr-portal.hnymmy.com', whitelist: '0.0.0.0...', color: 'bg-red-500',    channels: { active: 8, disabled: 5 } },
+                    { key: 'esun', name: '玉山銀行',  status: '啟用', currency: 'TWD', callback: 'https://lab-rr-portal.hnymmy.com', whitelist: '34.84.57.242...', color: 'bg-green-600', channels: { active: 6, disabled: 3 } },
+                    { key: 'jko',  name: '街口支付', status: '停用', currency: 'TWD', callback: 'https://lab-rr-portal.hnymmy.com', whitelist: '54.207.183.47...', color: 'bg-orange-500', channels: { active: 4, disabled: 2 } },
+                    { key: 'line', name: 'LINE Pay', status: '啟用', currency: 'TWD', callback: 'https://lab-rr-portal.hnymmy.com', whitelist: '112.121.66.12...', color: 'bg-green-500', channels: { active: 3, disabled: 1 } },
+                ]
+            }
+        }
+    </script>
+</body>
+</html>

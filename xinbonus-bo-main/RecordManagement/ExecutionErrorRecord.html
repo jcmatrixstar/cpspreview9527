@@ -1,0 +1,1318 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 執行異常紀錄</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#2088ea', hover: '#1a7acb' },
+                        dark: { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../_shared/styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden"
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()"
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <div x-data="modalData()" @open-detail.window="openDetail($event.detail)" @open-edit.window="openEdit($event.detail)" @open-related-modal.window="openRelatedModal($event.detail)" @open-raw-modal.window="openRawModal($event.detail)" @open-freespin-modal.window="openFreeSpinModal($event.detail)">
+
+        <!-- 相關資訊 Modal: Z-Index 提升至 300，使其高於詳細頁(250) -->
+        <div x-show="relatedModalOpen" style="display: none;" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]" @click.outside="relatedModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center gap-3 bg-[#f8fafc] justify-start">
+                    <h3 class="text-lg font-bold text-gray-800">執行異常紀錄 - 相關資訊</h3>
+                    <span class="text-sm text-gray-400 font-mono break-all" x-text="currentRelatedData?.id"></span>
+                </div>
+                <div class="p-4 overflow-y-auto custom-scroll bg-[#f1f5f9]">
+                    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead class="bg-[#e2e8f0] text-gray-700 font-bold border-b border-gray-300">
+                                <tr>
+                                    <th class="px-4 py-3 w-1/3">名稱</th>
+                                    <th class="px-4 py-3">內容</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 bg-white">
+                                <!-- 1. 局號 -->
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-gray-600">局號</td>
+                                    <td class="px-4 py-3 break-all font-mono" :class="currentRelatedData?.relatedInfo?.roundId ? 'text-blue-500' : 'text-gray-500'">
+                                        <div class="flex items-center gap-2">
+                                            <span :class="currentRelatedData?.relatedInfo?.roundId ? 'cursor-pointer hover:underline' : ''"
+                                                  x-text="currentRelatedData?.relatedInfo?.roundId || '(無)'"
+                                                  @click="currentRelatedData?.relatedInfo?.roundId && $dispatch('notify', { message: '開啟押注紀錄-詳細' })"></span>
+                                            <template x-if="currentRelatedData?.relatedInfo?.roundId">
+                                                <i class="ph-bold ph-copy cursor-pointer text-gray-400 hover:text-primary transition-colors text-lg" @click="navigator.clipboard.writeText(currentRelatedData.relatedInfo.roundId); $dispatch('notify', { message: '已複製局號' })"></i>
+                                            </template>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 2. 功能單號 -->
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-gray-600">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-right" data-tip="不同功能紀錄相關單號">功能單號</span>
+                                    </td>
+                                    <td class="px-4 py-3 break-all font-mono" :class="currentRelatedData?.relatedInfo?.functionId ? 'text-blue-500' : 'text-gray-500'">
+                                        <div class="flex items-center gap-2">
+                                            <span :class="currentRelatedData?.relatedInfo?.functionId ? 'cursor-pointer hover:underline' : ''"
+                                                  x-text="currentRelatedData?.relatedInfo?.functionId || '(無)'"
+                                                  @click="currentRelatedData?.relatedInfo?.functionId && $dispatch('notify', { message: '開啟功能紀錄-詳細' })"></span>
+                                            <template x-if="currentRelatedData?.relatedInfo?.functionId">
+                                                <i class="ph-bold ph-copy cursor-pointer text-gray-400 hover:text-primary transition-colors text-lg" @click="navigator.clipboard.writeText(currentRelatedData.relatedInfo.functionId); $dispatch('notify', { message: '已複製功能單號' })"></i>
+                                            </template>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 3. 獎勵單號 -->
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-gray-600">獎勵單號</td>
+                                    <td class="px-4 py-3 break-all font-mono" :class="currentRelatedData?.relatedInfo?.rewardId ? 'text-blue-500' : 'text-gray-500'">
+                                        <div class="flex items-center gap-2">
+                                            <span :class="currentRelatedData?.relatedInfo?.rewardId ? 'cursor-pointer hover:underline' : ''"
+                                                  x-text="currentRelatedData?.relatedInfo?.rewardId || '(無)'"
+                                                  @click="currentRelatedData?.relatedInfo?.rewardId && $dispatch('notify', { message: '開啟獎勵紀錄-詳細' })"></span>
+                                            <template x-if="currentRelatedData?.relatedInfo?.rewardId">
+                                                <i class="ph-bold ph-copy cursor-pointer text-gray-400 hover:text-primary transition-colors text-lg" @click="navigator.clipboard.writeText(currentRelatedData.relatedInfo.rewardId); $dispatch('notify', { message: '已複製獎勵單號' })"></i>
+                                            </template>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 4. 交易單號 -->
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-gray-600">交易單號</td>
+                                    <td class="px-4 py-3 break-all font-mono" :class="currentRelatedData?.relatedInfo?.transactionId ? 'text-blue-500' : 'text-gray-500'">
+                                        <div class="flex items-center gap-2">
+                                            <span :class="currentRelatedData?.relatedInfo?.transactionId ? 'cursor-pointer hover:underline' : ''"
+                                                  x-text="currentRelatedData?.relatedInfo?.transactionId || '(無)'"
+                                                  @click="currentRelatedData?.relatedInfo?.transactionId && $dispatch('notify', { message: '開啟交易紀錄-詳細' })"></span>
+                                            <template x-if="currentRelatedData?.relatedInfo?.transactionId">
+                                                <i class="ph-bold ph-copy cursor-pointer text-gray-400 hover:text-primary transition-colors text-lg" @click="navigator.clipboard.writeText(currentRelatedData.relatedInfo.transactionId); $dispatch('notify', { message: '已複製交易單號' })"></i>
+                                            </template>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 5. 儲值單號 -->
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-gray-600">儲值單號</td>
+                                    <td class="px-4 py-3 break-all font-mono" :class="currentRelatedData?.relatedInfo?.depositId ? 'text-blue-500' : 'text-gray-500'">
+                                        <div class="flex items-center gap-2">
+                                            <span :class="currentRelatedData?.relatedInfo?.depositId ? 'cursor-pointer hover:underline' : ''"
+                                                  x-text="currentRelatedData?.relatedInfo?.depositId || '(無)'"
+                                                  @click="currentRelatedData?.relatedInfo?.depositId && $dispatch('notify', { message: '開啟儲值紀錄-詳細' })"></span>
+                                            <template x-if="currentRelatedData?.relatedInfo?.depositId">
+                                                <i class="ph-bold ph-copy cursor-pointer text-gray-400 hover:text-primary transition-colors text-lg" @click="navigator.clipboard.writeText(currentRelatedData.relatedInfo.depositId); $dispatch('notify', { message: '已複製儲值單號' })"></i>
+                                            </template>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- 6. 活動 -->
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-gray-600">活動</td>
+                                    <td class="px-4 py-3 break-all">
+                                        <template x-if="currentRelatedData?.relatedInfo?.activity">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-blue-500 cursor-pointer hover:underline font-mono"
+                                                      x-text="`${currentRelatedData.relatedInfo.activity.category} - ${currentRelatedData.relatedInfo.activity.type}：${currentRelatedData.relatedInfo.activity.name}`"
+                                                      @click="$dispatch('notify', { message: '開啟' + currentRelatedData.relatedInfo.activity.category + '-詳細' })"></span>
+                                                <i class="ph-bold ph-copy cursor-pointer text-gray-400 hover:text-primary transition-colors text-lg" @click="navigator.clipboard.writeText(currentRelatedData.relatedInfo.activity.orderId); $dispatch('notify', { message: '已複製活動單號' })"></i>
+                                            </div>
+                                        </template>
+                                        <template x-if="!currentRelatedData?.relatedInfo?.activity">
+                                            <span class="text-gray-500">(無)</span>
+                                        </template>
+                                    </td>
+                                </tr>
+                                <!-- 7. 序號 -->
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-gray-600">序號</td>
+                                    <td class="px-4 py-3 break-all">
+                                        <template x-if="currentRelatedData?.relatedInfo?.serialCode">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-blue-500 cursor-pointer hover:underline font-mono"
+                                                      x-text="currentRelatedData.relatedInfo.serialCode.name"
+                                                      @click="$dispatch('notify', { message: '開啟序號設定-詳細' })"></span>
+                                                <i class="ph-bold ph-copy cursor-pointer text-gray-400 hover:text-primary transition-colors text-lg" @click="navigator.clipboard.writeText(currentRelatedData.relatedInfo.serialCode.orderId); $dispatch('notify', { message: '已複製序號單號' })"></i>
+                                            </div>
+                                        </template>
+                                        <template x-if="!currentRelatedData?.relatedInfo?.serialCode">
+                                            <span class="text-gray-500">(無)</span>
+                                        </template>
+                                    </td>
+                                </tr>
+                                <!-- 8. 免費旋轉 -->
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-3 font-medium text-gray-600">免費旋轉</td>
+                                    <td class="px-4 py-3 break-all">
+                                        <template x-if="currentRelatedData?.relatedInfo?.freeSpin">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-blue-500 cursor-pointer hover:underline font-mono"
+                                                      x-text="`${currentRelatedData.relatedInfo.freeSpin.name}：${currentRelatedData.relatedInfo.freeSpin.orderId}`"
+                                                      @click="$dispatch('notify', { message: '開啟免費旋轉-詳細' })"></span>
+                                                <i class="ph-bold ph-copy cursor-pointer text-gray-400 hover:text-primary transition-colors text-lg" @click="navigator.clipboard.writeText(currentRelatedData.relatedInfo.freeSpin.orderId); $dispatch('notify', { message: '已複製免費旋轉單號' })"></i>
+                                            </div>
+                                        </template>
+                                        <template x-if="!currentRelatedData?.relatedInfo?.freeSpin">
+                                            <span class="text-gray-500">(無)</span>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-[#f8fafc] flex justify-end gap-3 rounded-b-lg">
+                    <button @click="relatedModalOpen = false" class="px-8 py-2 bg-[#9ca3af] text-white rounded hover:bg-[#6b7280] shadow-sm text-sm font-bold transition-colors">關閉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 免費旋轉 Modal: Z-Index 提升至 300，使其高於詳細頁(250) -->
+        <div x-show="freeSpinModalOpen" style="display: none;" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+             <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 overflow-hidden flex flex-col" @click.outside="freeSpinModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-baseline gap-3 bg-gray-50">
+                    <h3 class="text-lg font-bold text-gray-800">免費旋轉 - <span x-text="currentFreeSpin?.name"></span></h3>
+                </div>
+                <div class="p-6 overflow-y-auto custom-scroll">
+                    <div class="grid grid-cols-2 gap-y-5 gap-x-4 text-sm">
+                        <div>
+                            <span class="text-gray-500 block text-xs mb-1">設定名稱</span>
+                            <span class="font-bold text-gray-800" x-text="currentFreeSpin?.name"></span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 block text-xs mb-1">設定單號</span>
+                            <span class="font-mono text-gray-700" x-text="currentFreeSpin?.orderId"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+                    <button @click="freeSpinModalOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">關閉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 原始資料 Modal: Z-Index 提升至 300，使其高於詳細頁(250) -->
+        <div x-show="rawModalOpen" style="display: none;" class="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+             <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 overflow-hidden flex flex-col max-h-[90vh]" @click.outside="rawModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
+                    <div class="flex items-baseline gap-3">
+                        <h3 class="text-lg font-bold text-gray-800">執行異常紀錄 - 原始資料</h3>
+                        <span class="text-sm text-gray-400 font-mono" x-text="currentRawData?.recordId"></span>
+                    </div>
+                </div>
+                <div class="overflow-y-auto custom-scroll flex-1">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                            <tr>
+                                <th class="px-4 py-3 w-1/4 table-cell-nowrap">操作</th>
+                                <th class="px-4 py-3 w-1/2 table-cell-nowrap">時間</th>
+                                <th class="px-4 py-3 w-1/4 table-cell-nowrap">回應</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-gray-600 divide-y divide-gray-100">
+                            <template x-for="(raw, idx) in currentRawData?.logs" :key="idx">
+                                <tr class="hover:bg-blue-50/50 transition-colors">
+                                    <td class="px-4 py-3" x-text="raw.action"></td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-mono text-gray-700" x-text="raw.time"></div>
+                                        <div class="text-[11px] text-gray-400 mt-0.5" x-text="raw.timeRelative"></div>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs text-red-500 font-mono" x-text="raw.response"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end flex-shrink-0">
+                    <button @click="rawModalOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">關閉</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 詳細 Modal: 維持 Z-Index 250 -->
+        <div x-show="detailOpen" style="display: none;" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]" @click.outside="!relatedModalOpen && !rawModalOpen && !freeSpinModalOpen && (detailOpen = false)">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
+                    <div class="flex items-baseline gap-3">
+                        <h3 class="text-lg font-bold text-gray-800">執行異常紀錄詳細</h3>
+                        <span class="text-sm text-gray-400 font-mono" x-text="currentRecord?.id"></span>
+                    </div>
+                </div>
+                <div class="p-6 overflow-y-auto custom-scroll bg-gray-50 space-y-4 flex-1">
+
+                    <!-- 一般 -->
+                    <div class="bg-white rounded border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                            <div class="flex items-center gap-2 font-bold text-gray-800"><i class="ph-fill ph-identification-badge text-gray-500"></i> 一般</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" x-collapse class="p-4">
+                            <div class="grid grid-cols-2 gap-y-4 gap-x-4 text-sm">
+                                <div>
+                                    <span class="text-gray-500 block text-xs mb-1">單號</span>
+                                    <div class="flex items-center gap-2" x-data="{ copied: false }">
+                                        <span class="font-mono font-bold text-gray-700" x-text="currentRecord?.id"></span>
+                                        <div class="relative">
+                                            <button @click="navigator.clipboard.writeText(currentRecord?.id); copied = true; setTimeout(() => copied = false, 2000)" class="text-gray-400 hover:text-primary transition-colors focus:outline-none">
+                                                <i class="ph-bold ph-copy text-sm"></i>
+                                            </button>
+                                            <div x-show="copied" x-transition.opacity.duration.300ms class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg whitespace-nowrap z-50 pointer-events-none">
+                                                已複製<div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div><span class="text-gray-500 block text-xs mb-1">暱稱</span><span class="text-primary font-medium" x-text="currentRecord?.nickname"></span></div>
+                                <div><span class="text-gray-500 block text-xs mb-1">VIP 階級</span><span class="px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600 font-bold border border-gray-200" x-text="currentRecord?.vip"></span></div>
+                                <div><span class="text-gray-500 block text-xs mb-1">狀態</span>
+                                     <div class="flex items-center gap-1">
+                                        <span class="px-2 py-0.5 rounded text-xs"
+                                              :class="{
+                                                  'bg-yellow-100 text-yellow-700': currentRecord?.status.includes('處理中'),
+                                                  'bg-red-100 text-red-700': currentRecord?.status.includes('失敗'),
+                                                  'bg-green-100 text-green-700': currentRecord?.status.includes('成功'),
+                                                  'bg-gray-100 text-gray-700': currentRecord?.status.includes('取消'),
+                                                  'bg-blue-100 text-blue-700': currentRecord?.status.includes('待處理')
+                                              }"
+                                              x-text="currentRecord?.status"></span>
+                                        <div class="tooltip" data-tip="重試次數">
+                                            <span class="w-5 h-5 rounded-full bg-slate-500 text-white flex items-center justify-center text-[10px] font-bold" x-text="currentRecord?.statusCode"></span>
+                                        </div>
+                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 基本 -->
+                    <div class="bg-white rounded border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                            <div class="flex items-center gap-2 font-bold text-gray-800"><i class="ph-fill ph-list-bullets text-gray-500"></i> 基本</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" x-collapse class="p-4">
+                            <div class="grid grid-cols-2 gap-y-4 gap-x-4 text-sm">
+                                <div><span class="text-gray-500 block text-xs mb-1">類型</span><span class="font-bold text-gray-700" x-text="currentRecord?.type"></span></div>
+                                <div><span class="text-gray-500 block text-xs mb-1">API 動作</span><span x-text="currentRecord?.apiAction"></span></div>
+                                <div><span class="text-gray-500 block text-xs mb-1">代幣</span><span class="font-bold font-mono" :class="currentRecord?.token > 0 ? 'text-gray-800' : 'text-red-600'" x-text="currentRecord?.tokenStr"></span></div>
+                                <div><span class="text-gray-500 block text-xs mb-1">呆帳</span><span class="font-bold font-mono" :class="currentRecord?.badDebt > 0 ? 'text-amber-600' : currentRecord?.badDebt < 0 ? 'text-blue-600' : 'text-gray-800'" x-text="currentRecord?.badDebtStr"></span></div>
+                                <div>
+                                    <span class="text-gray-500 block text-xs mb-1">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="設定名稱 / 設定單號">免費旋轉</span>
+                                    </span>
+                                    <template x-if="currentRecord?.freeSpin">
+                                        <div class="flex flex-col gap-0.5">
+                                            <button @click="$dispatch('open-freespin-modal', currentRecord.freeSpin)" class="font-medium text-blue-600 hover:underline text-left" x-text="currentRecord.freeSpin.name"></button>
+                                            <span class="text-[11px] text-gray-400 font-mono" x-text="currentRecord.freeSpin.orderId"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="!currentRecord?.freeSpin">
+                                        <span class="text-gray-400">(無)</span>
+                                    </template>
+                                </div>
+                                <div><span class="text-gray-500 block text-xs mb-1">交易時間</span><div class="font-mono text-gray-700" x-text="currentRecord?.transTime"></div></div>
+                                <div><span class="text-gray-500 block text-xs mb-1">最後更新時間</span><div class="font-mono text-gray-700" x-text="currentRecord?.lastUpdate"></div></div>
+                                <div><span class="text-gray-500 block text-xs mb-1">操作者</span><span class="text-blue-600" x-text="currentRecord?.operator"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 其他 -->
+                    <div class="bg-white rounded border border-gray-200 shadow-sm overflow-hidden" x-data="{ open: true }">
+                        <div @click="open = !open" class="px-4 py-3 bg-white flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                            <div class="flex items-center gap-2 font-bold text-gray-800"><i class="ph-fill ph-dots-three-circle text-gray-500"></i> 其他</div>
+                            <i class="ph ph-caret-down text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''"></i>
+                        </div>
+                        <div x-show="open" x-collapse class="p-4 space-y-4">
+                            <div class="flex items-center gap-3 text-gray-400">
+                                <div class="tooltip" data-tip="警示"><i class="ph-fill ph-warning text-lg cursor-pointer transition-colors" :class="currentRecord?.warningType === 'yellow' ? 'text-yellow-500 hover:text-yellow-600' : 'text-gray-300 hover:text-gray-500'"></i></div>
+                                <div class="tooltip" data-tip="相關資訊"><i @click="$dispatch('open-related-modal', currentRecord)" class="ph-fill ph-arrow-square-out text-lg cursor-pointer hover:text-primary"></i></div>
+                                <div class="tooltip" data-tip="原始資料"><i @click="$dispatch('open-raw-modal', currentRecord)" class="ph ph-file-text text-lg cursor-pointer hover:text-primary transition-colors"></i></div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-2">備註</label>
+                                <div class="bg-gray-50 p-3 rounded text-sm min-h-[60px] text-gray-400">(無)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end flex-shrink-0"><button @click="detailOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">關閉</button></div>
+            </div>
+        </div>
+
+        <div x-show="editModalOpen" style="display: none;" class="fixed inset-0 z-[250] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+             <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden flex flex-col" @click.outside="editModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                    <div class="flex items-baseline gap-3"><h3 class="text-lg font-bold text-gray-800">執行異常紀錄狀態更新</h3><span class="text-sm text-gray-400 font-mono" x-text="editForm.id"></span></div>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">狀態</label>
+                        <select x-model="editForm.status" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-primary">
+                            <option value="待處理">待處理</option>
+                            <option value="處理中">處理中</option>
+                            <option value="成功">成功</option>
+                            <option value="失敗">失敗</option>
+                            <option value="取消">取消</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">備註</label>
+                        <textarea x-model="editForm.remark" rows="4" class="w-full border border-gray-300 rounded p-2 text-sm outline-none focus:border-primary placeholder-gray-400" placeholder="請輸入備註..."></textarea>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+                    <button @click="editModalOpen = false" class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium">取消</button>
+                    <button @click="saveEdit" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600 shadow-sm text-sm font-medium">儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full bg-slate-50" x-data="executionErrorPage()">
+
+        <div id="layout-header"></div>
+
+        <div class="flex-1 overflow-auto relative h-full flex flex-col p-4 md:p-6">
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="text-gray-500">紀錄管理</span>
+                        <i class="ph ph-caret-right text-gray-300 text-xs"></i>
+                        <span class="font-semibold text-primary">執行異常紀錄</span>
+                    </nav>
+                    <div class="relative" x-data="{ showHelp: false }">
+                        <button @click="showHelp = !showHelp" class="w-8 h-8 rounded-full bg-yellow-50 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 transition-colors flex items-center justify-center border border-yellow-200 shadow-sm" title="說明"><i class="ph-fill ph-lightbulb text-lg"></i></button>
+                        <div x-show="showHelp" @click.outside="showHelp = false" class="absolute right-0 top-full mt-2 w-80 p-4 bg-yellow-50 shadow-xl rounded-lg z-50 border border-yellow-100 text-xs text-yellow-800 leading-relaxed" style="display: none;">
+                            <ul class="list-disc pl-4 space-y-2">
+                                <li>系統自動偵測或人工標記的執行異常</li>
+                                <li>重試次數：程式自動重試「檢查狀態」次數</li>
+                                <li>警示：狀態「失敗」時，建議人工複核，確認是否需進行校正</li>
+                                <li>相關資訊：顯示相關單號資訊</li>
+                                <li>原始資料：API 紀錄歷程</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:hidden flex-shrink-0">
+                    <div @click="openSearchModal()" class="bg-white border border-gray-200 rounded-lg shadow-sm p-3 flex items-center justify-between cursor-pointer active:bg-gray-50">
+                        <div class="flex items-center gap-2 text-gray-600 font-bold"><i class="ph ph-magnifying-glass text-lg"></i> 搜尋</div>
+                        <i class="ph ph-caret-right text-gray-400"></i>
+                    </div>
+                </div>
+
+                <div :class="{'fixed inset-0 z-[120] bg-white flex flex-col': isMobile && searchOpen, 'bg-white p-5 border border-gray-200 rounded-lg shadow-sm flex-shrink-0 lg:block': !isMobile || !searchOpen, 'hidden': isMobile && !searchOpen}">
+
+                    <div class="lg:hidden px-4 py-3 border-b border-gray-100 flex justify-between items-center mb-4 flex-shrink-0" x-show="isMobile">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-lg text-gray-800">執行異常紀錄</span>
+                            <span class="text-gray-400 font-normal text-sm">搜尋</span>
+                        </div>
+                        <button @click="searchOpen = false" class="text-gray-500 hover:text-gray-700 p-1"><i class="ph ph-x text-2xl"></i></button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start lg:items-end px-4 lg:px-0 pt-4 lg:pt-0" :class="{'overflow-y-auto flex-1 pb-20': isMobile}">
+
+                        <div class="floating-input-group" >
+                            <label class="floating-label z-10" x-text="search.targetType === 'nickname' ? '暱稱' : '錢包帳號'"></label>
+                            <div class="flex relative"><button @click="toggleTargetType" class="flex items-center justify-center w-12 bg-gray-50 border border-r-0 border-gray-200 rounded-l-lg hover:bg-gray-100 transition-colors" :title="search.targetType === 'nickname' ? '切換為錢包帳號' : '切換為暱稱'"><i class="ph text-2xl text-gray-500" :class="search.targetType === 'nickname' ? 'ph-smiley' : 'ph-wallet'"></i></button><input type="text" x-model="search.targetValue" class="floating-input rounded-l-none bg-input-base focus:bg-white"></div>
+                        </div>
+
+                        <div class="floating-input-group" >
+                            <label class="floating-label">代幣</label>
+                            <div class="flex items-center gap-1"><input type="number" class="floating-input bg-input-base focus:bg-white"><span class="text-gray-400">~</span><input type="number" class="floating-input bg-input-base focus:bg-white"></div>
+                        </div>
+
+                        <div class="floating-input-group" >
+                            <label class="floating-label z-10"><span class="text-red-500">*</span> 類型</label>
+                            <button @click="openTypeModal()" class="w-full h-[42px] px-3 bg-input-base border border-gray-200 rounded-lg flex items-center justify-center gap-2 transition-colors outline-none hover:border-primary hover:bg-white focus:border-primary focus:bg-white text-gray-700">
+                                <span class="font-bold">類型</span>
+                                <span class="bg-[#334155] text-white text-xs font-bold px-2 py-0.5 rounded-full" x-show="selectedTypes.length > 0 && selectedTypes.length !== totalTypeCount" x-text="selectedTypes.length"></span>
+                            </button>
+                        </div>
+
+                        <div class="floating-input-group" >
+                            <label class="floating-label">交易時間</label>
+                            <div class="hidden md:flex items-center">
+                                <input x-ref="dateStart" type="text" class="floating-input rounded-r-none border-r-0 text-center bg-input-base focus:bg-white" value="2025/12/01 00:00">
+                                <div class="px-2 py-2.5 text-gray-400 text-xs">~</div>
+                                <input x-ref="dateEnd" type="text" class="floating-input rounded-l-none border-l-0 text-center bg-input-base focus:bg-white" value="2025/12/08 23:59">
+                            </div>
+                            <div class="flex flex-col md:hidden w-full">
+                                <input x-ref="dateStartMobile" type="text" class="floating-input rounded-b-none border-b-0 text-center bg-input-base focus:bg-white w-full" value="2025/12/01 00:00">
+                                <input x-ref="dateEndMobile" type="text" class="floating-input rounded-t-none text-center bg-input-base focus:bg-white w-full" value="2025/12/08 23:59">
+                            </div>
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label">單號</label>
+                            <input type="text" x-model="search.orderId" class="floating-input bg-input-base focus:bg-white">
+                        </div>
+
+                        <div class="floating-input-group relative" x-data="{ open: false }" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label floating-label-interactive z-20">
+                                <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="紀錄當時階級">VIP 階級</span>
+                            </label>
+                            <button @click="open = !open" @click.outside="open = false" class="floating-input bg-input-base text-left flex justify-between items-center">
+                                <span class="truncate" x-text="search.vip.length > 0 ? '已選 ' + search.vip.length + ' 項' : '全部'"></span>
+                                <i class="ph ph-caret-down text-gray-400"></i>
+                            </button>
+                            <div x-show="open" @click.outside="open = false" class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 shadow-lg rounded z-[110] p-2 max-h-48 overflow-y-auto">
+                                <template x-for="i in 11" :key="i-1">
+                                    <label class="flex items-center gap-2 p-2 hover:bg-gray-50 cursor-pointer rounded">
+                                        <input type="checkbox" class="checkbox-item" :value="'VIP ' + (i-1)" x-model="search.vip">
+                                        <span class="text-sm" x-text="'VIP ' + (i-1)"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label">呆帳</label>
+                            <div class="flex items-center gap-1">
+                                <input type="number" x-model="search.badDebtMin" class="floating-input bg-input-base focus:bg-white">
+                                <span class="text-gray-400">~</span>
+                                <input type="number" x-model="search.badDebtMax" class="floating-input bg-input-base focus:bg-white">
+                            </div>
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label floating-label-interactive z-20">
+                                <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="免費旋轉設定單號">免費旋轉</span>
+                            </label>
+                            <input type="text" x-model="search.freeSpinOrderId" class="floating-input bg-input-base focus:bg-white">
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label">API 動作</label>
+                            <select class="floating-input bg-input-base focus:bg-white appearance-none" x-model="search.apiAction">
+                                <option value=""></option>
+                                <option value="購買星幣">購買星幣</option>
+                                <option value="更新星幣">更新星幣</option>
+                                <option value="保險箱存入">保險箱存入</option>
+                                <option value="保險箱提出">保險箱提出</option>
+                                <option value="每日簽到獎勵">每日簽到獎勵</option>
+                            </select>
+                            <i class="ph ph-caret-down absolute right-3 top-3.5 text-gray-400 pointer-events-none"></i>
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label">狀態</label>
+                            <select class="floating-input bg-input-base focus:bg-white appearance-none" x-model="search.status">
+                                <option value=""></option>
+                                <option value="待處理">待處理</option>
+                                <option value="處理中">處理中</option>
+                                <option value="成功">成功</option>
+                                <option value="失敗">失敗</option>
+                            </select>
+                            <i class="ph ph-caret-down absolute right-3 top-3.5 text-gray-400 pointer-events-none"></i>
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label">最後更新時間</label>
+                            <div class="hidden md:flex items-center">
+                                <input x-ref="lastUpdateStart" type="text" class="floating-input rounded-r-none border-r-0 text-center bg-input-base focus:bg-white">
+                                <div class="px-2 py-2.5 text-gray-400 text-xs">~</div>
+                                <input x-ref="lastUpdateEnd" type="text" class="floating-input rounded-l-none border-l-0 text-center bg-input-base focus:bg-white">
+                            </div>
+                            <div class="flex flex-col md:hidden w-full">
+                                <input x-ref="lastUpdateStartMobile" type="text" class="floating-input rounded-b-none border-b-0 text-center bg-input-base focus:bg-white w-full">
+                                <input x-ref="lastUpdateEndMobile" type="text" class="floating-input rounded-t-none text-center bg-input-base focus:bg-white w-full">
+                            </div>
+                        </div>
+
+                        <div class="floating-input-group" x-show="isMobile || advancedSearch" >
+                            <label class="floating-label">操作者</label>
+                            <input type="text" x-model="search.operator" class="floating-input bg-input-base focus:bg-white">
+                        </div>
+
+                    </div>
+
+                    <div class="flex items-center justify-between" :class="isMobile ? 'fixed bottom-4 left-0 right-0 px-4 bg-white pt-2 border-t border-gray-100 z-50' : 'mt-4 px-4 lg:px-0'">
+                         <button @click="advancedSearch = !advancedSearch" class="text-sm text-gray-500 hover:text-primary items-center gap-1 transition-colors hidden lg:flex">
+                            <span x-text="advancedSearch ? '隱藏條件' : '進階'"></span>
+                            <i class="ph" :class="advancedSearch ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </button>
+
+                        <button @click="searchOpen = false" class="lg:w-10 lg:h-10 w-full h-11 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow transition-colors flex items-center justify-center gap-2">
+                            <span class="lg:hidden">搜尋</span><i class="ph ph-magnifying-glass text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Type Selection Modal -->
+                <div x-show="isTypeModalOpen" style="display: none;" class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+                    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 overflow-hidden flex flex-col max-h-[90vh]" @click.outside="isTypeModalOpen = false">
+                        <!-- Header -->
+                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                            <h3 class="text-lg font-bold text-gray-800">類型</h3>
+                            <div class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-bold font-mono">
+                                <span x-text="tempSelectedTypes.length"></span> / <span x-text="totalTypeCount"></span>
+                            </div>
+                        </div>
+
+                        <!-- Body -->
+                        <div class="p-6 overflow-y-auto custom-scroll space-y-4 bg-gray-50 flex-1">
+                            <!-- 全選 -->
+                            <div class="border border-gray-100 rounded-lg p-5 shadow-sm bg-white">
+                                <div class="flex items-center gap-3 cursor-pointer select-none" @click="toggleAllTypes()">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors shadow-sm"
+                                         :class="{
+                                             'bg-primary border-primary': isAllTypesChecked() || isAllTypesIndeterminate(),
+                                             'bg-white border-2 border-gray-300': !isAllTypesChecked() && !isAllTypesIndeterminate()
+                                         }">
+                                         <i class="ph-bold text-white text-sm"
+                                            :class="{
+                                                'ph-check': isAllTypesChecked(),
+                                                'ph-minus': isAllTypesIndeterminate(),
+                                                'hidden': !isAllTypesChecked() && !isAllTypesIndeterminate()
+                                            }"></i>
+                                    </div>
+                                    <span class="font-bold text-gray-800">全選</span>
+                                </div>
+                            </div>
+
+                            <!-- Groups -->
+                            <template x-for="(group, key) in typeGroups" :key="key">
+                                <div class="border border-gray-100 rounded-lg p-5 space-y-3 shadow-sm bg-white">
+                                    <!-- Group header -->
+                                    <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleTypeGroup(key)">
+                                        <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                             :class="{
+                                                 'bg-primary border-primary': isTypeGroupChecked(key) || isTypeGroupIndeterminate(key),
+                                                 'bg-white border-2 border-gray-300': !isTypeGroupChecked(key) && !isTypeGroupIndeterminate(key)
+                                             }">
+                                             <i class="ph-bold text-white text-sm"
+                                                :class="{
+                                                    'ph-check': isTypeGroupChecked(key),
+                                                    'ph-minus': isTypeGroupIndeterminate(key),
+                                                    'hidden': !isTypeGroupChecked(key) && !isTypeGroupIndeterminate(key)
+                                                }"></i>
+                                        </div>
+                                        <span class="font-bold text-gray-800" x-text="group.label"></span>
+                                    </div>
+                                    <!-- Items as chips -->
+                                    <div class="flex flex-wrap gap-2 pl-1">
+                                        <template x-for="item in group.items" :key="item.key">
+                                            <div class="relative" x-data="{ subOpen: false }">
+                                                <!-- Chip -->
+                                                <div class="inline-flex items-stretch rounded border text-sm select-none transition-colors"
+                                                     :class="getItemCheckedState(item) !== 'none'
+                                                         ? 'border-primary/40 bg-blue-50 text-primary'
+                                                         : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'">
+                                                    <!-- Checkbox + Label -->
+                                                    <div class="flex items-center gap-1.5 px-2.5 py-1.5 cursor-pointer" @click="toggleTypeItem(item)">
+                                                        <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors"
+                                                             :class="getItemCheckedState(item) !== 'none' ? 'bg-primary' : 'border border-gray-300 bg-white'">
+                                                            <i class="ph-bold text-white text-[10px]"
+                                                               :class="{
+                                                                   'ph-check': getItemCheckedState(item) === 'all',
+                                                                   'ph-minus': getItemCheckedState(item) === 'some',
+                                                                   'hidden': getItemCheckedState(item) === 'none'
+                                                               }"></i>
+                                                        </div>
+                                                        <span x-text="item.key"></span>
+                                                    </div>
+                                                    <!-- Expand arrow (only if has children) -->
+                                                    <template x-if="item.children && item.children.length > 0">
+                                                        <button @click.stop="subOpen = !subOpen"
+                                                                class="px-1.5 border-l flex items-center transition-colors rounded-r"
+                                                                :class="getItemCheckedState(item) !== 'none'
+                                                                    ? 'border-primary/30 hover:bg-primary/10'
+                                                                    : 'border-gray-200 hover:bg-gray-100'">
+                                                            <i class="ph text-xs" :class="subOpen ? 'ph-caret-up' : 'ph-caret-right'"></i>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                                <!-- Children dropdown -->
+                                                <template x-if="item.children && item.children.length > 0">
+                                                    <div x-show="subOpen" @click.outside="subOpen = false"
+                                                         class="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-[300] min-w-[160px]">
+                                                        <template x-for="child in item.children" :key="child">
+                                                            <label class="flex items-center gap-2 px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700 whitespace-nowrap">
+                                                                <div class="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors"
+                                                                     :class="tempSelectedTypes.includes(child) ? 'bg-primary' : 'border border-gray-300 bg-white'">
+                                                                    <i class="ph-bold ph-check text-white text-[10px]" x-show="tempSelectedTypes.includes(child)"></i>
+                                                                </div>
+                                                                <input type="checkbox" :value="child" x-model="tempSelectedTypes" class="hidden">
+                                                                <span x-text="child"></span>
+                                                            </label>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 rounded-b-lg">
+                            <button @click="isTypeModalOpen = false" class="px-6 py-2 bg-[#f1f5f9] text-[#475569] rounded hover:bg-[#e2e8f0] shadow-sm text-sm font-bold transition-colors">關閉</button>
+                            <button @click="confirmTypeModal()" class="px-6 py-2 bg-[#3b82f6] text-white rounded hover:bg-[#2563eb] shadow-sm text-sm font-bold transition-colors">確認</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column Selection Modal -->
+                <div x-show="isColumnModalOpen" style="display:none;" class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+                    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]" @click.outside="isColumnModalOpen = false">
+                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                            <h3 class="text-lg font-bold text-gray-800">選擇顯示欄位</h3>
+                            <div class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-bold font-mono">
+                                <span x-text="selectedColCount"></span> / <span x-text="totalColCount"></span>
+                            </div>
+                        </div>
+
+                        <div class="p-6 overflow-y-auto custom-scroll space-y-4 bg-gray-50 flex-1">
+                            <!-- 全選 -->
+                            <div class="flex items-center gap-3 cursor-pointer select-none mb-2 w-fit" @click="toggleAllCols()">
+                                <div class="w-5 h-5 rounded flex items-center justify-center transition-colors shadow-sm"
+                                     :class="{
+                                         'bg-primary border-primary': isAllColsChecked() || isAllColsIndeterminate(),
+                                         'bg-white border-2 border-gray-300': !isAllColsChecked() && !isAllColsIndeterminate()
+                                     }">
+                                     <i class="ph-bold text-white text-sm"
+                                        :class="{
+                                            'ph-check': isAllColsChecked(),
+                                            'ph-minus': isAllColsIndeterminate(),
+                                            'hidden': !isAllColsChecked() && !isAllColsIndeterminate()
+                                        }"></i>
+                                </div>
+                                <span class="font-bold text-gray-800">全選</span>
+                            </div>
+
+                            <!-- 群組：一般 -->
+                            <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                                <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleColGroup('general')">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                         :class="{
+                                             'bg-primary border-primary': isColGroupChecked('general') || isColGroupIndeterminate('general'),
+                                             'bg-white border-2 border-gray-300': !isColGroupChecked('general') && !isColGroupIndeterminate('general')
+                                         }">
+                                         <i class="ph-bold text-white text-sm"
+                                            :class="{
+                                                'ph-check': isColGroupChecked('general'),
+                                                'ph-minus': isColGroupIndeterminate('general'),
+                                                'hidden': !isColGroupChecked('general') && !isColGroupIndeterminate('general')
+                                            }"></i>
+                                    </div>
+                                    <span class="font-bold text-gray-800">一般</span>
+                                </div>
+                                <div class="pl-2 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-y-4 gap-x-2">
+                                    <template x-for="key in columnGroups.general" :key="key">
+                                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                                 :class="tempColStatus[key] ? 'bg-primary border-primary' : 'bg-white border-2 border-gray-300'">
+                                                <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[key]"></i>
+                                            </div>
+                                            <input type="checkbox" x-model="tempColStatus[key]" class="hidden">
+                                            <span class="text-sm text-gray-700" x-text="columnLabels[key]"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 群組：基本 -->
+                            <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                                <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleColGroup('basic')">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                         :class="{
+                                             'bg-primary border-primary': isColGroupChecked('basic') || isColGroupIndeterminate('basic'),
+                                             'bg-white border-2 border-gray-300': !isColGroupChecked('basic') && !isColGroupIndeterminate('basic')
+                                         }">
+                                         <i class="ph-bold text-white text-sm"
+                                            :class="{
+                                                'ph-check': isColGroupChecked('basic'),
+                                                'ph-minus': isColGroupIndeterminate('basic'),
+                                                'hidden': !isColGroupChecked('basic') && !isColGroupIndeterminate('basic')
+                                            }"></i>
+                                    </div>
+                                    <span class="font-bold text-gray-800">基本</span>
+                                </div>
+                                <div class="pl-2 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-y-4 gap-x-2">
+                                    <template x-for="key in columnGroups.basic" :key="key">
+                                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                                 :class="tempColStatus[key] ? 'bg-primary border-primary' : 'bg-white border-2 border-gray-300'">
+                                                <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[key]"></i>
+                                            </div>
+                                            <input type="checkbox" x-model="tempColStatus[key]" class="hidden">
+                                            <span class="text-sm text-gray-700" x-text="columnLabels[key]"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 群組：其他 -->
+                            <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                                <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleColGroup('other')">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                         :class="{
+                                             'bg-primary border-primary': isColGroupChecked('other') || isColGroupIndeterminate('other'),
+                                             'bg-white border-2 border-gray-300': !isColGroupChecked('other') && !isColGroupIndeterminate('other')
+                                         }">
+                                         <i class="ph-bold text-white text-sm"
+                                            :class="{
+                                                'ph-check': isColGroupChecked('other'),
+                                                'ph-minus': isColGroupIndeterminate('other'),
+                                                'hidden': !isColGroupChecked('other') && !isColGroupIndeterminate('other')
+                                            }"></i>
+                                    </div>
+                                    <span class="font-bold text-gray-800">其他</span>
+                                </div>
+                                <div class="pl-2 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-y-4 gap-x-2">
+                                    <template x-for="key in columnGroups.other" :key="key">
+                                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                                 :class="tempColStatus[key] ? 'bg-primary border-primary' : 'bg-white border-2 border-gray-300'">
+                                                <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[key]"></i>
+                                            </div>
+                                            <input type="checkbox" x-model="tempColStatus[key]" class="hidden">
+                                            <span class="text-sm text-gray-700" x-text="columnLabels[key]"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 rounded-b-lg">
+                            <button @click="isColumnModalOpen = false" class="px-6 py-2 bg-[#f1f5f9] text-[#475569] rounded hover:bg-[#e2e8f0] shadow-sm text-sm font-bold">取消</button>
+                            <button @click="confirmColumnModal()" class="px-6 py-2 bg-[#3b82f6] text-white rounded hover:bg-[#2563eb] shadow-sm text-sm font-bold">確定</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 relative" id="resultContainer">
+
+                    <div class="bg-gray-50 p-3 border-b border-gray-200 flex-shrink-0 flex items-center justify-end gap-2 text-gray-800 relative z-[60]">
+                        <div class="overflow-x-auto custom-scroll min-w-0 flex-shrink">
+                            <div class="flex gap-6 items-center px-2 whitespace-nowrap">
+                                <div class="flex flex-col text-right"><span class="text-xs text-gray-500">筆數</span><span class="text-sm font-bold text-gray-800">12</span></div>
+                                <div class="flex flex-col text-right"><span class="text-xs text-gray-500">人數</span><span class="text-sm font-bold text-gray-800">5</span></div>
+                                <div class="flex flex-col text-right"><span class="text-xs text-gray-500">增減</span><span class="text-sm font-bold text-emerald-600 font-mono">$2,305.5</span></div>
+                                <div class="flex flex-col text-right"><span class="text-xs text-gray-500">增加</span><span class="text-sm font-bold font-mono">$3,000</span></div>
+                                <div class="flex flex-col text-right"><span class="text-xs text-gray-500">減少</span><span class="text-sm font-bold text-red-500 font-mono">-$694.5</span></div>
+                                <div class="flex flex-col text-right"><span class="text-xs text-gray-500">免費旋轉</span><span class="text-sm font-bold text-gray-800">4</span></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center flex-shrink-0 gap-2 pl-2 border-l border-gray-300">
+                            <button @click="openColumnModal()" class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center shadow-sm tooltip tooltip-down" data-tip="欄位顯示">
+                                <i class="ph ph-columns text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-auto custom-scroll relative z-0 h-full">
+                        <table class="w-full text-left border-collapse min-w-[1500px]">
+                            <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.id">單號</th>
+                                    <th class="px-4 py-3 bg-gray-50 table-cell-nowrap sticky left-0 z-[40] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">暱稱</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.vip">VIP 階級</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.type">類型</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.apiAction">API 動作</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.status">狀態</th>
+                                    <th class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.token">代幣</th>
+                                    <th class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.badDebt">呆帳</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.freeSpin">
+                                        <span class="border-b border-dashed border-gray-400 cursor-help tooltip tooltip-down" data-tip="設定名稱 / 設定單號">免費旋轉</span>
+                                    </th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.transTime">交易時間</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.lastUpdate">最後更新時間</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.operator">操作者</th>
+                                    <th class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.warning || colStatus.relatedInfo || colStatus.rawData">其他</th>
+                                    <th class="px-4 py-3 table-cell-nowrap bg-gray-50 text-center sticky right-0 z-20 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-gray-600 divide-y divide-gray-100 bg-white">
+                                <template x-for="(row, index) in records" :key="index">
+                                    <tr class="group hover:bg-blue-50/50 transition-colors">
+                                        <td class="px-4 py-3 table-cell-nowrap text-gray-500 font-mono text-xs" x-show="colStatus.id">
+                                            <div class="flex items-center gap-1.5" x-data="{ copied: false }">
+                                                <span x-text="row.id"></span>
+                                                <div class="relative">
+                                                    <button @click="navigator.clipboard.writeText(row.id); copied = true; setTimeout(() => copied = false, 2000)" class="text-gray-400 hover:text-primary transition-colors focus:outline-none">
+                                                        <i class="ph-bold ph-copy"></i>
+                                                    </button>
+                                                    <div x-show="copied" x-transition.opacity.duration.300ms class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg whitespace-nowrap z-50 pointer-events-none">
+                                                        已複製
+                                                        <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap sticky left-0 z-[5] bg-white group-hover:bg-blue-50/50 transition-colors shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]"><a href="#" class="text-blue-600 hover:underline font-medium" x-text="row.nickname"></a></td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.vip"><span class="px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600 font-bold border border-gray-200" x-text="row.vip"></span></td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.type" x-text="row.type"></td>
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.apiAction" x-text="row.apiAction"></td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.status">
+                                            <div class="flex items-center gap-1">
+                                                <span class="px-2 py-0.5 rounded text-xs"
+                                                      :class="{
+                                                          'bg-yellow-100 text-yellow-700': row.status === '處理中',
+                                                          'bg-red-100 text-red-700': row.status === '失敗',
+                                                          'bg-green-100 text-green-700': row.status === '成功',
+                                                          'bg-gray-100 text-gray-700': row.status === '取消',
+                                                          'bg-blue-100 text-blue-700': row.status === '待處理'
+                                                      }"
+                                                      x-text="row.status"></span>
+                                                <div class="tooltip" data-tip="重試次數">
+                                                    <span class="w-5 h-5 rounded-full bg-slate-500 text-white flex items-center justify-center text-[10px] font-bold" x-text="row.statusCode"></span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-right font-mono font-bold" :class="row.token > 0 ? 'text-gray-800' : 'text-red-600'" x-text="row.tokenStr" x-show="colStatus.token"></td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-right font-mono font-bold" :class="row.badDebt > 0 ? 'text-amber-600' : row.badDebt < 0 ? 'text-blue-600' : 'text-gray-800'" x-text="row.badDebtStr" x-show="colStatus.badDebt"></td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.freeSpin">
+                                            <template x-if="row.freeSpin">
+                                                <div class="flex flex-col gap-0.5">
+                                                    <button @click="$dispatch('open-freespin-modal', row.freeSpin)" class="font-medium text-blue-600 hover:underline text-left" x-text="row.freeSpin.name"></button>
+                                                    <span class="text-[11px] text-gray-400 font-mono" x-text="row.freeSpin.orderId"></span>
+                                                </div>
+                                            </template>
+                                            <template x-if="!row.freeSpin">
+                                                <span class="text-gray-400">(無)</span>
+                                            </template>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-xs" x-show="colStatus.transTime">
+                                            <div class="font-mono text-gray-700" x-text="row.transTime"></div>
+                                            <div class="text-[11px] text-gray-400 mt-0.5" x-text="row.transTimeRelative"></div>
+                                        </td>
+                                        <td class="px-4 py-3 table-cell-nowrap text-xs" x-show="colStatus.lastUpdate">
+                                            <div class="font-mono text-gray-700" x-text="row.lastUpdate"></div>
+                                            <div class="text-[11px] text-gray-400 mt-0.5" x-text="row.lastUpdateRelative"></div>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.operator"><div class="text-blue-600" x-text="row.operator"></div></td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.warning || colStatus.relatedInfo || colStatus.rawData">
+                                            <div class="flex items-center justify-center gap-2 text-gray-400">
+                                                <div class="tooltip" data-tip="警示" x-show="colStatus.warning"><i class="ph-fill ph-warning text-lg cursor-pointer transition-colors" :class="row.warningType === 'yellow' ? 'text-yellow-500 hover:text-yellow-600' : 'text-gray-300 hover:text-gray-500'"></i></div>
+                                                <div class="tooltip" data-tip="相關資訊" x-show="colStatus.relatedInfo"><i @click="$dispatch('open-related-modal', row)" class="ph-fill ph-arrow-square-out text-lg hover:text-primary cursor-pointer"></i></div>
+                                                <div class="tooltip" data-tip="原始資料" x-show="colStatus.rawData"><i @click="$dispatch('open-raw-modal', row)" class="ph ph-file-text text-lg cursor-pointer hover:text-primary transition-colors"></i></div>
+                                            </div>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-center sticky right-0 bg-white z-10 group-hover:bg-blue-50/50 transition-colors shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]" x-data="{ open: false }" :class="{'!z-[50]': open}">
+                                            <div class="hidden lg:flex items-center justify-center gap-2">
+                                                <button @click="$dispatch('open-detail', row)" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors tooltip" data-tip="檢視">
+                                                    <i class="ph ph-caret-right text-lg"></i>
+                                                </button>
+                                                <!-- 更新 Icon 為 ph-note-pencil -->
+                                                <button @click="$dispatch('open-edit', row)" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors tooltip" data-tip="狀態更新">
+                                                    <i class="ph ph-note-pencil text-lg"></i>
+                                                </button>
+                                            </div>
+                                            <div class="lg:hidden relative flex items-center justify-center">
+                                                <button @click.stop="open = !open" class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 flex items-center justify-center"><i class="ph ph-list text-lg"></i></button>
+                                                <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-[200] min-w-[120px] text-left" x-cloak>
+                                                    <button @click="$dispatch('open-detail', row); open = false" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 flex items-center gap-2"><i class="ph ph-caret-right"></i>檢視</button>
+                                                    <button @click="$dispatch('open-edit', row); open = false" class="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 flex items-center gap-2"><i class="ph ph-note-pencil"></i>狀態更新</button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-4 border-t border-gray-200 flex flex-col md:flex-row items-end md:items-center justify-end gap-2 bg-white flex-shrink-0 sticky bottom-0 z-20">
+                        <div class="flex items-center gap-2 order-1 md:order-1">
+                            <div class="flex items-center gap-2 text-gray-400 mr-2">
+                                <button class="hover:text-primary"><i class="ph ph-skip-back text-sm"></i></button>
+                                <button class="hover:text-primary"><i class="ph ph-caret-left text-sm"></i></button>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button class="w-8 h-8 rounded-full bg-primary text-white text-sm font-medium flex items-center justify-center shadow-sm">1</button>
+                                <button class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-600 text-sm font-medium flex items-center justify-center transition-colors">2</button>
+                                <button class="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-600 text-sm font-medium flex items-center justify-center transition-colors">3</button>
+                            </div>
+                            <div class="flex items-center gap-2 text-gray-400 ml-2">
+                                <button class="hover:text-primary"><i class="ph ph-caret-right text-sm"></i></button>
+                                <button class="hover:text-primary"><i class="ph ph-skip-forward text-sm"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 text-sm text-gray-500 mt-2 md:mt-0 md:pl-4 md:border-l border-gray-200 order-2 md:order-2">
+                            <span>每頁筆數：</span>
+                            <select class="border border-gray-300 rounded px-2 py-1 outline-none text-gray-700 bg-white hover:border-gray-400">
+                                <option>10</option>
+                                <option>20</option>
+                            </select>
+                            <span class="ml-2">1 - 12 共 25</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = {
+            title:  '執行異常紀錄',
+            parent: '紀錄管理'
+        };
+    </script>
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+    <script>
+        // 原始資料的模擬數據
+        const rawLogsData = [
+            { action: '更新星幣', time: '2025/05/19 01:23:17', timeRelative: '- 3 小時前', response: 'Code:999', timestamp: new Date('2025/05/19 01:23:17').getTime() },
+            { action: '檢查狀態', time: '2025/05/19 01:24:00', timeRelative: '- 3 小時前', response: 'Code:0', timestamp: new Date('2025/05/19 01:24:00').getTime() },
+            { action: '檢查狀態', time: '2025/05/19 01:24:30', timeRelative: '- 3 小時前', response: 'Code:0', timestamp: new Date('2025/05/19 01:24:30').getTime() },
+            { action: '更新星幣', time: '2025/05/19 01:25:00', timeRelative: '- 3 小時前', response: 'Code:999', timestamp: new Date('2025/05/19 01:25:00').getTime() },
+            { action: '更新星幣', time: '2025/05/19 01:25:30', timeRelative: '- 3 小時前', response: 'Code:999', timestamp: new Date('2025/05/19 01:25:30').getTime() },
+            { action: '檢查狀態', time: '2025/05/19 01:26:00', timeRelative: '- 3 小時前', response: 'Code:0', timestamp: new Date('2025/05/19 01:26:00').getTime() },
+            { action: '檢查狀態', time: '2025/05/19 01:26:30', timeRelative: '- 3 小時前', response: 'Code:0', timestamp: new Date('2025/05/19 01:26:30').getTime() },
+            { action: '更新星幣', time: '2025/05/19 01:27:00', timeRelative: '- 3 小時前', response: 'Code:999', timestamp: new Date('2025/05/19 01:27:00').getTime() },
+            { action: '檢查狀態', time: '2025/05/19 01:28:00', timeRelative: '- 3 小時前', response: 'Code:0', timestamp: new Date('2025/05/19 01:28:00').getTime() },
+            { action: '更新星幣', time: '2025/05/19 01:28:30', timeRelative: '- 3 小時前', response: 'Code:999', timestamp: new Date('2025/05/19 01:28:30').getTime() },
+            { action: '更新星幣', time: '2025/05/19 01:29:00', timeRelative: '- 3 小時前', response: 'Code:999', timestamp: new Date('2025/05/19 01:29:00').getTime() },
+            { action: '檢查狀態', time: '2025/05/19 01:30:00', timeRelative: '- 3 小時前', response: 'Code:0', timestamp: new Date('2025/05/19 01:30:00').getTime() },
+        ];
+
+        /* --- ExecutionErrorRecord Specific Modals Logic --- */
+        function modalData() {
+            return {
+                detailOpen: false, relatedModalOpen: false, rawModalOpen: false, editModalOpen: false, freeSpinModalOpen: false,
+                currentRecord: null, currentRelatedData: null, currentRawData: null, currentFreeSpin: null,
+                editForm: { id: '', status: '', remark: '' },
+
+                openDetail(record) { this.currentRecord = record; this.detailOpen = true; },
+
+                openRelatedModal(record) {
+                    this.currentRelatedData = {
+                        id: record.id,
+                        relatedInfo: record.relatedInfo || null
+                    };
+                    this.relatedModalOpen = true;
+                },
+
+                openFreeSpinModal(freeSpin) {
+                    this.currentFreeSpin = freeSpin;
+                    this.freeSpinModalOpen = true;
+                },
+
+                // 新增: 開啟原始資料彈窗，並對數據進行時間降冪排序
+                openRawModal(record) {
+                    // 複製數據並按 timestamp 降冪排序
+                    const sortedLogs = [...rawLogsData].sort((a, b) => b.timestamp - a.timestamp);
+
+                    this.currentRawData = {
+                        recordId: record.id.substring(record.id.length - 3),
+                        logs: sortedLogs
+                    };
+                    this.rawModalOpen = true;
+                },
+
+                openEdit(record) {
+                    this.editForm = {
+                        id: record.id,
+                        status: record.status,
+                        remark: ''
+                    };
+                    this.editModalOpen = true;
+                },
+
+                saveEdit() {
+                    this.$dispatch('notify', { message: `單號 ${this.editForm.id.substring(this.editForm.id.length - 3)} 已更新狀態為 ${this.editForm.status}` });
+                    this.editModalOpen = false;
+                }
+            }
+        }
+
+        /* --- ExecutionErrorRecord Specific Page Logic --- */
+        function executionErrorPage() {
+            return {
+                search: {
+                    targetType: 'nickname', targetValue: '', dateStart: '', dateEnd: '',
+                    orderId: '', vip: [], badDebtMin: '', badDebtMax: '', freeSpinOrderId: '',
+                    apiAction: '', status: '', lastUpdateStart: '', lastUpdateEnd: '', operator: ''
+                },
+                advancedSearch: false,
+
+                // Type Modal Settings
+                typeGroups: {
+                    deposit: { label: '存入', items: [
+                        { key: '儲值',           children: ['一般儲值', '禮包儲值'] },
+                        { key: '首儲',           children: ['一般首儲', '禮包首儲'] },
+                        { key: '呆帳沖銷',       children: ['一般呆帳沖銷', '禮包呆帳沖銷'] },
+                        { key: '呆帳沖銷（回饋）', children: ['禮包呆帳沖銷（回饋）'] },
+                        { key: '系統沖銷',   children: [] },
+                        { key: '系統存入',   children: [] },
+                        { key: '保險箱提出', children: [] },
+                        { key: '活動獎勵',   children: [] },
+                    ]},
+                    withdraw: { label: '提出', items: [
+                        { key: '系統提出',   children: [] },
+                        { key: '保險箱存入', children: [] },
+                        { key: '儲值退款',   children: ['一般儲值退款', '禮包儲值退款'] },
+                    ]},
+                    casino: { label: '娛樂城', items: [
+                        { key: '投注',           children: [] },
+                        { key: '結算',           children: [] },
+                        { key: '投注並結算',     children: [] },
+                        { key: '投注取消',       children: [] },
+                        { key: '投注取消並結算', children: [] },
+                        { key: '活動彩金',       children: [] },
+                        { key: '免費遊戲贏分',   children: [] },
+                        { key: 'JACKPOT 彩金',   children: [] },
+                        { key: 'JACKPOT遊戲彩金', children: [] },
+                    ]},
+                    jackpot: { label: 'JACKPOT', items: [
+                        { key: 'JACKPOT巨獎', children: [] },
+                        { key: 'JACKPOT大獎', children: [] },
+                        { key: 'JACKPOT小獎', children: [] },
+                    ]},
+                    activity: { label: '活動', items: [
+                        { key: '首儲回饋', children: ['一般首儲回饋', '禮包首儲回饋'] },
+                        { key: '儲值回饋', children: ['一般儲值回饋', '禮包儲值回饋'] },
+                        { key: 'LINE 見面禮', children: [] },
+                        { key: '手機認證禮',  children: [] },
+                        { key: '首儲加值',    children: [] },
+                        { key: '首戰任務',    children: [] },
+                        { key: 'PWA 安裝禮',  children: [] },
+                        { key: '每日簽到', children: ['每日簽到禮', '補簽簽到禮', '累積簽到禮'] },
+                    ]},
+                    others: { label: '其他', items: [
+                        { key: '其他', children: [] },
+                    ]},
+                },
+                selectedTypes: [],
+                tempSelectedTypes: [],
+                isTypeModalOpen: false,
+
+                get totalTypeCount() {
+                    return Object.keys(this.typeGroups).reduce((acc, k) => acc + this.getGroupTypeLeaves(k).length, 0);
+                },
+
+                // Column Selection Modal Settings
+                isColumnModalOpen: false,
+                colStatus: {
+                    id: true, vip: true, status: true,
+                    type: true, apiAction: true, token: true, badDebt: true, freeSpin: true, transTime: true, lastUpdate: true, operator: false,
+                    warning: false, relatedInfo: false, rawData: false
+                },
+                tempColStatus: {},
+                columnGroups: {
+                    general: ['id', 'vip', 'status'],
+                    basic: ['type', 'apiAction', 'token', 'badDebt', 'freeSpin', 'transTime', 'lastUpdate', 'operator'],
+                    other: ['warning', 'relatedInfo', 'rawData']
+                },
+                columnLabels: {
+                    id: '單號', vip: 'VIP 階級', status: '狀態',
+                    type: '類型', apiAction: 'API 動作', token: '代幣', badDebt: '呆帳', freeSpin: '免費旋轉', transTime: '交易時間', lastUpdate: '最後更新時間', operator: '操作者',
+                    warning: '警示', relatedInfo: '相關資訊', rawData: '原始資料'
+                },
+
+                get selectedColCount() { return Object.values(this.tempColStatus).filter(v => v).length; },
+                get totalColCount() { return Object.keys(this.columnLabels).length; },
+                isColGroupChecked(group) { return this.columnGroups[group].every(k => this.tempColStatus[k]); },
+                isColGroupIndeterminate(group) {
+                    const checkedCount = this.columnGroups[group].filter(k => this.tempColStatus[k]).length;
+                    return checkedCount > 0 && checkedCount < this.columnGroups[group].length;
+                },
+                toggleColGroup(group) {
+                    const isChecked = this.isColGroupChecked(group);
+                    this.columnGroups[group].forEach(k => this.tempColStatus[k] = !isChecked);
+                },
+                isAllColsChecked() { return this.selectedColCount === this.totalColCount; },
+                isAllColsIndeterminate() { return this.selectedColCount > 0 && this.selectedColCount < this.totalColCount; },
+                toggleAllCols() {
+                    const checked = this.isAllColsChecked();
+                    Object.keys(this.columnGroups).forEach(g => this.columnGroups[g].forEach(k => this.tempColStatus[k] = !checked));
+                },
+                openColumnModal() { this.tempColStatus = { ...this.colStatus }; this.isColumnModalOpen = true; },
+                confirmColumnModal() {
+                    if (!Object.values(this.tempColStatus).some(v => v)) {
+                        this.$dispatch('notify', { message: '至少選取 1 個項目' });
+                        return;
+                    }
+                    this.colStatus = { ...this.tempColStatus };
+                    this.isColumnModalOpen = false;
+                },
+
+                isMobile: window.innerWidth < 1024,
+                searchOpen: false,
+
+                toggleTargetType() { this.search.targetType = this.search.targetType === 'nickname' ? 'wallet' : 'nickname'; },
+
+                openSearchModal() { this.searchOpen = true; },
+
+                // Type Modal Logic
+                getItemLeaves(item) {
+                    return item.children && item.children.length > 0 ? item.children : [item.key];
+                },
+                getGroupTypeLeaves(key) {
+                    return this.typeGroups[key].items.flatMap(item => this.getItemLeaves(item));
+                },
+                getAllTypeLeaves() {
+                    return Object.keys(this.typeGroups).flatMap(k => this.getGroupTypeLeaves(k));
+                },
+                getItemCheckedState(item) {
+                    const leaves = this.getItemLeaves(item);
+                    const count = leaves.filter(l => this.tempSelectedTypes.includes(l)).length;
+                    if (count === 0) return 'none';
+                    if (count === leaves.length) return 'all';
+                    return 'some';
+                },
+                toggleTypeItem(item) {
+                    const leaves = this.getItemLeaves(item);
+                    if (this.getItemCheckedState(item) === 'all') {
+                        this.tempSelectedTypes = this.tempSelectedTypes.filter(t => !leaves.includes(t));
+                    } else {
+                        const toAdd = leaves.filter(l => !this.tempSelectedTypes.includes(l));
+                        this.tempSelectedTypes = [...this.tempSelectedTypes, ...toAdd];
+                    }
+                },
+                isTypeGroupChecked(key) {
+                    const leaves = this.getGroupTypeLeaves(key);
+                    return leaves.every(l => this.tempSelectedTypes.includes(l));
+                },
+                isTypeGroupIndeterminate(key) {
+                    const leaves = this.getGroupTypeLeaves(key);
+                    const count = leaves.filter(l => this.tempSelectedTypes.includes(l)).length;
+                    return count > 0 && count < leaves.length;
+                },
+                toggleTypeGroup(key) {
+                    const leaves = this.getGroupTypeLeaves(key);
+                    if (this.isTypeGroupChecked(key)) {
+                        this.tempSelectedTypes = this.tempSelectedTypes.filter(l => !leaves.includes(l));
+                    } else {
+                        const toAdd = leaves.filter(l => !this.tempSelectedTypes.includes(l));
+                        this.tempSelectedTypes = [...this.tempSelectedTypes, ...toAdd];
+                    }
+                },
+                isAllTypesChecked() { return this.tempSelectedTypes.length === this.totalTypeCount; },
+                isAllTypesIndeterminate() { return this.tempSelectedTypes.length > 0 && this.tempSelectedTypes.length < this.totalTypeCount; },
+                toggleAllTypes() {
+                    this.tempSelectedTypes = this.isAllTypesChecked() ? [] : this.getAllTypeLeaves();
+                },
+                openTypeModal() {
+                    this.tempSelectedTypes = [...this.selectedTypes];
+                    this.isTypeModalOpen = true;
+                },
+                confirmTypeModal() {
+                    this.selectedTypes = [...this.tempSelectedTypes];
+                    this.isTypeModalOpen = false;
+                },
+
+                records: [
+                    {
+                        id: '68db55d0365a166310999d72', nickname: '最強小乖乖', vip: 'VIP 3', type: '娛樂城 - 結算', apiAction: '更新星幣', status: '處理中', statusCode: '3',
+                        transTime: '2025/05/19 01:51:32', transTimeRelative: '- 3 小時前', lastUpdate: '2025/05/19 01:51:32', lastUpdateRelative: '- 3 小時前', token: 10, tokenStr: '$10', badDebt: 0, badDebtStr: '$0', freeSpin: null, operator: '最強小乖乖', warningType: 'yellow', // 警示
+                        relatedInfo: { roundId: '69876170bb803249502eaa2f', functionId: 'GP26020720134485', rewardId: 'RWD20250519001', transactionId: null, depositId: null, activity: null, serialCode: null, freeSpin: null }
+                    },
+                    {
+                        id: '68db55cd365a166310999d67', nickname: '天才寶寶', vip: 'VIP 2', type: '提出 - 保險箱存入', apiAction: '保險箱存入', status: '失敗', statusCode: '10',
+                        transTime: '2025/05/19 01:23:17', transTimeRelative: '- 3 小時前', lastUpdate: '2025/05/19 01:23:17', lastUpdateRelative: '- 3 小時前', token: -1.5, tokenStr: '-$1.5', badDebt: -50, badDebtStr: '-$50', freeSpin: null, operator: 'System', warningType: null, // 無警示
+                        relatedInfo: { roundId: null, functionId: null, rewardId: null, transactionId: 'TX20250519002', depositId: null, activity: null, serialCode: null, freeSpin: null }
+                    },
+                    {
+                        id: '68db55ab365a166310999d55', nickname: '幸運之星', vip: 'VIP 1', type: '存入 - 儲值', apiAction: '購買星幣', status: '成功', statusCode: '1',
+                        transTime: '2025/05/19 01:10:05', transTimeRelative: '- 4 小時前', lastUpdate: '2025/05/19 01:10:10', lastUpdateRelative: '- 4 小時前', token: 1000, tokenStr: '$1,000', badDebt: 0, badDebtStr: '$0', freeSpin: { name: '夏日暢遊免費旋轉', orderId: 'FS20260615002' }, operator: 'System', warningType: 'yellow', // 警示
+                        relatedInfo: { roundId: null, functionId: null, rewardId: null, transactionId: null, depositId: 'DEP20250519003', activity: null, serialCode: null, freeSpin: { name: '夏日暢遊免費旋轉', orderId: 'FS20260615002' } }
+                    },
+                    {
+                        id: '68db55aa365a166310999d12', nickname: '狂暴戰士', vip: 'VIP 5', type: '娛樂城 - 押注', apiAction: '更新星幣', status: '成功', statusCode: '1',
+                        transTime: '2025/05/19 00:55:22', transTimeRelative: '- 4 小時前', lastUpdate: '2025/05/19 00:55:22', lastUpdateRelative: '- 4 小時前', token: -500, tokenStr: '-$500', badDebt: 0, badDebtStr: '$0', freeSpin: null, operator: '狂暴戰士', warningType: null, // 無警示
+                        relatedInfo: { roundId: '69876170bb803249502eaa30', functionId: 'GP26020720134487', rewardId: null, transactionId: null, depositId: null, activity: null, serialCode: null, freeSpin: null }
+                    },
+                    {
+                        id: '68db5599365a166310999c88', nickname: '測試帳號01', vip: 'VIP 0', type: '其他 - 其他', apiAction: '更新星幣', status: '待處理', statusCode: '0',
+                        transTime: '2025/05/18 23:40:11', transTimeRelative: '- 5 小時前', lastUpdate: '2025/05/18 23:40:11', lastUpdateRelative: '- 5 小時前', token: 0, tokenStr: '$0', badDebt: 0, badDebtStr: '$0', freeSpin: null, operator: 'Admin', warningType: 'yellow', // 警示
+                        relatedInfo: { roundId: null, functionId: null, rewardId: null, transactionId: null, depositId: null, activity: null, serialCode: null, freeSpin: null }
+                    },
+                    {
+                        id: '68db5588365a166310999b77', nickname: '賭神', vip: 'VIP 6', type: '娛樂城 - JACKPOT巨獎', apiAction: '更新星幣', status: '成功', statusCode: '1',
+                        transTime: '2025/05/18 23:15:30', transTimeRelative: '- 6 小時前', lastUpdate: '2025/05/18 23:15:30', lastUpdateRelative: '- 6 小時前', token: 2000, tokenStr: '$2,000', badDebt: 100, badDebtStr: '$100', freeSpin: { name: 'JACKPOT 好禮免費旋轉', orderId: 'FS20260618006' }, operator: 'System', warningType: null, // 無警示
+                        relatedInfo: { roundId: '69876170bb803249502eaa31', functionId: null, rewardId: 'RWD20250518006', transactionId: null, depositId: null, activity: { category: '活動獎勵', type: 'JACKPOT', name: 'JACKPOT 巨獎回饋', orderId: 'AT20260618006' }, serialCode: null, freeSpin: { name: 'JACKPOT 好禮免費旋轉', orderId: 'FS20260618006' } }
+                    },
+                    {
+                        id: '68db5577365a166310999a66', nickname: '小魚兒', vip: 'VIP 1', type: '存入 - 保險箱提出', apiAction: '保險箱提出', status: '成功', statusCode: '1',
+                        transTime: '2025/05/18 22:30:45', transTimeRelative: '- 7 小時前', lastUpdate: '2025/05/18 22:30:45', lastUpdateRelative: '- 7 小時前', token: 100, tokenStr: '$100', badDebt: 0, badDebtStr: '$0', freeSpin: null, operator: '小魚兒', warningType: null, // 無警示
+                        relatedInfo: { roundId: null, functionId: null, rewardId: null, transactionId: 'TX20250518007', depositId: 'DEP20250518007', activity: null, serialCode: null, freeSpin: null }
+                    },
+                    {
+                        id: '68db5566365a166310999955', nickname: '大老虎', vip: 'VIP 3', type: '提出 - 系統提出', apiAction: '更新星幣', status: '取消', statusCode: '9',
+                        transTime: '2025/05/18 21:20:10', transTimeRelative: '- 8 小時前', lastUpdate: '2025/05/18 21:25:00', lastUpdateRelative: '- 8 小時前', token: -200, tokenStr: '-$200', badDebt: -30, badDebtStr: '-$30', freeSpin: null, operator: 'Admin', warningType: null, // 無警示
+                        relatedInfo: { roundId: null, functionId: null, rewardId: null, transactionId: 'TX20250518008', depositId: null, activity: null, serialCode: null, freeSpin: null }
+                    },
+                    {
+                        id: '68db5555365a166310999844', nickname: 'SpeedRun', vip: 'VIP 2', type: '娛樂城 - 押注', apiAction: '更新星幣', status: '成功', statusCode: '1',
+                        transTime: '2025/05/18 20:10:05', transTimeRelative: '- 9 小時前', lastUpdate: '2025/05/18 20:10:05', lastUpdateRelative: '- 9 小時前', token: -50, tokenStr: '-$50', badDebt: 0, badDebtStr: '$0', freeSpin: { name: '新會員見面禮免費旋轉', orderId: 'FS20260619009' }, operator: 'SpeedRun', warningType: null, // 無警示
+                        relatedInfo: { roundId: '69876170bb803249502eaa32', functionId: null, rewardId: null, transactionId: null, depositId: null, activity: null, serialCode: { name: 'RND-9Z8Y7X-0301', orderId: 'SN20260619009' }, freeSpin: { name: '新會員見面禮免費旋轉', orderId: 'FS20260619009' } }
+                    },
+                    {
+                        id: '68db5544365a166310999733', nickname: 'Winner', vip: 'VIP 4', type: '娛樂城 - 結算', apiAction: '更新星幣', status: '成功', statusCode: '1',
+                        transTime: '2025/05/18 20:12:30', transTimeRelative: '- 9 小時前', lastUpdate: '2025/05/18 20:12:30', lastUpdateRelative: '- 9 小時前', token: 150, tokenStr: '$150', badDebt: 0, badDebtStr: '$0', freeSpin: null, operator: 'System', warningType: null, // 無警示
+                        relatedInfo: { roundId: '69876170bb803249502eaa33', functionId: 'GP26020720134490', rewardId: 'RWD20250518010', transactionId: null, depositId: null, activity: { category: '週期任務', type: '每日簽到', name: '天天簽到999', orderId: 'AT20260518010' }, serialCode: null, freeSpin: null }
+                    },
+                    {
+                        id: '68db5533365a166310999622', nickname: 'LostSoul', vip: 'VIP 1', type: '提出 - 保險箱存入', apiAction: '保險箱存入', status: '失敗', statusCode: '10',
+                        transTime: '2025/05/18 19:45:00', transTimeRelative: '- 10 小時前', lastUpdate: '2025/05/18 19:45:00', lastUpdateRelative: '- 10 小時前', token: -1000, tokenStr: '-$1,000', badDebt: 80, badDebtStr: '$80', freeSpin: null, operator: 'LostSoul', warningType: 'yellow', // 警示
+                        relatedInfo: { roundId: null, functionId: null, rewardId: null, transactionId: 'TX20250518011', depositId: 'DEP20250518011', activity: null, serialCode: null, freeSpin: null }
+                    },
+                    {
+                        id: '68db5522365a166310999511', nickname: 'Newbie', vip: 'VIP 0', type: '存入 - 首儲', apiAction: '購買星幣', status: '處理中', statusCode: '3',
+                        transTime: '2025/05/18 18:30:15', transTimeRelative: '- 11 小時前', lastUpdate: '2025/05/18 18:35:15', lastUpdateRelative: '- 11 小時前', token: 300, tokenStr: '$300', badDebt: 0, badDebtStr: '$0', freeSpin: { name: '首儲加碼免費旋轉', orderId: 'FS20260620012' }, operator: 'System', warningType: null, // 無警示
+                        relatedInfo: { roundId: null, functionId: null, rewardId: null, transactionId: null, depositId: 'DEP20250518012', activity: { category: '終身限定', type: '首儲加值', name: '首儲加碼禮', orderId: 'AT20260518012' }, serialCode: null, freeSpin: { name: '首儲加碼免費旋轉', orderId: 'FS20260620012' } }
+                    }
+                ],
+                init() {
+                    window.addEventListener('resize', () => { this.isMobile = window.innerWidth < 1024; });
+
+                    // Initialization selection types count - Default ALL Checked
+                    this.selectedTypes = this.getAllTypeLeaves();
+
+                    // Initialize flatpickr on the date inputs
+                    flatpickr(this.$refs.dateStart, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: "zh_tw" });
+                    flatpickr(this.$refs.dateEnd, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: "zh_tw" });
+                    flatpickr(this.$refs.dateStartMobile, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: "zh_tw" });
+                    flatpickr(this.$refs.dateEndMobile, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: "zh_tw" });
+
+                    // Initialize flatpickr on the last update range inputs
+                    flatpickr(this.$refs.lastUpdateStart, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: "zh_tw" });
+                    flatpickr(this.$refs.lastUpdateEnd, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: "zh_tw" });
+                    flatpickr(this.$refs.lastUpdateStartMobile, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: "zh_tw" });
+                    flatpickr(this.$refs.lastUpdateEndMobile, { dateFormat: "Y/m/d H:i", enableTime: true, time_24hr: true, locale: "zh_tw" });
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 終身限定</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#2088ea', hover: '#1a7acb' },
+                        dark: { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' },
+                        amber: { DEFAULT: '#f59e0b', hover: '#d97706' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../_shared/styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden"
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()"
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <!-- ============================================================
+         Detail Modal scope
+         ============================================================ -->
+    <div x-data="detailModalData()"
+         @open-lifetime-detail.window="openDetail($event.detail)"
+         @open-user-detail.window="openUserDetail($event.detail)"
+         @open-vip-detail.window="openVipDetail($event.detail)">
+
+        <!-- ── Main Detail Modal ─────────────────────────────────── -->
+        <div x-show="open" style="display:none;"
+             class="fixed inset-0 z-[250] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+             x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]"
+                 @click.outside="!isEditing && !historyOpen && !rewardHistoryOpen && !userDetailOpen && !isVipDetailModalOpen && (open = false)">
+
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <h3 class="text-lg font-bold text-gray-800 flex-shrink-0">終身限定</h3>
+                        <span class="text-gray-400 font-normal text-sm truncate" x-text="form.name"></span>
+                    </div>
+                </div>
+
+                <div class="overflow-y-auto custom-scroll flex-1 p-6 bg-gray-50 space-y-4">
+
+                    <!-- 其他資訊 (read-only, always at top) -->
+                    <div class="bg-[#dfe3e8] border border-[#cbd5e1] rounded-lg p-5 grid grid-cols-2 gap-y-4 text-sm">
+                        <!-- 狀態 -->
+                        <div class="space-y-1">
+                            <p class="text-gray-500 font-medium">狀態</p>
+                            <div>
+                                <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                      :class="{
+                                          'bg-green-100 text-green-700': form.status === 'active',
+                                          'bg-blue-100 text-blue-700':   form.status === 'not_started',
+                                          'bg-red-100 text-red-600':     form.status === 'expired'
+                                      }"
+                                      x-text="form.status === 'active' ? '進行中' : form.status === 'not_started' ? '未開始' : '已逾期'"></span>
+                            </div>
+                        </div>
+                        <!-- 建立時間 -->
+                        <div class="space-y-1">
+                            <p class="text-gray-500 font-medium">建立時間</p>
+                            <div class="text-gray-700 font-medium font-mono text-xs" x-text="form.createdAt"></div>
+                        </div>
+                        <!-- 最後異動時間 + icon -->
+                        <div class="space-y-1">
+                            <p class="text-gray-500 font-medium">最後異動時間</p>
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-700 font-medium font-mono text-xs" x-text="form.updatedAt"></span>
+                                <button @click="openHistory()"
+                                        class="w-5 h-5 rounded flex items-center justify-center bg-gray-400/40 hover:bg-primary hover:text-white text-gray-600 transition-colors tooltip tooltip-bottom"
+                                        data-tip="異動歷程">
+                                    <i class="ph ph-clock-counter-clockwise text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 操作者 (clickable) -->
+                        <div class="space-y-1">
+                            <p class="text-gray-500 font-medium">操作者</p>
+                            <button @click="openUserDetail(form.creator)"
+                                    class="text-primary hover:underline font-medium text-left text-sm"
+                                    x-text="form.creator"></button>
+                        </div>
+                    </div>
+
+                    <!-- Card: 資訊 (collapsible, read-only) -->
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm" x-data="{ cardOpen: true }">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer select-none"
+                             @click="cardOpen = !cardOpen">
+                            <div class="text-sm font-bold text-gray-700">
+                                <span class="border-b border-dashed border-gray-400 tooltip tooltip-bottom cursor-help"
+                                      data-tip="最新設定累積資訊">資訊</span>
+                            </div>
+                            <i class="ph text-gray-400 text-sm transition-transform"
+                               :class="cardOpen ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </div>
+                        <div x-show="cardOpen" class="p-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                            <!-- 人數 -->
+                            <div class="space-y-1.5">
+                                <p class="text-xs font-bold text-gray-500">
+                                    <span class="text-dashed-tip tooltip tooltip-bottom" data-tip="參與 / 符合">人數</span>
+                                </p>
+                                <div class="font-bold text-gray-800">
+                                    <span class="font-mono" x-text="(form.claimedUsers || 0).toLocaleString()"></span>
+                                    <span class="text-gray-300 mx-1">/</span>
+                                    <span class="font-mono" x-text="(form.qualifiedUsers || 0).toLocaleString()"></span>
+                                </div>
+                            </div>
+                            <!-- 參加率 -->
+                            <div class="space-y-1.5">
+                                <p class="text-xs font-bold text-gray-500">參加率</p>
+                                <div class="font-bold font-mono text-gray-800"
+                                     x-text="form.qualifiedUsers > 0 ? ((form.claimedUsers / form.qualifiedUsers) * 100).toFixed(1) + '%' : '-'"></div>
+                            </div>
+                            <!-- 獎勵發放 (col-span-2, with 獎勵歷程 icon) -->
+                            <div class="space-y-1.5 col-span-2">
+                                <p class="text-xs font-bold text-gray-500 flex items-center gap-1.5">
+                                    <span class="text-dashed-tip tooltip tooltip-bottom" data-tip="活動已發出的獎勵累計">獎勵發放</span>
+                                    <button @click="openRewardHistory()"
+                                            class="w-4 h-4 rounded flex items-center justify-center bg-gray-200 hover:bg-primary hover:text-white text-gray-500 transition-colors tooltip tooltip-bottom"
+                                            data-tip="獎勵歷程">
+                                        <i class="ph ph-clock-counter-clockwise text-xs"></i>
+                                    </button>
+                                </p>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <template x-if="(form.tokensPaid || 0) > 0">
+                                        <span class="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded text-xs font-medium"
+                                              x-text="'代幣 $' + (form.tokensPaid || 0).toLocaleString()"></span>
+                                    </template>
+                                    <template x-if="(form.spinsPaid || 0) > 0">
+                                        <span class="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium"
+                                              x-text="'免費旋轉 ' + (form.spinsPaid || 0).toLocaleString()"></span>
+                                    </template>
+                                    <template x-if="(form.vouchersPaid || 0) > 0">
+                                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded text-xs font-medium"
+                                              x-text="'序號兌換 ' + (form.vouchersPaid || 0).toLocaleString()"></span>
+                                    </template>
+                                    <template x-if="!(form.tokensPaid || 0) && !(form.spinsPaid || 0) && !(form.vouchersPaid || 0)">
+                                        <span class="text-gray-400 text-xs">-</span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card: 設定 (collapsible) -->
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm" x-data="{ cardOpen: true }">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer select-none"
+                             @click="cardOpen = !cardOpen">
+                            <div class="text-sm font-bold text-gray-700">設定</div>
+                            <i class="ph text-gray-400 text-sm transition-transform"
+                               :class="cardOpen ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </div>
+                        <div x-show="cardOpen" class="p-4 grid grid-cols-2 gap-x-6 gap-y-5">
+
+                            <!-- 名稱 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">名稱</label>
+                                <template x-if="!isEditing">
+                                    <div class="font-mono text-gray-700 text-sm" x-text="form.codeName || '-'"></div>
+                                </template>
+                                <template x-if="isEditing">
+                                    <input type="text" x-model="temp.codeName"
+                                           class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full bg-white h-[38px]">
+                                </template>
+                            </div>
+
+                            <!-- 參加資格 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">
+                                    <span class="text-dashed-tip tooltip tooltip-bottom normal-case" data-tip="最低可參與活動領獎的 VIP 階級">參加資格</span>
+                                </label>
+                                <template x-if="!isEditing">
+                                    <span class="bg-[#dbeafe] text-[#1e40af] px-2 py-0.5 rounded text-xs font-bold font-mono cursor-pointer hover:bg-[#bfdbfe] transition-colors"
+                                          @click="openVipDetail(form.vipLevel)"
+                                          x-text="form.vipLevel"></span>
+                                </template>
+                                <template x-if="isEditing">
+                                    <div class="relative">
+                                        <select x-model="temp.vipLevel"
+                                                class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px] appearance-none bg-white">
+                                            <template x-for="i in 11" :key="i">
+                                                <option :value="'VIP ' + (i - 1)" x-text="'VIP ' + (i - 1)"></option>
+                                            </template>
+                                        </select>
+                                        <i class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 活動時間 -->
+                            <div class="col-span-2">
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">活動時間</label>
+                                <template x-if="!isEditing">
+                                    <div class="font-mono text-gray-700 text-sm" x-text="form.startDate + ' ~ ' + (form.endDate || '無限期')"></div>
+                                </template>
+                                <template x-if="isEditing">
+                                    <div class="flex items-center gap-1.5">
+                                        <input x-ref="editDateStart" type="text" x-model="temp.startDate"
+                                               class="border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:border-primary transition-colors w-full text-center bg-white h-[38px]">
+                                        <span class="text-gray-400 flex-shrink-0">~</span>
+                                        <input x-ref="editDateEnd" type="text" x-model="temp.endDate"
+                                               placeholder="無限期"
+                                               class="border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:border-primary transition-colors w-full text-center bg-white h-[38px]">
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- 獎勵內容 -->
+                            <div class="col-span-2">
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">獎勵內容</label>
+                                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                    <table class="w-full text-left border-collapse text-sm">
+                                        <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200">
+                                            <tr>
+                                                <th class="px-4 py-2 w-1/3">代幣</th>
+                                                <th class="px-4 py-2 w-1/3">免費旋轉</th>
+                                                <th class="px-4 py-2">序號兌換</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <template x-if="!isEditing">
+                                                    <td class="px-4 py-2 font-mono text-gray-800" x-text="(form.tokens || 0) > 0 ? '$' + (form.tokens || 0).toLocaleString() : '-'"></td>
+                                                </template>
+                                                <template x-if="isEditing">
+                                                    <td class="px-4 py-2 align-top">
+                                                        <input type="number" x-model="temp.tokens" min="0" placeholder="請輸入代幣數量"
+                                                               class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px] font-mono">
+                                                    </td>
+                                                </template>
+                                                <template x-if="!isEditing">
+                                                    <td class="px-4 py-2 font-mono text-gray-800" x-text="(form.freeSpins || 0) > 0 ? (form.freeSpins || 0).toLocaleString() + ' 次' : '-'"></td>
+                                                </template>
+                                                <template x-if="isEditing">
+                                                    <td class="px-4 py-2 align-top">
+                                                        <input type="number" x-model="temp.freeSpins" min="0" placeholder="請輸入免費旋轉次數"
+                                                               class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px] font-mono">
+                                                    </td>
+                                                </template>
+                                                <template x-if="!isEditing">
+                                                    <td class="px-4 py-2 font-mono text-gray-800" x-text="(form.voucherCount || 0) > 0 ? (form.voucherCount || 0).toLocaleString() + ' 張' : '-'"></td>
+                                                </template>
+                                                <template x-if="isEditing">
+                                                    <td class="px-4 py-2 align-top">
+                                                        <input type="number" x-model="temp.voucherCount" min="0" placeholder="請輸入序號兌換張數"
+                                                               class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full h-[38px] font-mono">
+                                                    </td>
+                                                </template>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- 預算上限 -->
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">預算上限</label>
+                                <template x-if="!isEditing">
+                                    <div class="font-mono font-bold text-gray-800" x-text="'$' + (form.budgetLimit || 0).toLocaleString()"></div>
+                                </template>
+                                <template x-if="isEditing">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-gray-400">$</span>
+                                        <input type="number" x-model="temp.budgetLimit" min="0"
+                                               class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-primary transition-colors w-full font-mono h-[38px]">
+                                    </div>
+                                </template>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Card: 其他 (collapsible) -->
+                    <div class="bg-white border border-gray-200 rounded-lg shadow-sm" x-data="{ cardOpen: true }">
+                        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer select-none"
+                             @click="cardOpen = !cardOpen">
+                            <div class="text-sm font-bold text-gray-700">其他</div>
+                            <i class="ph text-gray-400 text-sm transition-transform"
+                               :class="cardOpen ? 'ph-caret-up' : 'ph-caret-down'"></i>
+                        </div>
+                        <div x-show="cardOpen" class="p-4 text-sm">
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-2">備註</label>
+                            <template x-if="!isEditing">
+                                <div class="bg-gray-50 p-3 rounded text-sm min-h-[40px]" :class="form.remark ? 'text-gray-800' : 'text-gray-400'" x-text="form.remark || '(無)'"></div>
+                            </template>
+                            <template x-if="isEditing">
+                                <textarea x-model="temp.remark" rows="3"
+                                          class="w-full border border-gray-300 rounded-lg p-3 text-sm outline-none focus:border-primary transition-colors bg-white resize-none"></textarea>
+                            </template>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end gap-3 flex-shrink-0 rounded-b-lg">
+                    <template x-if="!isEditing">
+                        <div class="flex gap-3">
+                            <button @click="open = false"
+                                    class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+                                關閉
+                            </button>
+                            <button @click="startEdit()"
+                                    class="px-6 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 shadow-sm text-sm font-bold transition-colors">
+                                編輯
+                            </button>
+                        </div>
+                    </template>
+                    <template x-if="isEditing">
+                        <div class="flex gap-3">
+                            <button @click="cancelEdit()"
+                                    class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+                                取消
+                            </button>
+                            <button @click="saveEdit()"
+                                    class="px-6 py-2 bg-primary text-white rounded hover:bg-blue-600 shadow-sm text-sm font-bold transition-colors">
+                                儲存
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── 異動歷程 Modal ─────────────────────────────────────── -->
+        <div x-show="historyOpen" style="display:none;"
+             class="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+             x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[85vh]"
+                 @click.stop
+                 @click.outside="!userDetailOpen && (historyOpen = false)">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0 flex items-center gap-2 rounded-t-lg">
+                    <h3 class="text-base font-bold text-gray-800 flex-shrink-0">終身限定-異動歷程</h3>
+                    <span class="text-gray-400 font-normal text-sm truncate" x-text="form.name"></span>
+                </div>
+                <div class="overflow-y-auto custom-scroll flex-1">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 shadow-sm">
+                            <tr>
+                                <th class="px-4 py-3 table-cell-nowrap">時間</th>
+                                <th class="px-4 py-3">內容</th>
+                                <th class="px-4 py-3 table-cell-nowrap">操作者</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600 divide-y divide-gray-100 bg-white">
+                            <template x-for="(h, i) in (form.changeHistory || [])" :key="i">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 table-cell-nowrap">
+                                        <div class="font-mono text-xs text-gray-800" x-text="h.time"></div>
+                                        <div class="text-xs text-gray-400 mt-0.5" x-text="h.timeRel"></div>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs text-gray-700" x-text="h.content"></td>
+                                    <td class="px-4 py-3 table-cell-nowrap">
+                                        <button @click="openUserDetail(h.operator)"
+                                                class="text-primary hover:underline text-xs text-left"
+                                                x-text="h.operator"></button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-if="!(form.changeHistory && form.changeHistory.length)">
+                                <tr>
+                                    <td colspan="3" class="px-4 py-8 text-center text-gray-400 text-sm">無異動歷程</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end flex-shrink-0 rounded-b-lg">
+                    <button @click="historyOpen = false"
+                            class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+                        關閉
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 獎勵歷程 Modal ─────────────────────────────────────── -->
+        <div x-show="rewardHistoryOpen" style="display:none;"
+             class="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+             x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 flex flex-col max-h-[85vh]"
+                 @click.stop
+                 @click.outside="!userDetailOpen && (rewardHistoryOpen = false)">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0 flex items-center justify-between rounded-t-lg">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <h3 class="text-base font-bold text-gray-800 flex-shrink-0">終身限定-獎勵歷程</h3>
+                        <span class="text-gray-400 font-normal text-sm truncate" x-text="form.name"></span>
+                    </div>
+                    <div class="flex items-baseline gap-1 flex-shrink-0 ml-4">
+                        <span class="text-xs text-gray-500">筆數</span>
+                        <span class="text-sm font-bold text-gray-800 font-mono"
+                              x-text="(form.rewardHistory || []).filter(r => !orderNoSearch || r.orderNo.toLowerCase().includes(orderNoSearch.toLowerCase())).length"></span>
+                    </div>
+                </div>
+                <div class="overflow-auto custom-scroll flex-1">
+                    <table class="w-full text-left border-collapse text-sm min-w-max">
+                        <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 shadow-sm">
+                            <tr>
+                                <th class="px-4 py-3 table-cell-nowrap">
+                                    <div class="flex items-center gap-1.5">
+                                        <span>單號</span>
+                                        <button @click="const rc = $el.getBoundingClientRect(); orderNoSearchBtnX = rc.left; orderNoSearchBtnY = rc.bottom + 6; showOrderNoSearch = !showOrderNoSearch; if (!showOrderNoSearch) orderNoSearch = ''"
+                                                class="w-5 h-5 rounded flex items-center justify-center transition-colors flex-shrink-0"
+                                                :class="showOrderNoSearch ? 'bg-primary text-white' : 'bg-gray-200 hover:bg-primary hover:text-white text-gray-600'">
+                                            <i class="ph ph-magnifying-glass text-xs"></i>
+                                        </button>
+                                    </div>
+                                </th>
+                                <th class="px-4 py-3 table-cell-nowrap sticky left-0 z-[40] bg-gray-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">名稱</th>
+                                <th class="px-4 py-3 table-cell-nowrap">活動時間</th>
+                                <th class="px-4 py-3 table-cell-nowrap text-right">
+                                    <span class="text-dashed-tip tooltip tooltip-bottom" data-tip="參與 / 符合">人數</span>
+                                </th>
+                                <th class="px-4 py-3 table-cell-nowrap text-right">參加率</th>
+                                <th class="px-4 py-3">獎勵發放</th>
+                                <th class="px-4 py-3 table-cell-nowrap">最後異動時間</th>
+                                <th class="px-4 py-3 table-cell-nowrap">操作者</th>
+                                <th class="px-4 py-3 table-cell-nowrap text-center sticky right-0 z-[40] bg-gray-50 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600 divide-y divide-gray-100 bg-white">
+                            <template x-for="(r, i) in (form.rewardHistory || []).filter(r => !orderNoSearch || r.orderNo.toLowerCase().includes(orderNoSearch.toLowerCase()))" :key="i">
+                                <tr class="group hover:bg-gray-50">
+                                    <td class="px-4 py-3 table-cell-nowrap">
+                                        <span class="font-mono text-xs text-gray-700" x-text="r.orderNo"></span>
+                                    </td>
+                                    <td class="px-4 py-3 table-cell-nowrap sticky left-0 z-10 bg-white group-hover:bg-gray-50 transition-colors shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                                        <span class="font-mono text-xs text-gray-700" x-text="r.name"></span>
+                                    </td>
+                                    <td class="px-4 py-3 table-cell-nowrap">
+                                        <span class="font-mono text-xs text-gray-700" x-text="r.period"></span>
+                                    </td>
+                                    <td class="px-4 py-3 table-cell-nowrap text-right">
+                                        <span class="font-mono text-gray-500" x-text="(r.claimedUsers || 0).toLocaleString()"></span>
+                                        <span class="text-gray-300 mx-1">/</span>
+                                        <span class="font-mono text-gray-700 font-bold" x-text="(r.qualifiedUsers || 0).toLocaleString()"></span>
+                                    </td>
+                                    <td class="px-4 py-3 table-cell-nowrap text-right">
+                                        <span class="font-mono text-gray-700"
+                                              x-text="r.qualifiedUsers > 0 ? ((r.claimedUsers / r.qualifiedUsers) * 100).toFixed(1) + '%' : '-'"></span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <template x-if="(r.tokensPaid || 0) > 0">
+                                                <span class="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded text-xs font-medium"
+                                                      x-text="'代幣 $' + (r.tokensPaid || 0).toLocaleString()"></span>
+                                            </template>
+                                            <template x-if="(r.spinsPaid || 0) > 0">
+                                                <span class="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium"
+                                                      x-text="'免費旋轉 ' + (r.spinsPaid || 0).toLocaleString()"></span>
+                                            </template>
+                                            <template x-if="(r.vouchersPaid || 0) > 0">
+                                                <span class="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded text-xs font-medium"
+                                                      x-text="'序號兌換 ' + (r.vouchersPaid || 0).toLocaleString()"></span>
+                                            </template>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 table-cell-nowrap">
+                                        <div class="font-mono text-xs text-gray-800" x-text="r.updatedAt"></div>
+                                        <div class="text-xs text-gray-400 mt-0.5" x-text="r.updatedAtRel"></div>
+                                    </td>
+                                    <td class="px-4 py-3 table-cell-nowrap">
+                                        <button @click="openUserDetail(r.operator)"
+                                                class="text-primary hover:underline text-xs text-left"
+                                                x-text="r.operator"></button>
+                                    </td>
+                                    <td class="px-4 py-3 table-cell-nowrap text-center sticky right-0 z-10 bg-white group-hover:bg-gray-50 transition-colors shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                                        <div class="inline-flex justify-center" x-data="{ tip: false, tx: 0, ty: 0 }">
+                                            <button @click="$dispatch('notify', '已帶入條件查詢獎勵紀錄：' + r.orderNo)"
+                                                    @mouseenter="tip = true; const rc = $el.getBoundingClientRect(); tx = rc.left + rc.width/2; ty = rc.top - 8;"
+                                                    @mouseleave="tip = false"
+                                                    class="w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors">
+                                                <i class="ph ph-magnifying-glass text-sm"></i>
+                                            </button>
+                                            <div x-show="tip" style="display:none;"
+                                                 class="fixed z-[9999] -translate-x-1/2 -translate-y-full px-2 py-1 bg-gray-700 text-white text-[11px] rounded whitespace-nowrap pointer-events-none"
+                                                 :style="`left:${tx}px;top:${ty}px`">
+                                                查詢獎勵紀錄
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-if="!(form.rewardHistory || []).filter(r => !orderNoSearch || r.orderNo.toLowerCase().includes(orderNoSearch.toLowerCase())).length">
+                                <tr>
+                                    <td colspan="9" class="px-4 py-8 text-center text-gray-400 text-sm"
+                                        x-text="orderNoSearch ? '查無符合的單號' : '無獎勵歷程'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end flex-shrink-0 rounded-b-lg">
+                    <button @click="rewardHistoryOpen = false"
+                            class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+                        關閉
+                    </button>
+                </div>
+
+                <!-- 漂浮搜尋框：fixed 定位，不被 overflow 截斷 -->
+                <div x-show="showOrderNoSearch && rewardHistoryOpen" style="display:none;"
+                     x-transition.opacity
+                     class="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg p-2 w-44"
+                     :style="`left:${orderNoSearchBtnX}px; top:${orderNoSearchBtnY}px`">
+                    <div class="relative">
+                        <input type="text" x-model="orderNoSearch" placeholder="搜尋單號…"
+                               @keydown.escape="showOrderNoSearch = false; orderNoSearch = ''"
+                               class="border border-gray-300 rounded-md px-2.5 py-1.5 text-xs font-mono font-normal outline-none focus:border-primary transition-colors w-full pr-7 bg-white">
+                        <button x-show="orderNoSearch" @click.stop="orderNoSearch = ''"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                            <i class="ph ph-x text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ── 用戶詳細 Modal ─────────────────────────────────────── -->
+        <div x-show="userDetailOpen" style="display:none;"
+             class="fixed inset-0 z-[350] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+             x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 overflow-hidden flex flex-col"
+                 @click.stop
+                 @click.outside="userDetailOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                    <h3 class="text-base font-bold text-gray-800">用戶詳細</h3>
+                </div>
+                <div class="p-6 space-y-4 text-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <i class="ph ph-user text-primary text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-800 text-base" x-text="userDetailName"></div>
+                            <div class="text-xs text-gray-400 mt-0.5">帳號</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+                        <div class="space-y-1">
+                            <p class="text-xs text-gray-500">角色</p>
+                            <p class="font-medium text-gray-800"
+                               x-text="userDetailName === 'admin' ? '系統管理員' : '系統帳號'"></p>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-xs text-gray-500">狀態</p>
+                            <span class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700">進行中</span>
+                        </div>
+                        <div class="space-y-1 col-span-2">
+                            <p class="text-xs text-gray-500">最後登入</p>
+                            <p class="font-mono text-xs text-gray-700">2025/05/25 08:30:00</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end flex-shrink-0 rounded-b-lg">
+                    <button @click="userDetailOpen = false"
+                            class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+                        關閉
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── VIP 階級詳細 Modal ─────────────────────────────────── -->
+        <div x-show="isVipDetailModalOpen" style="display:none;"
+             class="fixed inset-0 z-[350] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+             x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 overflow-hidden flex flex-col"
+                 @click.stop
+                 @click.outside="isVipDetailModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center gap-3 bg-gray-50 flex-shrink-0">
+                    <h3 class="text-base font-bold text-gray-800">VIP 階級詳細</h3>
+                    <span class="text-sm text-gray-400 font-mono" x-text="currentVipLevel"></span>
+                </div>
+                <div class="p-4">
+                    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <tbody class="divide-y divide-gray-100 bg-white">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-2.5 text-gray-500 w-1/3 bg-gray-50/50">階級</td>
+                                    <td class="px-4 py-2.5">
+                                        <span class="bg-[#dbeafe] text-[#1e40af] px-2 py-0.5 rounded text-xs font-bold font-mono" x-text="currentVipLevel"></span>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-2.5 text-gray-500 bg-gray-50/50">說明</td>
+                                    <td class="px-4 py-2.5 text-gray-700">此階級（含）以上會員皆可參與活動領獎</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-200 bg-white flex justify-end flex-shrink-0 rounded-b-lg">
+                    <button @click="isVipDetailModalOpen = false"
+                            class="px-4 py-2 bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+                        關閉
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end detailModalData -->
+
+    <!-- ============================================================
+         Main Page
+         ============================================================ -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full bg-slate-50" x-data="lifetimePage()">
+
+        <div id="layout-header"></div>
+
+        <div class="flex-1 overflow-auto relative h-full flex flex-col p-4 md:p-6">
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+
+                <!-- Breadcrumb + Actions -->
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="text-gray-500">活動管理</span>
+                        <i class="ph ph-caret-right text-gray-300 text-xs"></i>
+                        <span class="font-semibold text-primary">終身限定</span>
+                    </nav>
+                    <div class="relative" x-data="{ showHelp: false }">
+                        <button @click="showHelp = !showHelp"
+                                class="w-8 h-8 rounded-full bg-yellow-50 text-yellow-500 hover:bg-yellow-100 hover:text-yellow-600 transition-colors flex items-center justify-center border border-yellow-200 shadow-sm">
+                            <i class="ph-fill ph-lightbulb text-lg"></i>
+                        </button>
+                        <span class="btn-tip">說明</span>
+                        <div x-show="showHelp" x-cloak @click.outside="showHelp = false"
+                             class="absolute right-0 top-full mt-2 w-80 p-4 bg-yellow-50 shadow-xl rounded-lg z-[120] border border-yellow-100 text-xs text-yellow-800 leading-relaxed">
+                            <ul class="list-disc pl-4 space-y-2">
+                                <li>單一暱稱，終身僅限領取 1 次，無法重複領取</li>
+                                <li>獎勵方式：自動派送</li>
+                                <li><span class="font-bold">手機認證禮：</span>同 1 組手機號領取上限為 5 個暱稱</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Card -->
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden flex flex-col flex-1 min-h-0 relative">
+
+                    <!-- Summary Bar -->
+                    <div class="bg-gray-50 p-3 border-b border-gray-200 flex-shrink-0 flex items-center gap-3">
+                        <div class="flex gap-8 items-center px-2 ml-auto">
+                            <div class="flex flex-col text-right">
+                                <span class="text-xs text-gray-500">筆數</span>
+                                <span class="text-sm font-bold text-gray-800" x-text="activities.length"></span>
+                            </div>
+                            <div class="flex flex-col text-right">
+                                <span class="text-xs text-gray-500">進行中</span>
+                                <span class="text-sm font-bold text-green-600"
+                                      x-text="activities.filter(a => a.status === 'active').length"></span>
+                            </div>
+                            <div class="flex flex-col text-right">
+                                <span class="text-xs text-gray-500">未開始</span>
+                                <span class="text-sm font-bold text-blue-500"
+                                      x-text="activities.filter(a => a.status === 'not_started').length"></span>
+                            </div>
+                            <div class="flex flex-col text-right">
+                                <span class="text-xs text-gray-500">已逾期</span>
+                                <span class="text-sm font-bold text-red-500"
+                                      x-text="activities.filter(a => a.status === 'expired').length"></span>
+                            </div>
+                        </div>
+                        <div class="flex items-center pr-2 flex-shrink-0">
+                            <button @click="openColumnModal()"
+                                    class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center shadow-sm tooltip tooltip-bottom"
+                                    data-tip="選取顯示欄位">
+                                <i class="ph ph-columns text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="flex-1 overflow-auto custom-scroll relative z-0">
+                        <table class="w-full text-left border-collapse min-w-max">
+                            <thead class="bg-gray-50 text-xs text-gray-700 font-bold border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-4 py-3 table-cell-nowrap sticky left-0 z-20 bg-gray-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                                        <span class="text-dashed-tip tooltip tooltip-bottom" data-tip="功能 / 名稱">名稱</span>
+                                    </th>
+                                    <th class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.status">狀態</th>
+                                    <th class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.qualification">
+                                        <span class="text-dashed-tip tooltip tooltip-down" data-tip="最低可參與活動領獎的 VIP 階級">參加資格</span>
+                                    </th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.activityPeriod">活動時間</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.rewardContent">
+                                        <div class="flex items-center gap-1">
+                                            <span>獎勵內容</span>
+                                            <button @click="rewardDetailOpen = !rewardDetailOpen"
+                                                    class="ml-1 w-5 h-5 rounded flex items-center justify-center bg-gray-200 hover:bg-primary hover:text-white text-gray-600 transition-colors text-xs font-bold tooltip tooltip-bottom"
+                                                    :data-tip="rewardDetailOpen ? '收合' : '展開'">
+                                                <i class="ph" :class="rewardDetailOpen ? 'ph-minus' : 'ph-plus'"></i>
+                                            </button>
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-3 text-right table-cell-nowrap bg-orange-50 text-orange-700" x-show="colStatus.rewardContent && rewardDetailOpen">代幣</th>
+                                    <th class="px-4 py-3 text-right table-cell-nowrap bg-purple-50 text-purple-700" x-show="colStatus.rewardContent && rewardDetailOpen">免費旋轉</th>
+                                    <th class="px-4 py-3 text-right table-cell-nowrap bg-emerald-50 text-emerald-700" x-show="colStatus.rewardContent && rewardDetailOpen">序號兌換</th>
+                                    <th class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.participants">
+                                        <span class="text-dashed-tip tooltip tooltip-down" data-tip="參與 / 符合">人數</span>
+                                    </th>
+                                    <th class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.participationRate">參加率</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.totalReward">
+                                        <div class="flex items-center gap-1">
+                                            <span class="text-dashed-tip tooltip tooltip-bottom" data-tip="活動已發出的獎勵累計">獎勵發放</span>
+                                            <button @click="rewardDetailOpen = !rewardDetailOpen"
+                                                    class="ml-1 w-5 h-5 rounded flex items-center justify-center bg-gray-200 hover:bg-primary hover:text-white text-gray-600 transition-colors text-xs font-bold tooltip tooltip-bottom"
+                                                    :data-tip="rewardDetailOpen ? '收合' : '展開'">
+                                                <i class="ph" :class="rewardDetailOpen ? 'ph-minus' : 'ph-plus'"></i>
+                                            </button>
+                                        </div>
+                                    </th>
+                                    <th class="px-4 py-3 text-right table-cell-nowrap bg-orange-50 text-orange-700" x-show="colStatus.totalReward && rewardDetailOpen">代幣</th>
+                                    <th class="px-4 py-3 text-right table-cell-nowrap bg-purple-50 text-purple-700" x-show="colStatus.totalReward && rewardDetailOpen">免費旋轉</th>
+                                    <th class="px-4 py-3 text-right table-cell-nowrap bg-emerald-50 text-emerald-700" x-show="colStatus.totalReward && rewardDetailOpen">序號兌換</th>
+                                    <th class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.budgetLimit">預算上限</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.updatedAt">最後異動時間</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.operator">操作者</th>
+                                    <th class="px-4 py-3 table-cell-nowrap" x-show="colStatus.remark">備註</th>
+                                    <th class="px-4 py-3 table-cell-nowrap text-center sticky right-0 z-20 bg-gray-50 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-gray-600 divide-y divide-gray-100 bg-white">
+                                <template x-for="row in activities" :key="row.id">
+                                    <tr class="group hover:bg-blue-50/50 transition-colors">
+
+                                        <td class="px-4 py-3 table-cell-nowrap sticky left-0 z-10 bg-white group-hover:bg-blue-50 transition-colors shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                                            <div class="flex flex-col gap-0.5">
+                                                <span class="font-bold text-gray-800" x-text="row.name"></span>
+                                                <span class="text-[11px] text-gray-400 font-mono" x-text="row.codeName"></span>
+                                            </div>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.status">
+                                            <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                  :class="{
+                                                      'bg-green-100 text-green-700': row.status === 'active',
+                                                      'bg-blue-100 text-blue-700':   row.status === 'not_started',
+                                                      'bg-red-100 text-red-600':     row.status === 'expired'
+                                                  }"
+                                                  x-text="row.status === 'active' ? '進行中' : row.status === 'not_started' ? '未開始' : '已逾期'"></span>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-center" x-show="colStatus.qualification">
+                                            <span class="bg-[#dbeafe] text-[#1e40af] px-2 py-0.5 rounded text-xs font-bold font-mono cursor-pointer hover:bg-[#bfdbfe] transition-colors"
+                                                  @click="$dispatch('open-vip-detail', row.vipLevel)"
+                                                  x-text="row.vipLevel"></span>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.activityPeriod">
+                                            <span class="font-mono text-xs text-gray-600"
+                                                  x-text="row.startDate.slice(0, 10) + ' ~ ' + (row.endDate ? row.endDate.slice(0, 10) : '無限期')"></span>
+                                        </td>
+
+                                        <!-- 獎勵內容 -->
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.rewardContent">
+                                            <div class="flex flex-wrap gap-1.5" x-show="!rewardDetailOpen">
+                                                <template x-if="(row.tokens || 0) > 0">
+                                                    <span class="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded text-xs font-medium"
+                                                          x-text="'代幣 $' + (row.tokens || 0).toLocaleString()"></span>
+                                                </template>
+                                                <template x-if="(row.freeSpins || 0) > 0">
+                                                    <span class="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium"
+                                                          x-text="'免費旋轉 ' + row.freeSpins"></span>
+                                                </template>
+                                                <template x-if="(row.voucherCount || 0) > 0">
+                                                    <span class="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded text-xs font-medium"
+                                                          x-text="'序號兌換 ' + row.voucherCount"></span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-orange-50/30" x-show="colStatus.rewardContent && rewardDetailOpen">
+                                            <span class="font-mono text-orange-600 font-medium" x-text="(row.tokens || 0) > 0 ? '$' + (row.tokens || 0).toLocaleString() : '-'"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-purple-50/30" x-show="colStatus.rewardContent && rewardDetailOpen">
+                                            <span class="font-mono text-purple-600 font-medium" x-text="(row.freeSpins || 0) > 0 ? (row.freeSpins || 0).toLocaleString() : '-'"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-emerald-50/30" x-show="colStatus.rewardContent && rewardDetailOpen">
+                                            <span class="font-mono text-emerald-600 font-medium" x-text="(row.voucherCount || 0) > 0 ? (row.voucherCount || 0).toLocaleString() : '-'"></span>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.participants">
+                                            <span class="font-mono text-gray-500" x-text="(row.claimedUsers || 0).toLocaleString()"></span>
+                                            <span class="text-gray-300 mx-1">/</span>
+                                            <span class="font-mono text-gray-700 font-bold" x-text="(row.qualifiedUsers || 0).toLocaleString()"></span>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.participationRate">
+                                            <span class="font-mono text-gray-700" x-text="row.qualifiedUsers > 0 ? ((row.claimedUsers / row.qualifiedUsers) * 100).toFixed(1) + '%' : '-'"></span>
+                                        </td>
+
+                                        <!-- 獎勵發放 (badges) -->
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.totalReward">
+                                            <div class="flex flex-wrap gap-1.5" x-show="!rewardDetailOpen">
+                                                <template x-if="(row.tokensPaid || 0) > 0">
+                                                    <span class="bg-orange-50 text-orange-700 border border-orange-100 px-2 py-0.5 rounded text-xs font-medium"
+                                                          x-text="'代幣 $' + (row.tokensPaid || 0).toLocaleString()"></span>
+                                                </template>
+                                                <template x-if="(row.spinsPaid || 0) > 0">
+                                                    <span class="bg-purple-50 text-purple-700 border border-purple-100 px-2 py-0.5 rounded text-xs font-medium"
+                                                          x-text="'免費旋轉 ' + (row.spinsPaid || 0).toLocaleString()"></span>
+                                                </template>
+                                                <template x-if="(row.vouchersPaid || 0) > 0">
+                                                    <span class="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded text-xs font-medium"
+                                                          x-text="'序號兌換 ' + (row.vouchersPaid || 0).toLocaleString()"></span>
+                                                </template>
+                                                <template x-if="!(row.tokensPaid || 0) && !(row.spinsPaid || 0) && !(row.vouchersPaid || 0)">
+                                                    <span class="text-gray-400 text-xs">-</span>
+                                                </template>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-orange-50/30" x-show="colStatus.totalReward && rewardDetailOpen">
+                                            <span class="font-mono text-orange-600 font-medium" x-text="(row.tokensPaid || 0) > 0 ? '$' + (row.tokensPaid || 0).toLocaleString() : '-'"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-purple-50/30" x-show="colStatus.totalReward && rewardDetailOpen">
+                                            <span class="font-mono text-purple-600 font-medium" x-text="(row.spinsPaid || 0) > 0 ? (row.spinsPaid || 0).toLocaleString() : '-'"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right table-cell-nowrap bg-emerald-50/30" x-show="colStatus.totalReward && rewardDetailOpen">
+                                            <span class="font-mono text-emerald-600 font-medium" x-text="(row.vouchersPaid || 0) > 0 ? (row.vouchersPaid || 0).toLocaleString() : '-'"></span>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-right" x-show="colStatus.budgetLimit">
+                                            <span class="font-mono text-gray-700" x-text="'$' + (row.budgetLimit || 0).toLocaleString()"></span>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.updatedAt">
+                                            <span class="font-mono text-xs text-gray-600" x-text="row.updatedAt"></span>
+                                        </td>
+
+                                        <!-- 操作者 (clickable) -->
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.operator">
+                                            <button @click="$dispatch('open-user-detail', row.creator)"
+                                                    class="text-primary hover:underline text-sm text-left"
+                                                    x-text="row.creator"></button>
+                                        </td>
+
+                                        <!-- 備註 -->
+                                        <td class="px-4 py-3 table-cell-nowrap" x-show="colStatus.remark">
+                                            <span class="text-gray-400 text-xs" x-text="row.remark || '(無)'"></span>
+                                        </td>
+
+                                        <td class="px-4 py-3 table-cell-nowrap text-center sticky right-0 z-10 bg-white group-hover:bg-blue-50 transition-colors shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.08)]">
+                                            <button @click="$dispatch('open-lifetime-detail', row)"
+                                                    class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors tooltip mx-auto"
+                                                    data-tip="詳細">
+                                                <i class="ph ph-caret-right text-lg"></i>
+                                            </button>
+                                        </td>
+
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============================================================
+             Column Selection Modal
+             ============================================================ -->
+        <div x-show="isColumnModalOpen" style="display:none;"
+             class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+             x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 overflow-hidden flex flex-col max-h-[90vh]"
+                 @click.outside="isColumnModalOpen = false">
+
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                    <h3 class="text-lg font-bold text-gray-800">選擇顯示欄位</h3>
+                    <div class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-bold font-mono">
+                        <span x-text="selectedCount"></span> / <span x-text="totalColCount"></span>
+                    </div>
+                </div>
+
+                <div class="p-6 overflow-y-auto custom-scroll space-y-4 bg-gray-50 flex-1">
+
+                    <div class="flex items-center gap-3 cursor-pointer select-none mb-2 w-fit" @click="toggleAll()">
+                        <div class="w-5 h-5 rounded flex items-center justify-center transition-colors shadow-sm"
+                             :class="{ 'bg-primary border-primary': isAllChecked() || isAllIndeterminate(), 'bg-white border-2 border-gray-300': !isAllChecked() && !isAllIndeterminate() }">
+                            <i class="ph-bold text-white text-sm"
+                               :class="{ 'ph-check': isAllChecked(), 'ph-minus': isAllIndeterminate(), 'hidden': !isAllChecked() && !isAllIndeterminate() }"></i>
+                        </div>
+                        <span class="font-bold text-gray-800">全選</span>
+                    </div>
+
+                    <!-- 群組：基本 -->
+                    <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                        <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleGroup('basic')">
+                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                 :class="{ 'bg-primary border-primary': isGroupChecked('basic') || isGroupIndeterminate('basic'), 'bg-white border-2 border-gray-300': !isGroupChecked('basic') && !isGroupIndeterminate('basic') }">
+                                <i class="ph-bold text-white text-sm"
+                                   :class="{ 'ph-check': isGroupChecked('basic'), 'ph-minus': isGroupIndeterminate('basic'), 'hidden': !isGroupChecked('basic') && !isGroupIndeterminate('basic') }"></i>
+                            </div>
+                            <span class="font-bold text-gray-800">基本</span>
+                        </div>
+                        <div class="pl-2 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2">
+                            <template x-for="item in [
+                                {key:'status', label:'狀態'},
+                                {key:'qualification', label:'參加資格'},
+                                {key:'activityPeriod', label:'活動時間'},
+                                {key:'rewardContent', label:'獎勵內容'},
+                                {key:'updatedAt', label:'最後異動時間'},
+                                {key:'operator', label:'操作者'}
+                            ]" :key="item.key">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                         :class="tempColStatus[item.key] ? 'bg-primary border-primary' : 'bg-white border-2 border-gray-300'">
+                                        <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[item.key]"></i>
+                                    </div>
+                                    <input type="checkbox" x-model="tempColStatus[item.key]" class="hidden">
+                                    <span class="text-sm text-gray-700" x-text="item.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 群組：統計 -->
+                    <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                        <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleGroup('stats')">
+                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                 :class="{ 'bg-primary border-primary': isGroupChecked('stats') || isGroupIndeterminate('stats'), 'bg-white border-2 border-gray-300': !isGroupChecked('stats') && !isGroupIndeterminate('stats') }">
+                                <i class="ph-bold text-white text-sm"
+                                   :class="{ 'ph-check': isGroupChecked('stats'), 'ph-minus': isGroupIndeterminate('stats'), 'hidden': !isGroupChecked('stats') && !isGroupIndeterminate('stats') }"></i>
+                            </div>
+                            <span class="font-bold text-gray-800">統計</span>
+                        </div>
+                        <div class="pl-2 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2">
+                            <template x-for="item in [
+                                {key:'participants', label:'人數'},
+                                {key:'participationRate', label:'參加率'},
+                                {key:'totalReward', label:'獎勵發放'},
+                                {key:'budgetLimit', label:'預算上限'}
+                            ]" :key="item.key">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                         :class="tempColStatus[item.key] ? 'bg-primary border-primary' : 'bg-white border-2 border-gray-300'">
+                                        <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[item.key]"></i>
+                                    </div>
+                                    <input type="checkbox" x-model="tempColStatus[item.key]" class="hidden">
+                                    <span class="text-sm text-gray-700" x-text="item.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 群組：其他 -->
+                    <div class="border border-gray-100 rounded-lg p-5 space-y-4 shadow-sm bg-white">
+                        <div class="flex items-center gap-3 cursor-pointer select-none border-b border-gray-100 pb-3" @click="toggleGroup('other')">
+                            <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                 :class="{ 'bg-primary border-primary': isGroupChecked('other') || isGroupIndeterminate('other'), 'bg-white border-2 border-gray-300': !isGroupChecked('other') && !isGroupIndeterminate('other') }">
+                                <i class="ph-bold text-white text-sm"
+                                   :class="{ 'ph-check': isGroupChecked('other'), 'ph-minus': isGroupIndeterminate('other'), 'hidden': !isGroupChecked('other') && !isGroupIndeterminate('other') }"></i>
+                            </div>
+                            <span class="font-bold text-gray-800">其他</span>
+                        </div>
+                        <div class="pl-2 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2">
+                            <template x-for="item in [
+                                {key:'remark', label:'備註'}
+                            ]" :key="item.key">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <div class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                         :class="tempColStatus[item.key] ? 'bg-primary border-primary' : 'bg-white border-2 border-gray-300'">
+                                        <i class="ph-bold ph-check text-white text-sm" x-show="tempColStatus[item.key]"></i>
+                                    </div>
+                                    <input type="checkbox" x-model="tempColStatus[item.key]" class="hidden">
+                                    <span class="text-sm text-gray-700" x-text="item.label"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 rounded-b-lg">
+                    <button @click="isColumnModalOpen = false"
+                            class="px-6 py-2 bg-[#f1f5f9] text-[#475569] rounded hover:bg-[#e2e8f0] shadow-sm text-sm font-bold transition-colors">
+                        取消
+                    </button>
+                    <button @click="confirmColumnModal()"
+                            class="px-6 py-2 bg-[#3b82f6] text-white rounded hover:bg-[#2563eb] shadow-sm text-sm font-bold transition-colors">
+                        確定
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = {
+            title:  '終身限定',
+            parent: '活動管理'
+        };
+    </script>
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+    <script>
+
+        /* ── Detail Modal ───────────────────────────────────────────── */
+        function detailModalData() {
+            return {
+                open:                false,
+                isEditing:           false,
+                historyOpen:         false,
+                rewardHistoryOpen:   false,
+                userDetailOpen:      false,
+                userDetailName:      '',
+                isVipDetailModalOpen: false,
+                currentVipLevel:     '',
+                orderNoSearch:       '',
+                showOrderNoSearch:   false,
+                orderNoSearchBtnX:   0,
+                orderNoSearchBtnY:   0,
+                form: {},
+                temp: {},
+
+                openDetail(row) {
+                    this.form = { ...row };
+                    this.temp = {};
+                    this.isEditing         = false;
+                    this.historyOpen       = false;
+                    this.rewardHistoryOpen = false;
+                    this.orderNoSearch     = '';
+                    this.showOrderNoSearch = false;
+                    this.orderNoSearchBtnX = 0;
+                    this.orderNoSearchBtnY = 0;
+                    this.open = true;
+                },
+
+                openHistory() {
+                    this.historyOpen = true;
+                },
+
+                openRewardHistory() {
+                    this.rewardHistoryOpen = true;
+                },
+
+                openUserDetail(name) {
+                    this.userDetailName = name;
+                    this.userDetailOpen = true;
+                },
+
+                openVipDetail(level) {
+                    this.currentVipLevel = level;
+                    this.isVipDetailModalOpen = true;
+                },
+
+                startEdit() {
+                    this.temp = {
+                        codeName:     this.form.codeName,
+                        vipLevel:     this.form.vipLevel,
+                        startDate:    this.form.startDate,
+                        endDate:      this.form.endDate,
+                        tokens:       this.form.tokens,
+                        freeSpins:    this.form.freeSpins,
+                        voucherCount: this.form.voucherCount,
+                        budgetLimit:  this.form.budgetLimit,
+                        remark:       this.form.remark
+                    };
+                    this.isEditing = true;
+                    this.$nextTick(() => {
+                        const fpOpts = { dateFormat: 'Y/m/d H:i:S', enableTime: true, enableSeconds: true, time_24hr: true, locale: 'zh-tw' };
+                        if (this.$refs.editDateStart) flatpickr(this.$refs.editDateStart, fpOpts);
+                        if (this.$refs.editDateEnd)   flatpickr(this.$refs.editDateEnd,   fpOpts);
+                    });
+                },
+
+                cancelEdit() {
+                    this.isEditing = false;
+                    this.temp = {};
+                },
+
+                saveEdit() {
+                    this.form.codeName     = this.temp.codeName;
+                    this.form.vipLevel     = this.temp.vipLevel;
+                    this.form.startDate    = this.temp.startDate;
+                    this.form.endDate      = this.temp.endDate;
+                    this.form.tokens       = parseInt(this.temp.tokens) || 0;
+                    this.form.freeSpins    = parseInt(this.temp.freeSpins) || 0;
+                    this.form.voucherCount = parseInt(this.temp.voucherCount) || 0;
+                    this.form.budgetLimit  = parseInt(this.temp.budgetLimit) || 0;
+                    this.form.remark       = this.temp.remark;
+                    this.isEditing = false;
+                    this.$dispatch('notify', '更新成功');
+                    this.open = false;
+                }
+            };
+        }
+
+        /* ── Main Page ──────────────────────────────────────────────── */
+        function lifetimePage() {
+            return {
+                isColumnModalOpen: false,
+                rewardDetailOpen:  false,
+
+                activities: [
+                    {
+                        id: 1,
+                        name:               'Line 見面禮',
+                        codeName:           'Line_202603',
+                        remark:             '',
+                        status:             'active',
+                        vipLevel:           'VIP 0',
+                        startDate:          '2025/01/01 00:00:00',
+                        endDate:            '',
+                        tokens:             500,
+                        freeSpins:          0,
+                        voucherCount:       0,
+                        qualifiedUsers:     1847,
+                        claimedUsers:       1234,
+                        tokensPaid:         617000,
+                        spinsPaid:          0,
+                        vouchersPaid:       0,
+                        totalRewardDisplay: '$617,000',
+                        budgetLimit:        800000,
+                        creator:            'admin',
+                        createdAt:          '2025/01/01 10:00:00',
+                        updatedAt:          '2025/03/15 14:22:00',
+                        changeHistory: [
+                            { time: '2025/03/15 14:22:00', timeRel: '2 個月前', statusChange: '',          content: '「預算上限」異動', operator: 'admin'  },
+                            { time: '2025/02/01 09:30:00', timeRel: '3 個月前', statusChange: '停用 → 進行中', content: '「狀態」異動',   operator: 'admin'  },
+                            { time: '2025/01/01 10:00:00', timeRel: '4 個月前', statusChange: '',          content: '建立活動',       operator: 'admin'  }
+                        ],
+                        rewardHistory: [
+                            { orderNo: 'LTA-001-0325', name: 'Line_202603', period: '2025/03/01 ~ 2025/03/31', qualifiedUsers: 1847, claimedUsers: 1234, tokensPaid: 617000, spinsPaid: 0, vouchersPaid: 0, updatedAt: '2025/03/31 23:59:00', updatedAtRel: '2 個月前', operator: 'system' },
+                            { orderNo: 'LTA-001-0225', name: 'Line_202602', period: '2025/02/01 ~ 2025/02/28', qualifiedUsers: 1654, claimedUsers: 1021, tokensPaid: 510500, spinsPaid: 0, vouchersPaid: 0, updatedAt: '2025/02/28 23:59:00', updatedAtRel: '3 個月前', operator: 'system' },
+                            { orderNo: 'LTA-001-0125', name: 'Line_202601', period: '2025/01/01 ~ 2025/01/31', qualifiedUsers: 1421, claimedUsers:  892, tokensPaid: 446000, spinsPaid: 0, vouchersPaid: 0, updatedAt: '2025/01/31 23:59:00', updatedAtRel: '4 個月前', operator: 'system' }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        name:               '手機認證禮',
+                        codeName:           'Phone_202601',
+                        remark:             '',
+                        status:             'active',
+                        vipLevel:           'VIP 2',
+                        startDate:          '2025/01/01 00:00:00',
+                        endDate:            '',
+                        tokens:             200,
+                        freeSpins:          10,
+                        voucherCount:       0,
+                        qualifiedUsers:     3892,
+                        claimedUsers:       2841,
+                        tokensPaid:         568200,
+                        spinsPaid:          28410,
+                        vouchersPaid:       0,
+                        totalRewardDisplay: '$568,200 + 28,410 次',
+                        budgetLimit:        1000000,
+                        creator:            'system',
+                        createdAt:          '2025/01/01 10:00:00',
+                        updatedAt:          '2025/04/20 09:15:00',
+                        changeHistory: [
+                            { time: '2025/04/20 09:15:00', timeRel: '1 個月前', statusChange: '進行中 → 停用', content: '「活動時間」異動', operator: 'admin'  },
+                            { time: '2025/03/01 12:00:00', timeRel: '2 個月前', statusChange: '',          content: '「獎勵內容」異動', operator: 'system' },
+                            { time: '2025/01/01 10:00:00', timeRel: '4 個月前', statusChange: '',          content: '建立活動',        operator: 'system' }
+                        ],
+                        rewardHistory: [
+                            { orderNo: 'LTA-002-0425', name: 'Phone_202604', period: '2025/04/01 ~ 2025/04/30', qualifiedUsers: 3892, claimedUsers: 2841, tokensPaid: 568200, spinsPaid: 28410, vouchersPaid: 0, updatedAt: '2025/04/30 23:59:00', updatedAtRel: '1 個月前', operator: 'system' },
+                            { orderNo: 'LTA-002-0325', name: 'Phone_202603', period: '2025/03/01 ~ 2025/03/31', qualifiedUsers: 3421, claimedUsers: 2567, tokensPaid: 513400, spinsPaid: 25670, vouchersPaid: 0, updatedAt: '2025/03/31 23:59:00', updatedAtRel: '2 個月前', operator: 'system' },
+                            { orderNo: 'LTA-002-0225', name: 'Phone_202602', period: '2025/02/01 ~ 2025/02/28', qualifiedUsers: 2980, claimedUsers: 2145, tokensPaid: 429000, spinsPaid: 21450, vouchersPaid: 0, updatedAt: '2025/02/28 23:59:00', updatedAtRel: '3 個月前', operator: 'system' },
+                            { orderNo: 'LTA-002-0125', name: 'Phone_202601', period: '2025/01/01 ~ 2025/01/31', qualifiedUsers: 2314, claimedUsers: 1782, tokensPaid: 356400, spinsPaid: 17820, vouchersPaid: 0, updatedAt: '2025/01/31 23:59:00', updatedAtRel: '4 個月前', operator: 'system' }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        name:               '首儲加值',
+                        codeName:           '1DepositBonus',
+                        remark:             '儲值 - 首次儲值',
+                        status:             'not_started',
+                        vipLevel:           'VIP 1',
+                        startDate:          '2026/06/01 00:00:00',
+                        endDate:            '',
+                        tokens:             300,
+                        freeSpins:          0,
+                        voucherCount:       0,
+                        qualifiedUsers:     0,
+                        claimedUsers:       0,
+                        tokensPaid:         0,
+                        spinsPaid:          0,
+                        vouchersPaid:       0,
+                        budgetLimit:        600000,
+                        creator:            'admin',
+                        createdAt:          '2026/05/20 10:00:00',
+                        updatedAt:          '2026/05/20 10:00:00',
+                        changeHistory: [
+                            { time: '2026/05/20 10:00:00', timeRel: '5 天前', statusChange: '', content: '建立活動', operator: 'admin' }
+                        ],
+                        rewardHistory: []
+                    },
+                    {
+                        id: 4,
+                        name:               '首戰任務',
+                        codeName:           '1BetMission',
+                        remark:             '遊戲 - 首次押注',
+                        status:             'expired',
+                        vipLevel:           'VIP 0',
+                        startDate:          '2024/01/01 00:00:00',
+                        endDate:            '2024/12/31 23:59:59',
+                        tokens:             150,
+                        freeSpins:          5,
+                        voucherCount:       0,
+                        qualifiedUsers:     2150,
+                        claimedUsers:       1683,
+                        tokensPaid:         252450,
+                        spinsPaid:          8415,
+                        vouchersPaid:       0,
+                        budgetLimit:        350000,
+                        creator:            'admin',
+                        createdAt:          '2024/01/01 10:00:00',
+                        updatedAt:          '2024/12/31 23:59:00',
+                        changeHistory: [
+                            { time: '2024/12/31 23:59:00', timeRel: '17 個月前', statusChange: '', content: '活動已逾期', operator: 'system' },
+                            { time: '2024/01/01 10:00:00', timeRel: '29 個月前', statusChange: '', content: '建立活動',   operator: 'admin'  }
+                        ],
+                        rewardHistory: [
+                            { orderNo: 'LTA-004-1224', name: '1BetMission', period: '2024/01/01 ~ 2024/12/31', qualifiedUsers: 2150, claimedUsers: 1683, tokensPaid: 252450, spinsPaid: 8415, vouchersPaid: 0, updatedAt: '2024/12/31 23:59:00', updatedAtRel: '17 個月前', operator: 'admin' }
+                        ]
+                    }
+                ],
+
+                colStatus: {
+                    status:            true,
+                    qualification:     true,
+                    activityPeriod:    true,
+                    rewardContent:     true,
+                    participants:      true,
+                    participationRate: true,
+                    totalReward:       true,
+                    budgetLimit:       true,
+                    updatedAt:         false,
+                    operator:          false,
+                    remark:            false
+                },
+                tempColStatus: {},
+                columnGroups: {
+                    basic: ['status', 'qualification', 'activityPeriod', 'rewardContent', 'updatedAt', 'operator'],
+                    stats: ['participants', 'participationRate', 'totalReward', 'budgetLimit'],
+                    other: ['remark']
+                },
+
+                get totalColCount() { return 11; },
+                get selectedCount()  { return Object.values(this.tempColStatus).filter(v => v).length; },
+
+                isGroupChecked(g)       { return this.columnGroups[g].every(k => this.tempColStatus[k]); },
+                isGroupIndeterminate(g) {
+                    const n = this.columnGroups[g].filter(k => this.tempColStatus[k]).length;
+                    return n > 0 && n < this.columnGroups[g].length;
+                },
+                toggleGroup(g) {
+                    const checked = this.isGroupChecked(g);
+                    this.columnGroups[g].forEach(k => this.tempColStatus[k] = !checked);
+                },
+                isAllChecked()       { return this.selectedCount === this.totalColCount; },
+                isAllIndeterminate() { return this.selectedCount > 0 && this.selectedCount < this.totalColCount; },
+                toggleAll() {
+                    const checked = this.isAllChecked();
+                    Object.keys(this.columnGroups).forEach(g =>
+                        this.columnGroups[g].forEach(k => this.tempColStatus[k] = !checked)
+                    );
+                },
+                openColumnModal() {
+                    this.tempColStatus = { ...this.colStatus };
+                    this.isColumnModalOpen = true;
+                },
+                confirmColumnModal() {
+                    if (!Object.values(this.tempColStatus).some(v => v)) {
+                        this.$dispatch('notify', { message: '至少選取 1 個項目' });
+                        return;
+                    }
+                    this.colStatus = { ...this.tempColStatus };
+                    this.isColumnModalOpen = false;
+                }
+            };
+        }
+    </script>
+</body>
+</html>

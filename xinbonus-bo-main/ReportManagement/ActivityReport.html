@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合規後台 - 活動報表</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%8C%9F</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/zh-tw.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { DEFAULT: '#2088ea', hover: '#1a7acb' },
+                        dark: { bg: '#1a1c23', surface: '#24262d', text: '#e2e8f0' },
+                        amber: { DEFAULT: '#f59e0b', hover: '#d97706' }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../_shared/styles.css">
+    <style>
+        .bar-fill { height: 10px; border-radius: 5px; transition: width .4s ease; }
+        .type-bar  { height: 28px; border-radius: 4px; transition: width .4s ease; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans antialiased h-screen flex overflow-hidden"
+      :class="{ 'dark bg-gray-900 text-gray-100': isDark }"
+      x-data="appData()"
+      @notify.window="addToast($event.detail)">
+
+    <div id="layout-sidebar"></div>
+
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative w-full" x-data="activityReportPage()">
+
+        <div id="layout-header"></div>
+
+        <div class="flex-1 overflow-auto relative h-full flex flex-col p-4 md:p-6">
+            <div class="max-w-[1600px] w-full mx-auto flex flex-col h-full gap-4">
+
+                <!-- Breadcrumb -->
+                <div class="flex items-center justify-between flex-shrink-0">
+                    <nav class="flex items-center gap-1.5 text-sm">
+                        <span class="text-gray-500">報表管理</span>
+                        <i class="ph ph-caret-right text-gray-300 text-xs"></i>
+                        <span class="font-semibold text-primary">活動報表</span>
+                    </nav>
+                    <div class="flex items-center gap-3">
+                        <div class="relative" x-data="{ showTip: false }" @click.outside="showTip = false">
+                            <button @click="showTip = !showTip" class="w-8 h-8 rounded-full bg-yellow-50 text-yellow-500 hover:bg-yellow-100 transition-colors flex items-center justify-center border border-yellow-200 shadow-sm tooltip tooltip-down" data-tip="說明"><i class="ph-fill ph-lightbulb text-lg"></i></button>
+                            <div x-show="showTip" x-transition.opacity class="absolute right-0 top-full mt-2 w-80 p-4 bg-[#fffbeb] shadow-xl rounded-lg z-50 border border-[#fcd34d] text-gray-700"><div class="popover-arrow"></div><h4 class="font-bold text-amber-800 flex items-center gap-2 mb-2 border-b border-amber-200 pb-2"><i class="ph-fill ph-info"></i> 欄位說明</h4><ul class="text-xs space-y-2 list-disc pl-4 text-gray-600"><template x-for="note in currentNotes" :key="note"><li x-html="note"></li></template></ul></div>
+                        </div>
+                        <button @click="isAlertConfigOpen = true" class="w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center focus:outline-none tooltip tooltip-down" data-tip="設定">
+                            <i class="ph ph-gear-six text-xl"></i>
+                        </button>
+                        <button @click="isAiSummaryOpen = true" class="w-8 h-8 rounded-full text-primary hover:bg-blue-50 transition-colors flex items-center justify-center focus:outline-none tooltip tooltip-down" data-tip="AI 摘要">
+                            <i class="ph-fill ph-sparkle text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex gap-1 border-b border-gray-200 px-4 pt-2 flex-shrink-0 overflow-x-auto no-scrollbar">
+                    <template x-for="tab in tabs" :key="tab.id">
+                        <button @click="switchTab(tab.id)"
+                                class="px-8 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                                :class="currentTab === tab.id ? 'border-primary text-primary bg-white rounded-t-md shadow-sm' : 'border-transparent text-gray-400 hover:text-gray-600'">
+                            <i :class="['ph text-lg', tab.icon]"></i>
+                            <span x-text="tab.name"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Search Mobile Trigger -->
+                <div class="lg:hidden flex-shrink-0">
+                    <div @click="searchOpen = true" class="bg-white border border-gray-200 rounded-lg shadow-sm p-3 flex items-center justify-between cursor-pointer active:bg-gray-50">
+                        <div class="flex items-center gap-2 text-gray-600 font-bold"><i class="ph ph-magnifying-glass text-lg"></i> 搜尋</div>
+                        <i class="ph ph-caret-right text-gray-400"></i>
+                    </div>
+                </div>
+
+                <!-- Search Container -->
+                <div :class="{ 'fixed inset-0 z-[150] bg-white flex flex-col': isMobile && searchOpen, 'bg-white border border-gray-200 rounded-xl shadow-sm flex-shrink-0 lg:block p-5': !isMobile || !searchOpen, 'hidden': isMobile && !searchOpen }">
+
+                    <div class="lg:hidden px-4 py-3 border-b border-gray-100 flex justify-between items-center mb-4 flex-shrink-0" x-show="isMobile">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-lg text-gray-800" x-text="'活動報表 - ' + (tabs.find(t => t.id === currentTab)?.name || '')"></span>
+                            <span class="text-gray-400 font-normal text-sm">搜尋</span>
+                        </div>
+                        <button @click="searchOpen = false" class="text-gray-500 hover:text-gray-700 p-1"><i class="ph ph-x text-2xl"></i></button>
+                    </div>
+
+                    <!-- Basic Search Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 items-start lg:items-end px-4 lg:px-0 pt-6 lg:pt-0" :class="{'pb-24 overflow-y-auto h-[calc(100vh-140px)] block': isMobile}">
+                        <div class="floating-input-group" :class="{'mb-5': isMobile}">
+                            <label class="floating-label">日期</label>
+                            <div class="flex items-center">
+                                <input x-ref="dateStart" type="text" class="floating-input rounded-r-none border-r-0 text-center bg-input-base focus:bg-white" placeholder="起">
+                                <div class="px-1 border-y border-gray-200 bg-input-base h-[42px] flex items-center text-gray-400">~</div>
+                                <input x-ref="dateEnd" type="text" class="floating-input rounded-l-none border-l-0 text-center bg-input-base focus:bg-white" placeholder="訖">
+                            </div>
+                        </div>
+
+                        <div class="floating-input-group" :class="{'mb-5': isMobile}">
+                            <label class="floating-label">活動類型</label>
+                            <select x-model="search.activityType" class="floating-input bg-input-base focus:bg-white">
+                                <option value="">全部</option>
+                                <option>終身1次</option>
+                                <option>循環活動</option>
+                                <option>節慶限定</option>
+                            </select>
+                        </div>
+
+                        <div class="floating-input-group" :class="{'mb-5': isMobile}" x-show="currentTab === 'overview' || currentTab === 'roi'">
+                            <label class="floating-label">活動分類</label>
+                            <select x-model="search.activityCategory" class="floating-input bg-input-base focus:bg-white">
+                                <option value="">全部</option>
+                                <option>Line加官方好友禮</option>
+                                <option>手機驗證禮</option>
+                                <option>每日簽到</option>
+                                <option>即刻救援</option>
+                                <option>任務挑戰</option>
+                            </select>
+                        </div>
+
+                        <div class="floating-input-group" :class="{'mb-5': isMobile}" x-show="currentTab === 'overview'">
+                            <label class="floating-label">狀態</label>
+                            <select x-model="search.status" class="floating-input bg-input-base focus:bg-white">
+                                <option value="">全部</option>
+                                <option value="active">進行中</option>
+                                <option value="ended">已結束</option>
+                                <option value="upcoming">未開始</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Action Row -->
+                    <div class="flex items-center justify-end mt-4 px-4 lg:px-0 lg:flex-row flex-col-reverse gap-4 lg:gap-0" :class="{'fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-[130]': isMobile}">
+                        <button @click="fetchData(); searchOpen = false" class="lg:w-10 lg:h-10 w-full h-11 bg-primary hover:bg-blue-600 text-white font-bold rounded-lg shadow transition-colors flex items-center justify-center gap-2">
+                            <span class="lg:hidden">搜尋</span>
+                            <i class="ph ph-magnifying-glass text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Card -->
+                <div class="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden flex flex-col flex-1 min-h-0 relative">
+
+                    <!-- Loading Overlay -->
+                    <div x-show="isLoading" class="absolute inset-0 bg-white/80 z-50 flex items-center justify-center backdrop-blur-sm">
+                        <div class="flex flex-col items-center gap-2">
+                            <i class="ph ph-spinner animate-spin text-3xl text-primary"></i>
+                            <span class="text-sm font-medium text-gray-600">數據更新中...</span>
+                        </div>
+                    </div>
+
+                    <!-- Summary Bar (BetRecord style) -->
+                    <div class="bg-gray-50 p-3 border-b border-gray-200 flex-shrink-0 flex items-center gap-3">
+                        <!-- Left toggle: only for typeCompare tab -->
+                        <div x-show="currentTab === 'typeCompare'" x-cloak class="flex gap-1 flex-shrink-0 pl-1">
+                            <button @click="typeCompareView = 'chart'"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-sm tooltip tooltip-bottom" data-tip="圖表"
+                                    :class="typeCompareView === 'chart' ? 'bg-primary text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'">
+                                <i class="ph ph-chart-bar"></i>
+                            </button>
+                            <button @click="typeCompareView = 'table'"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-sm tooltip tooltip-bottom" data-tip="表格"
+                                    :class="typeCompareView === 'table' ? 'bg-primary text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50'">
+                                <i class="ph ph-table"></i>
+                            </button>
+                        </div>
+                        <div class="flex gap-8 items-center px-4 whitespace-nowrap overflow-x-auto no-scrollbar custom-scroll ml-auto">
+                            <template x-for="metric in summaryMetrics" :key="metric.label">
+                                <div class="flex flex-col text-right">
+                                    <span class="text-xs text-gray-500" x-text="metric.label"></span>
+                                    <span class="text-sm font-bold font-mono" :class="metric.color || 'text-gray-800'" x-text="metric.value"></span>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0 pr-2">
+                            <button x-show="currentTab === 'overview' || currentTab === 'roi' || (currentTab === 'typeCompare' && typeCompareView === 'table')" @click="openColumnModal()" class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center shadow-sm tooltip tooltip-bottom" data-tip="欄位顯示">
+                                <i class="ph ph-columns text-lg"></i>
+                            </button>
+                            <button @click="notifyDownload()" class="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center shadow-sm tooltip tooltip-down" data-tip="下載">
+                                <i class="ph ph-download-simple text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table / Content Area -->
+                    <div class="overflow-auto flex-1 relative custom-scroll">
+
+                        <!-- ============================================================
+                             Tab 1: 活動概覽 (overview)
+                             ============================================================ -->
+                        <table x-show="currentTab === 'overview'" class="w-full text-sm text-gray-600 whitespace-nowrap border-collapse min-w-max">
+                            <thead class="bg-gray-50 text-xs text-gray-700 uppercase font-bold sticky top-0 z-30">
+                                <tr>
+                                    <th class="px-4 py-3 text-left sticky-left-0 bg-gray-50 min-w-[180px] z-[31]">活動名稱</th>
+                                    <th class="px-4 py-3 text-left bg-gray-50" x-show="colStatus.activityType">活動類型</th>
+                                    <th class="px-4 py-3 text-left bg-gray-50" x-show="colStatus.activityCategory">活動分類</th>
+                                    <th class="px-4 py-3 text-center bg-gray-50" x-show="colStatus.status">狀態</th>
+                                    <th class="px-4 py-3 text-left bg-gray-50" x-show="colStatus.period">活動期間</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.participants">參與人數</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.pointsCost">發放點數(成本)</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.betRevenue">產生押注(效益)</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.roi">
+                                        <span class="tooltip tooltip-bottom" data-tip="ROI = 產生押注(效益) ÷ 發放點數(成本) × 100%">ROI</span>
+                                    </th>
+                                    <th class="px-4 py-3 text-center bg-gray-50">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <template x-for="row in displayedOverviewData" :key="row.id">
+                                    <tr class="hover:bg-blue-50/50 transition-colors" :class="row.hasDetail ? 'cursor-pointer' : ''" @click="row.hasDetail && toggleDetail(row.id)">
+                                        <td class="px-4 py-3 text-left sticky-left-0 bg-white min-w-[180px]">
+                                            <div class="flex items-center gap-2">
+                                                <i x-show="row.hasDetail" class="ph text-base transition-transform flex-shrink-0"
+                                                   :class="expandedRows.includes(row.id) ? 'ph-caret-down text-primary' : 'ph-caret-right text-gray-400'"></i>
+                                                <span class="font-medium text-blue-600 hover:underline" x-text="row.name"></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-left" x-show="colStatus.activityType">
+                                            <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                  :class="getActivityTypeClass(row.type)"
+                                                  x-text="row.type"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-left" x-show="colStatus.activityCategory">
+                                            <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                  :class="getActivityCategoryClass(row.category)"
+                                                  x-text="row.category"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center" x-show="colStatus.status">
+                                            <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                  :class="getStatusClass(row.status)"
+                                                  x-text="getStatusLabel(row.status)"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-left font-mono text-xs text-gray-500" x-show="colStatus.period">
+                                            <span x-text="row.startDate + ' ~ ' + row.endDate"></span>
+                                            <span class="ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold font-mono leading-none flex-shrink-0"
+                                                  x-text="row.durationDays"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-mono font-bold" x-text="row.participants.toLocaleString()" x-show="colStatus.participants"></td>
+                                        <td class="px-4 py-3 text-right font-mono font-medium text-orange-600" x-text="'$' + row.pointsCost.toLocaleString()" x-show="colStatus.pointsCost"></td>
+                                        <td class="px-4 py-3 text-right font-mono font-medium text-green-600" x-text="'$' + row.betRevenue.toLocaleString()" x-show="colStatus.betRevenue"></td>
+                                        <td class="px-4 py-3 text-right" x-show="colStatus.roi">
+                                            <span class="font-mono font-bold text-sm"
+                                                  :class="row.roi >= 100 ? 'text-green-600' : 'text-red-500'"
+                                                  x-text="row.roi + '%'"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center">
+                                            <button @click.stop="openDetailModal(row)"
+                                                    class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-primary transition-colors tooltip mx-auto" data-tip="詳情">
+                                                <i class="ph ph-caret-right text-lg"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <!-- Expanded Detail Row -->
+                                    <tr x-show="expandedRows.includes(row.id)" class="bg-blue-50/30">
+                                        <td colspan="10" class="px-8 py-4">
+                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                                <div class="bg-white rounded-lg p-3 border border-gray-100 shadow-sm">
+                                                    <div class="text-xs text-gray-400 mb-1">目標人數</div>
+                                                    <div class="font-bold font-mono text-gray-700" x-text="row.targetParticipants.toLocaleString()"></div>
+                                                </div>
+                                                <div class="bg-white rounded-lg p-3 border border-gray-100 shadow-sm">
+                                                    <div class="text-xs text-gray-400 mb-1">達成率</div>
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                            <div class="h-full bg-primary rounded-full transition-all"
+                                                                 :style="`width: ${Math.min(Math.round(row.participants / row.targetParticipants * 100), 100)}%`"></div>
+                                                        </div>
+                                                        <span class="font-bold font-mono text-primary text-sm w-12 text-right"
+                                                              x-text="Math.round(row.participants / row.targetParticipants * 100) + '%'"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="bg-white rounded-lg p-3 border border-gray-100 shadow-sm">
+                                                    <div class="text-xs text-gray-400 mb-1">發放來源</div>
+                                                    <div class="font-bold text-gray-700 text-xs" x-text="row.pointsSource"></div>
+                                                </div>
+                                                <div class="bg-white rounded-lg p-3 border border-gray-100 shadow-sm">
+                                                    <div class="text-xs text-gray-400 mb-1">每人發放上限</div>
+                                                    <div class="font-bold font-mono text-gray-700" x-text="'$' + row.maxPerPerson.toLocaleString()"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+
+                        <!-- ============================================================
+                             Tab 2: 效益分析 (roi)
+                             ============================================================ -->
+                        <table x-show="currentTab === 'roi'" class="w-full text-sm text-gray-600 whitespace-nowrap border-collapse min-w-max">
+                            <thead class="bg-gray-50 text-xs text-gray-700 uppercase font-bold sticky top-0 z-30">
+                                <tr>
+                                    <th class="px-4 py-3 text-left sticky-left-0 bg-gray-50 min-w-[180px] z-[31]">活動名稱</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.targetParticipants">目標人數</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.actualParticipants">實際人數</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50 min-w-[180px]" x-show="colStatus.achieveRate">達成率</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.estimatedCost">預估成本</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.actualCost">實際成本</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.estimatedRevenue">預估押注效益</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.actualRevenue">實際效益</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.diff">差異</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50" x-show="colStatus.roiTrend">ROI趨勢</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <template x-for="row in displayedRoiData" :key="row.id">
+                                    <tr class="hover:bg-blue-50/50 transition-colors">
+                                        <td class="px-4 py-3 text-left sticky-left-0 bg-white min-w-[180px]">
+                                            <span class="font-medium text-blue-600 hover:underline cursor-pointer" x-text="row.name"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-mono" x-text="row.targetParticipants.toLocaleString()" x-show="colStatus.targetParticipants"></td>
+                                        <td class="px-4 py-3 text-right font-mono font-bold" x-text="row.participants.toLocaleString()" x-show="colStatus.actualParticipants"></td>
+                                        <td class="px-4 py-3 text-right min-w-[180px]" x-show="colStatus.achieveRate">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <div class="h-2 rounded-full bg-gray-100 w-24 overflow-hidden">
+                                                    <div class="h-full bg-primary rounded-full transition-all"
+                                                         :style="`width: ${Math.min(Math.round(row.participants / row.targetParticipants * 100), 100)}%`"></div>
+                                                </div>
+                                                <span class="font-mono font-bold w-12 text-right"
+                                                      :class="Math.round(row.participants / row.targetParticipants * 100) >= 100 ? 'text-green-600' : 'text-primary'"
+                                                      x-text="Math.round(row.participants / row.targetParticipants * 100) + '%'"></span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-mono text-gray-500" x-text="'$' + row.estimatedCost.toLocaleString()" x-show="colStatus.estimatedCost"></td>
+                                        <td class="px-4 py-3 text-right font-mono font-medium text-orange-600" x-text="'$' + row.pointsCost.toLocaleString()" x-show="colStatus.actualCost"></td>
+                                        <td class="px-4 py-3 text-right font-mono text-gray-500" x-text="'$' + row.estimatedRevenue.toLocaleString()" x-show="colStatus.estimatedRevenue"></td>
+                                        <td class="px-4 py-3 text-right font-mono font-medium text-green-600" x-text="'$' + row.betRevenue.toLocaleString()" x-show="colStatus.actualRevenue"></td>
+                                        <td class="px-4 py-3 text-right font-mono font-bold" x-show="colStatus.diff"
+                                            :class="(row.betRevenue - row.estimatedRevenue) >= 0 ? 'text-green-600' : 'text-red-500'"
+                                            x-text="((row.betRevenue - row.estimatedRevenue) >= 0 ? '+$' : '-$') + Math.abs(row.betRevenue - row.estimatedRevenue).toLocaleString()"></td>
+                                        <td class="px-4 py-3 text-right" x-show="colStatus.roiTrend">
+                                            <span class="text-xs font-bold flex items-center justify-end gap-1"
+                                                  :class="row.roiTrend >= 0 ? 'text-green-600' : 'text-red-500'">
+                                                <i class="ph text-base" :class="row.roiTrend >= 0 ? 'ph-trend-up' : 'ph-trend-down'"></i>
+                                                <span x-text="(row.roiTrend >= 0 ? '+' : '') + row.roiTrend + '%'"></span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+
+                        <!-- ============================================================
+                             Tab 3: 類型比較 (typeCompare)
+                             ============================================================ -->
+                        <div x-show="currentTab === 'typeCompare'" class="p-6 space-y-6">
+
+                            <!-- Chart View -->
+                            <div x-show="typeCompareView === 'chart'">
+                            <!-- Two-column Chart Cards -->
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                                <!-- By Activity Type -->
+                                <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                                    <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                        <i class="ph ph-chart-bar text-primary text-lg"></i>
+                                        依活動類型 ROI 比較
+                                    </h3>
+                                    <div class="space-y-4">
+                                        <template x-for="item in typeCompareByType" :key="item.label">
+                                            <div class="space-y-1">
+                                                <div class="flex justify-between items-center">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                              :class="getActivityTypeClass(item.label)"
+                                                              x-text="item.label"></span>
+                                                        <span class="text-xs text-gray-400 font-mono" x-text="item.count + ' 活動'"></span>
+                                                    </div>
+                                                    <div class="flex items-center gap-3 text-right">
+                                                        <div>
+                                                            <div class="text-xs text-gray-400">成本</div>
+                                                            <div class="font-mono text-xs font-bold text-orange-600" x-text="'$' + item.totalCost.toLocaleString()"></div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-xs text-gray-400">效益</div>
+                                                            <div class="font-mono text-xs font-bold text-green-600" x-text="'$' + item.totalRevenue.toLocaleString()"></div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-xs text-gray-400">ROI</div>
+                                                            <div class="font-mono text-sm font-bold"
+                                                                 :class="item.roi >= 100 ? 'text-green-600' : 'text-red-500'"
+                                                                 x-text="item.roi + '%'"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex gap-1 h-7">
+                                                    <div class="flex-1 bg-gray-100 rounded-l-md overflow-hidden relative">
+                                                        <div class="h-full rounded-l-md transition-all"
+                                                             :class="item.roi >= 100 ? 'bg-green-400' : 'bg-red-400'"
+                                                             :style="`width: ${Math.min(item.roi, 300) / 3}%`"></div>
+                                                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-mono text-white font-bold drop-shadow"
+                                                              x-text="item.participants.toLocaleString() + ' 人'"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- By Activity Category -->
+                                <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                                    <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                                        <i class="ph ph-tag text-primary text-lg"></i>
+                                        依活動分類 效益比較
+                                    </h3>
+                                    <div class="space-y-4">
+                                        <template x-for="item in typeCompareByCategory" :key="item.label">
+                                            <div class="space-y-1">
+                                                <div class="flex justify-between items-center">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                              :class="getActivityCategoryClass(item.label)"
+                                                              x-text="item.label"></span>
+                                                    </div>
+                                                    <div class="flex items-center gap-3 text-right">
+                                                        <div>
+                                                            <div class="text-xs text-gray-400">參與人數</div>
+                                                            <div class="font-mono text-xs font-bold text-gray-700" x-text="item.participants.toLocaleString()"></div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-xs text-gray-400">ROI</div>
+                                                            <div class="font-mono text-sm font-bold"
+                                                                 :class="item.roi >= 100 ? 'text-green-600' : 'text-red-500'"
+                                                                 x-text="item.roi + '%'"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div class="h-full rounded-full transition-all"
+                                                         :class="getActivityCategoryBarClass(item.label)"
+                                                         :style="`width: ${Math.min(item.roi / 3, 100)}%`"></div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+
+                            </div><!-- end chart view -->
+
+                            <!-- Table View -->
+                            <div x-show="typeCompareView === 'table'">
+                            <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                <div class="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                                    <i class="ph ph-table text-primary text-lg"></i>
+                                    <h3 class="text-sm font-bold text-gray-700">分類詳細比較</h3>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-sm text-gray-600 whitespace-nowrap border-collapse">
+                                        <thead class="bg-gray-50 text-xs text-gray-700 font-bold">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left">活動類型</th>
+                                                <th class="px-4 py-3 text-left">活動分類</th>
+                                                <th class="px-4 py-3 text-right" x-show="colStatus.tc_count">活動數</th>
+                                                <th class="px-4 py-3 text-right" x-show="colStatus.tc_participants">參與人數</th>
+                                                <th class="px-4 py-3 text-right" x-show="colStatus.tc_totalCost">發放點數</th>
+                                                <th class="px-4 py-3 text-right" x-show="colStatus.tc_totalRevenue">押注效益</th>
+                                                <th class="px-4 py-3 text-right" x-show="colStatus.tc_roi">ROI</th>
+                                                <th class="px-4 py-3 text-right" x-show="colStatus.tc_avgCost">人均成本</th>
+                                                <th class="px-4 py-3 text-right" x-show="colStatus.tc_avgRevenue">人均效益</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100">
+                                            <template x-for="row in typeCompareDetailData" :key="row.key">
+                                                <tr class="hover:bg-blue-50/50 transition-colors">
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                              :class="getActivityTypeClass(row.type)"
+                                                              x-text="row.type"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <span class="px-2 py-0.5 rounded text-xs font-bold"
+                                                              :class="getActivityCategoryClass(row.category)"
+                                                              x-text="row.category"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-right font-mono" x-text="row.count" x-show="colStatus.tc_count"></td>
+                                                    <td class="px-4 py-3 text-right font-mono font-bold" x-text="row.participants.toLocaleString()" x-show="colStatus.tc_participants"></td>
+                                                    <td class="px-4 py-3 text-right font-mono text-orange-600" x-text="'$' + row.totalCost.toLocaleString()" x-show="colStatus.tc_totalCost"></td>
+                                                    <td class="px-4 py-3 text-right font-mono text-green-600" x-text="'$' + row.totalRevenue.toLocaleString()" x-show="colStatus.tc_totalRevenue"></td>
+                                                    <td class="px-4 py-3 text-right font-mono font-bold"
+                                                        :class="row.roi >= 100 ? 'text-green-600' : 'text-red-500'"
+                                                        x-text="row.roi + '%'" x-show="colStatus.tc_roi"></td>
+                                                    <td class="px-4 py-3 text-right font-mono text-gray-500"
+                                                        x-text="'$' + (row.participants > 0 ? Math.round(row.totalCost / row.participants).toLocaleString() : '0')" x-show="colStatus.tc_avgCost"></td>
+                                                    <td class="px-4 py-3 text-right font-mono text-gray-500"
+                                                        x-text="'$' + (row.participants > 0 ? Math.round(row.totalRevenue / row.participants).toLocaleString() : '0')" x-show="colStatus.tc_avgRevenue"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            </div><!-- end table view -->
+                        </div>
+
+                        <!-- ============================================================
+                             Tab 4: 每日紀錄 (daily)
+                             ============================================================ -->
+                        <table x-show="currentTab === 'daily'" class="w-full text-sm text-gray-600 whitespace-nowrap border-collapse min-w-max">
+                            <thead class="bg-gray-50 text-xs text-gray-700 uppercase font-bold sticky top-0 z-30">
+                                <tr>
+                                    <th class="px-4 py-3 text-left sticky-left-0 bg-gray-50 min-w-[120px] z-[31]">日期</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50">活動數</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50">新增參與</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50">發放點數</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50">產生押注</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50">完成任務數</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50">每日成本</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50">每日效益</th>
+                                    <th class="px-4 py-3 text-right bg-gray-50">當日ROI</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <template x-for="row in displayedDailyData" :key="row.date">
+                                    <tr class="hover:bg-blue-50/50 transition-colors">
+                                        <td class="px-4 py-3 text-left sticky-left-0 bg-white min-w-[120px] font-mono font-bold text-gray-700" x-text="row.date"></td>
+                                        <td class="px-4 py-3 text-right font-mono" x-text="row.activityCount"></td>
+                                        <td class="px-4 py-3 text-right font-mono font-bold text-blue-600" x-text="'+' + row.newParticipants.toLocaleString()"></td>
+                                        <td class="px-4 py-3 text-right font-mono" x-text="'$' + row.pointsIssued.toLocaleString()"></td>
+                                        <td class="px-4 py-3 text-right font-mono font-medium" x-text="'$' + row.betsGenerated.toLocaleString()"></td>
+                                        <td class="px-4 py-3 text-right font-mono text-indigo-600" x-text="row.tasksCompleted.toLocaleString()"></td>
+                                        <td class="px-4 py-3 text-right font-mono text-orange-600" x-text="'$' + row.dailyCost.toLocaleString()"></td>
+                                        <td class="px-4 py-3 text-right font-mono text-green-600 font-medium" x-text="'$' + row.dailyRevenue.toLocaleString()"></td>
+                                        <td class="px-4 py-3 text-right">
+                                            <span class="font-mono font-bold text-sm"
+                                                  :class="row.dailyRoi >= 100 ? 'text-green-600' : 'text-red-500'"
+                                                  x-text="row.dailyRoi + '%'"></span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+
+                    </div><!-- end overflow-auto -->
+
+                    <!-- Pagination -->
+                    <div x-show="currentTab !== 'typeCompare'"
+                         class="p-4 border-t border-gray-200 flex flex-col md:flex-row items-end md:items-center justify-end gap-2 bg-white flex-shrink-0 sticky bottom-0 z-20">
+                        <div class="flex items-center gap-2 order-1">
+                            <div class="flex items-center gap-2 text-gray-400 mr-2">
+                                <button @click="changePage(1)" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-back text-sm"></i></button>
+                                <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-left text-sm"></i></button>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <template x-for="p in pagesArray" :key="p">
+                                    <button @click="changePage(p)"
+                                            class="w-8 h-8 rounded-full text-sm font-medium flex items-center justify-center transition-colors"
+                                            :class="currentPage === p ? 'bg-primary text-white shadow-sm' : 'hover:bg-gray-100 text-gray-600'"
+                                            x-text="p"></button>
+                                </template>
+                            </div>
+                            <div class="flex items-center gap-2 text-gray-400 ml-2">
+                                <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-caret-right text-sm"></i></button>
+                                <button @click="changePage(totalPages)" :disabled="currentPage === totalPages" class="hover:text-primary disabled:opacity-50"><i class="ph ph-skip-forward text-sm"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-gray-500 mb-2 md:mb-0 md:pl-4 md:border-l border-gray-200 order-2">
+                            <span>每頁筆數：</span>
+                            <select x-model="pageSize" @change="currentPage = 1"
+                                    class="border border-gray-300 rounded px-2 py-1 outline-none text-gray-700 bg-white hover:border-gray-400">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                            </select>
+                            <span x-text="`${(currentPage - 1) * pageSize + 1} - ${Math.min(currentPage * pageSize, currentTableData.length)} 共 ${currentTableData.length}`"></span>
+                        </div>
+                    </div>
+
+                </div><!-- end main card -->
+
+            </div>
+        </div>
+
+        <!-- Column Selector Modal -->
+        <div x-show="isColumnModalOpen" style="display: none;"
+             class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+             x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 overflow-hidden flex flex-col max-h-[90vh]"
+                 @click.outside="isColumnModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
+                    <h3 class="text-lg font-bold text-gray-800">選擇顯示欄位</h3>
+                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" class="checkbox-item rounded"
+                               :checked="isAllChecked()"
+                               :indeterminate.prop="isAllIndeterminate()"
+                               @change="toggleAll()">
+                        全選 (<span x-text="selectedColCount()"></span>/<span x-text="Object.keys(activeColLabels).length"></span>)
+                    </label>
+                </div>
+                <div class="p-6 overflow-y-auto custom-scroll">
+                    <div class="grid grid-cols-2 gap-3">
+                        <template x-for="(label, key) in activeColLabels" :key="key">
+                            <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded p-2 transition-colors">
+                                <input type="checkbox" class="checkbox-item rounded" x-model="tempColStatus[key]">
+                                <span class="text-sm text-gray-700" x-text="label"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3">
+                    <button @click="isColumnModalOpen = false"
+                            class="px-6 py-2 bg-[#f1f5f9] text-[#475569] rounded hover:bg-[#e2e8f0] shadow-sm text-sm font-bold transition-colors">取消</button>
+                    <button @click="confirmColumnModal()"
+                            class="px-6 py-2 bg-[#3b82f6] text-white rounded hover:bg-[#2563eb] shadow-sm text-sm font-bold transition-colors">確定</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Config Modal -->
+        <div x-show="isAlertConfigOpen" x-cloak class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]" @click.outside="isAlertConfigOpen = false">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white flex-shrink-0">
+                    <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="ph-fill ph-gear-six text-primary"></i> 告警設定</h3>
+                </div>
+                <div class="p-6 overflow-y-auto custom-scroll flex-1 space-y-6">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-bold text-gray-700">告警參數</h4>
+                            <button @click="addAlertRule()" class="text-xs text-primary hover:underline flex items-center gap-1"><i class="ph ph-plus"></i> 新增條件</button>
+                        </div>
+                        <div class="space-y-3">
+                            <template x-for="(rule, idx) in alertConfig.rules" :key="idx">
+                                <div class="flex flex-wrap items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <select x-model="rule.metric" class="floating-input h-10 text-sm flex-1 min-w-[140px]">
+                                        <template x-for="m in alertMetricOptions" :key="m"><option :value="m" x-text="m"></option></template>
+                                    </select>
+                                    <select x-model="rule.operator" class="floating-input h-10 text-sm w-20">
+                                        <option value=">">&gt;</option>
+                                        <option value="<">&lt;</option>
+                                        <option value=">=">&ge;</option>
+                                        <option value="<=">&le;</option>
+                                    </select>
+                                    <input type="number" x-model="rule.value" class="floating-input h-10 text-sm w-28" placeholder="閾值">
+                                    <button @click="alertConfig.rules.splice(idx, 1)" class="w-8 h-8 rounded-full hover:bg-red-50 text-red-400 hover:text-red-500 flex items-center justify-center flex-shrink-0"><i class="ph ph-trash"></i></button>
+                                </div>
+                            </template>
+                            <div x-show="alertConfig.rules.length === 0" class="text-center text-xs text-gray-400 py-4">尚未設定告警參數</div>
+                        </div>
+                    </div>
+                    <div class="floating-input-group">
+                        <label class="floating-label">通知頻率</label>
+                        <select x-model="alertConfig.frequency" class="floating-input bg-white">
+                            <option value="realtime">即時</option>
+                            <option value="hourly">每小時彙整</option>
+                            <option value="daily">每日彙整</option>
+                            <option value="weekly">每週彙整</option>
+                        </select>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-700 mb-2">通知對象</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="target in alertTargetOptions" :key="target">
+                                <label class="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer hover:bg-gray-50 select-none" :class="alertConfig.targets.includes(target) ? 'border-primary bg-blue-50' : 'border-gray-200'">
+                                    <input type="checkbox" :value="target" x-model="alertConfig.targets" class="checkbox-item rounded">
+                                    <span class="text-sm text-gray-700" x-text="target"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 flex-shrink-0">
+                    <button @click="isAlertConfigOpen = false" class="px-4 py-2 text-sm font-bold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors">取消</button>
+                    <button @click="saveAlertConfig()" class="px-4 py-2 text-sm font-bold text-white bg-primary rounded hover:bg-blue-600 shadow-sm transition-colors">儲存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Summary Modal -->
+        <div x-show="isAiSummaryOpen" x-cloak class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden flex flex-col h-[70vh] max-h-[640px]" @click.outside="isAiSummaryOpen = false">
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-transparent flex-shrink-0">
+                    <h3 class="text-base font-bold text-gray-800 flex items-center gap-2"><i class="ph-fill ph-sparkle text-primary"></i> AI 摘要助手</h3>
+                    <button @click="isAiSummaryOpen = false" class="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"><i class="ph ph-x text-xl"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-4 bg-gray-50" x-ref="aiChatBody">
+                    <template x-for="(msg, idx) in aiChatMessages" :key="idx">
+                        <div class="flex" :class="msg.role === 'user' ? 'justify-end' : 'justify-start'">
+                            <div class="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
+                                 :class="msg.role === 'user' ? 'bg-primary text-white rounded-br-sm' : 'bg-white border border-gray-200 text-gray-700 rounded-bl-sm shadow-sm'">
+                                <div class="flex items-center gap-1.5 mb-1" x-show="msg.role === 'ai'"><i class="ph-fill ph-sparkle text-primary text-xs"></i><span class="text-xs font-bold text-primary">AI 助手</span></div>
+                                <div x-html="msg.content"></div>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="aiThinking" class="flex justify-start">
+                        <div class="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay:0ms"></span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay:150ms"></span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style="animation-delay:300ms"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-4 py-2 flex flex-wrap gap-2 border-t border-gray-100 flex-shrink-0" x-show="aiChatMessages.length <= 1">
+                    <template x-for="q in aiSuggestedQuestions" :key="q">
+                        <button @click="askAi(q)" class="px-3 py-1.5 text-xs bg-blue-50 text-primary rounded-full hover:bg-blue-100 transition-colors" x-text="q"></button>
+                    </template>
+                </div>
+                <div class="p-3 border-t border-gray-100 flex gap-2 flex-shrink-0 bg-white">
+                    <input type="text" x-model="aiInput" @keydown.enter="askAi()" placeholder="輸入你的問題…" class="floating-input flex-1 bg-gray-50 focus:bg-white">
+                    <button @click="askAi()" class="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-primary text-white rounded-lg hover:bg-blue-600 shadow-md active:scale-95 transition-all">
+                        <i class="ph ph-paper-plane-tilt text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Detail Modal -->
+        <div x-show="detailModalOpen" style="display:none" class="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 backdrop-blur-sm" x-transition.opacity>
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden flex flex-col max-h-[90vh]" @click.outside="detailModalOpen = false">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <i class="ph ph-megaphone text-primary text-xl"></i>
+                        <h3 class="text-lg font-bold text-gray-800" x-text="selectedActivity ? selectedActivity.name : ''"></h3>
+                    </div>
+                    <button @click="detailModalOpen = false" class="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto custom-scroll flex-1" x-show="selectedActivity">
+                    <!-- Badges -->
+                    <div class="flex flex-wrap gap-2 mb-5" x-show="selectedActivity">
+                        <span class="px-2.5 py-1 rounded text-xs font-bold"
+                              :class="getActivityTypeClass(selectedActivity?.type)"
+                              x-text="selectedActivity?.type"></span>
+                        <span class="px-2.5 py-1 rounded text-xs font-bold"
+                              :class="getActivityCategoryClass(selectedActivity?.category)"
+                              x-text="selectedActivity?.category"></span>
+                        <span class="px-2.5 py-1 rounded text-xs font-bold"
+                              :class="getStatusClass(selectedActivity?.status)"
+                              x-text="getStatusLabel(selectedActivity?.status)"></span>
+                    </div>
+                    <!-- Info Grid -->
+                    <div class="grid grid-cols-2 gap-4 mb-5">
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="text-xs text-gray-400 mb-1">活動期間</div>
+                            <div class="font-mono text-sm text-gray-700" x-text="(selectedActivity?.startDate ?? '') + ' ~ ' + (selectedActivity?.endDate ?? '')"></div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="text-xs text-gray-400 mb-1">發放來源</div>
+                            <div class="font-bold text-sm text-gray-700" x-text="selectedActivity?.pointsSource ?? '—'"></div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="text-xs text-gray-400 mb-1">目標人數</div>
+                            <div class="font-bold font-mono text-gray-700" x-text="(selectedActivity?.targetParticipants ?? 0).toLocaleString()"></div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="text-xs text-gray-400 mb-1">每人發放上限</div>
+                            <div class="font-bold font-mono text-gray-700" x-text="'$' + (selectedActivity?.maxPerPerson ?? 0).toLocaleString()"></div>
+                        </div>
+                    </div>
+                    <!-- KPI Row -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="bg-blue-50 rounded-lg p-3 text-center">
+                            <div class="text-xs text-blue-400 mb-1">參與人數</div>
+                            <div class="font-bold font-mono text-blue-700 text-lg" x-text="(selectedActivity?.participants ?? 0).toLocaleString()"></div>
+                        </div>
+                        <div class="bg-orange-50 rounded-lg p-3 text-center">
+                            <div class="text-xs text-orange-400 mb-1">發放點數(成本)</div>
+                            <div class="font-bold font-mono text-orange-600 text-lg" x-text="'$' + (selectedActivity?.pointsCost ?? 0).toLocaleString()"></div>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-3 text-center">
+                            <div class="text-xs text-green-400 mb-1">產生押注(效益)</div>
+                            <div class="font-bold font-mono text-green-700 text-lg" x-text="'$' + (selectedActivity?.betRevenue ?? 0).toLocaleString()"></div>
+                        </div>
+                        <div class="rounded-lg p-3 text-center border-2"
+                             :class="(selectedActivity?.roi ?? 0) >= 100 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'">
+                            <div class="text-xs mb-1" :class="(selectedActivity?.roi ?? 0) >= 100 ? 'text-green-400' : 'text-red-400'">ROI</div>
+                            <div class="font-bold font-mono text-lg"
+                                 :class="(selectedActivity?.roi ?? 0) >= 100 ? 'text-green-700' : 'text-red-600'"
+                                 x-text="(selectedActivity?.roi ?? 0) + '%'"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 bg-white flex justify-end flex-shrink-0">
+                    <button @click="detailModalOpen = false" class="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-sm font-bold transition-colors">關閉</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        window.PAGE_CONFIG = { title: '活動報表', parent: '報表管理' };
+    </script>
+    <script src="../_shared/shared.js"></script>
+    <script src="../_shared/layout.js"></script>
+    <script>
+        function activityReportPage() {
+            return {
+                /* ── State ── */
+                isLoading: false,
+                isColumnModalOpen: false,
+                detailModalOpen: false,
+                selectedActivity: null,
+                isMobile: window.innerWidth < 1024,
+                searchOpen: false,
+                currentTab: 'overview',
+                currentPage: 1,
+                pageSize: 10,
+                expandedRows: [],
+                typeCompareView: 'chart',
+
+                search: {
+                    activityType: '',
+                    activityCategory: '',
+                    status: ''
+                },
+
+                isAlertConfigOpen: false,
+                isAiSummaryOpen: false,
+                alertConfig: { rules: [], frequency: 'daily', targets: [] },
+                alertMetricOptions: ['ROI', '參與人數', '發放點數(成本)', '產生押注(效益)', '達成率'],
+                alertTargetOptions: ['系統管理員', '營運主管', 'Line 群組', 'Email 群組'],
+                aiChatMessages: [{ role: 'ai', content: '您好，我是 AI 摘要助手，可以協助您分析目前頁籤的數據，或執行操作（例如切換頁籤、匯出報表）。請問需要什麼協助？' }],
+                aiInput: '',
+                aiThinking: false,
+                aiSuggestedQuestions: ['幫我摘要目前頁籤的重點數據', '哪個活動的 ROI 最差？', '幫我切換到效益分析頁籤'],
+
+                /* ── Tabs ── */
+                tabs: [
+                    { id: 'overview',    name: '活動概覽', icon: 'ph-megaphone' },
+                    { id: 'roi',         name: '效益分析', icon: 'ph-chart-bar' },
+                    { id: 'typeCompare', name: '類型比較', icon: 'ph-scales' },
+                    { id: 'daily',       name: '每日紀錄', icon: 'ph-calendar-check' }
+                ],
+
+                /* ── Column visibility ── */
+                colStatus: {
+                    activityType: true, activityCategory: true, status: true,
+                    period: true, participants: true,
+                    pointsCost: true, betRevenue: true, roi: true,
+                    targetParticipants: true, actualParticipants: true, achieveRate: true,
+                    estimatedCost: true, actualCost: true,
+                    estimatedRevenue: true, actualRevenue: true,
+                    diff: true, roiTrend: true,
+                    tc_count: true, tc_participants: true, tc_totalCost: true, tc_totalRevenue: true,
+                    tc_roi: true, tc_avgCost: true, tc_avgRevenue: true
+                },
+                tempColStatus: {},
+
+                colLabels: {
+                    overview: {
+                        activityType: '活動類型', activityCategory: '活動分類', status: '狀態',
+                        period: '活動期間', participants: '參與人數',
+                        pointsCost: '發放點數(成本)', betRevenue: '產生押注(效益)', roi: 'ROI'
+                    },
+                    roi: {
+                        targetParticipants: '目標人數', actualParticipants: '實際人數', achieveRate: '達成率',
+                        estimatedCost: '預估成本', actualCost: '實際成本',
+                        estimatedRevenue: '預估押注效益', actualRevenue: '實際效益',
+                        diff: '差異', roiTrend: 'ROI趨勢'
+                    },
+                    typeCompare_table: {
+                        tc_count: '活動數', tc_participants: '參與人數', tc_totalCost: '發放點數',
+                        tc_totalRevenue: '押注效益', tc_roi: 'ROI', tc_avgCost: '人均成本', tc_avgRevenue: '人均效益'
+                    }
+                },
+
+                get activeColLabels() {
+                    if (this.currentTab === 'typeCompare') {
+                        return this.typeCompareView === 'table' ? (this.colLabels.typeCompare_table || {}) : {};
+                    }
+                    return this.colLabels[this.currentTab] || {};
+                },
+
+                /* ── Data ── */
+                activitiesData: [],
+                dailyData: [],
+
+                /* ── Computed: current table data for pagination ── */
+                get currentTableData() {
+                    if (this.currentTab === 'overview')    return this.activitiesData;
+                    if (this.currentTab === 'roi')         return this.activitiesData;
+                    if (this.currentTab === 'daily')       return this.dailyData;
+                    return [];
+                },
+
+                get displayedOverviewData() {
+                    const start = (this.currentPage - 1) * this.pageSize;
+                    return this.activitiesData.slice(start, start + parseInt(this.pageSize));
+                },
+                get displayedRoiData() {
+                    const start = (this.currentPage - 1) * this.pageSize;
+                    return this.activitiesData.slice(start, start + parseInt(this.pageSize));
+                },
+                get displayedDailyData() {
+                    const start = (this.currentPage - 1) * this.pageSize;
+                    return this.dailyData.slice(start, start + parseInt(this.pageSize));
+                },
+
+                get totalPages()  { return Math.max(1, Math.ceil(this.currentTableData.length / this.pageSize)); },
+                get pagesArray()  { return Array.from({ length: Math.min(this.totalPages, 5) }, (_, i) => i + 1); },
+
+                /* ── Summary Metrics (per tab) ── */
+                get summaryMetrics() {
+                    const d = this.activitiesData;
+                    if (this.currentTab === 'overview') {
+                        const active    = d.filter(r => r.status === 'active').length;
+                        const totalPart = d.reduce((s, r) => s + r.participants, 0);
+                        const totalCost = d.reduce((s, r) => s + r.pointsCost, 0);
+                        const totalRev  = d.reduce((s, r) => s + r.betRevenue, 0);
+                        const avgRoi    = d.length > 0 ? Math.round(d.reduce((s, r) => s + r.roi, 0) / d.length) : 0;
+                        return [
+                            { label: '活動數',       value: d.length.toLocaleString() },
+                            { label: '進行中',       value: active.toLocaleString(),                               color: 'text-green-600' },
+                            { label: '參與人次',     value: totalPart.toLocaleString() },
+                            { label: '發放點數(成本)', value: '$' + totalCost.toLocaleString(),                    color: 'text-orange-600' },
+                            { label: '押注效益',     value: '$' + totalRev.toLocaleString(),                       color: 'text-green-600' },
+                            { label: '平均ROI',      value: avgRoi + '%',                                          color: avgRoi >= 100 ? 'text-green-600' : 'text-red-500' }
+                        ];
+                    }
+                    if (this.currentTab === 'roi') {
+                        const achieved  = d.filter(r => Math.round(r.participants / r.targetParticipants * 100) >= 100).length;
+                        const avgAchieve = d.length > 0 ? Math.round(d.reduce((s, r) => s + Math.round(r.participants / r.targetParticipants * 100), 0) / d.length) : 0;
+                        const estCost   = d.reduce((s, r) => s + r.estimatedCost, 0);
+                        const actCost   = d.reduce((s, r) => s + r.pointsCost, 0);
+                        return [
+                            { label: '達標活動',   value: achieved + ' / ' + d.length,             color: 'text-green-600' },
+                            { label: '平均達成率', value: avgAchieve + '%',                         color: avgAchieve >= 100 ? 'text-green-600' : 'text-primary' },
+                            { label: '總預估成本', value: '$' + estCost.toLocaleString(),            color: 'text-gray-500' },
+                            { label: '總實際成本', value: '$' + actCost.toLocaleString(),            color: 'text-orange-600' }
+                        ];
+                    }
+                    if (this.currentTab === 'typeCompare') {
+                        if (this.typeCompareView === 'chart') {
+                            const byType = this.typeCompareByType;
+                            const maxRoi  = byType.length > 0 ? byType.reduce((a, b) => a.roi > b.roi ? a : b) : null;
+                            const minCost = byType.length > 0 ? byType.reduce((a, b) => a.totalCost < b.totalCost ? a : b) : null;
+                            return [
+                                { label: '最高ROI類型', value: maxRoi  ? maxRoi.label  + ' (' + maxRoi.roi  + '%)' : '—', color: 'text-green-600' },
+                                { label: '最低成本類型', value: minCost ? minCost.label + ' ($' + minCost.totalCost.toLocaleString() + ')' : '—', color: 'text-orange-600' }
+                            ];
+                        } else {
+                            const td = this.typeCompareDetailData;
+                            const totalCost = td.reduce((s, r) => s + r.totalCost, 0);
+                            const totalRev  = td.reduce((s, r) => s + r.totalRevenue, 0);
+                            const totalPart = td.reduce((s, r) => s + r.participants, 0);
+                            const avgRoi    = totalCost > 0 ? Math.round(totalRev / totalCost * 100) : 0;
+                            return [
+                                { label: '比較組合', value: td.length.toLocaleString() },
+                                { label: '參與人數', value: totalPart.toLocaleString() },
+                                { label: '總成本', value: '$' + totalCost.toLocaleString(), color: 'text-orange-600' },
+                                { label: '總效益', value: '$' + totalRev.toLocaleString(), color: 'text-green-600' },
+                                { label: '綜合ROI', value: avgRoi + '%', color: avgRoi >= 100 ? 'text-green-600' : 'text-red-500' }
+                            ];
+                        }
+                    }
+                    if (this.currentTab === 'daily') {
+                        const dd = this.dailyData;
+                        const first = dd.length > 0 ? dd[dd.length - 1].date : '—';
+                        const last  = dd.length > 0 ? dd[0].date             : '—';
+                        const totalPts = dd.reduce((s, r) => s + r.pointsIssued, 0);
+                        const totalRev = dd.reduce((s, r) => s + r.betsGenerated, 0);
+                        return [
+                            { label: '日期範圍',    value: first + ' ~ ' + last },
+                            { label: '發放總點數',  value: '$' + totalPts.toLocaleString(),  color: 'text-orange-600' },
+                            { label: '押注總效益',  value: '$' + totalRev.toLocaleString(),  color: 'text-green-600' }
+                        ];
+                    }
+                    return [];
+                },
+
+                /* ── Type Compare computed ── */
+                get typeCompareByType() {
+                    const types = ['終身1次', '循環活動', '節慶限定'];
+                    return types.map(t => {
+                        const rows = this.activitiesData.filter(r => r.type === t);
+                        const totalCost    = rows.reduce((s, r) => s + r.pointsCost, 0);
+                        const totalRevenue = rows.reduce((s, r) => s + r.betRevenue, 0);
+                        const participants = rows.reduce((s, r) => s + r.participants, 0);
+                        const roi          = totalCost > 0 ? Math.round(totalRevenue / totalCost * 100) : 0;
+                        return { label: t, count: rows.length, totalCost, totalRevenue, participants, roi };
+                    });
+                },
+
+                get typeCompareByCategory() {
+                    const cats = ['Line加官方好友禮', '手機驗證禮', '每日簽到', '即刻救援', '任務挑戰'];
+                    return cats.map(c => {
+                        const rows = this.activitiesData.filter(r => r.category === c || r.category === '節慶限定' && c === '節慶限定');
+                        const totalCost    = rows.reduce((s, r) => s + r.pointsCost, 0);
+                        const totalRevenue = rows.reduce((s, r) => s + r.betRevenue, 0);
+                        const participants = rows.reduce((s, r) => s + r.participants, 0);
+                        const roi          = totalCost > 0 ? Math.round(totalRevenue / totalCost * 100) : 0;
+                        return { label: c, count: rows.length, totalCost, totalRevenue, participants, roi };
+                    });
+                },
+
+                get typeCompareDetailData() {
+                    const pairs = [
+                        { type: '終身1次',  category: 'Line加官方好友禮' },
+                        { type: '終身1次',  category: '手機驗證禮' },
+                        { type: '循環活動', category: '每日簽到' },
+                        { type: '循環活動', category: '即刻救援' },
+                        { type: '循環活動', category: '任務挑戰' },
+                        { type: '節慶限定', category: '節慶限定' }
+                    ];
+                    return pairs.map(p => {
+                        const rows = this.activitiesData.filter(r =>
+                            r.type === p.type && (r.category === p.category || (p.category === '節慶限定' && r.type === '節慶限定'))
+                        );
+                        const totalCost    = rows.reduce((s, r) => s + r.pointsCost, 0);
+                        const totalRevenue = rows.reduce((s, r) => s + r.betRevenue, 0);
+                        const participants = rows.reduce((s, r) => s + r.participants, 0);
+                        const roi          = totalCost > 0 ? Math.round(totalRevenue / totalCost * 100) : 0;
+                        return { key: p.type + '_' + p.category, type: p.type, category: p.category, count: rows.length, totalCost, totalRevenue, participants, roi };
+                    });
+                },
+
+                get currentNotes() {
+                    if (this.currentTab === 'overview') return [
+                        'ROI：產生押注(效益) ÷ 發放點數(成本) × 100%',
+                        '達成率：參與人數 ÷ 目標人數 × 100%'
+                    ];
+                    if (this.currentTab === 'roi') return [
+                        '達成率：實際人數 ÷ 目標人數 × 100%',
+                        '差異：實際效益 - 預估押注效益',
+                        'ROI 趨勢：與前一統計週期相比之 ROI 增減百分比'
+                    ];
+                    if (this.currentTab === 'typeCompare') return [
+                        '人均成本：發放點數 ÷ 參與人數',
+                        '人均效益：押注效益 ÷ 參與人數',
+                        'ROI：押注效益 ÷ 發放點數 × 100%'
+                    ];
+                    if (this.currentTab === 'daily') return [
+                        '當日 ROI：每日效益 ÷ 每日成本 × 100%'
+                    ];
+                    return [];
+                },
+
+                addAlertRule() { this.alertConfig.rules.push({ metric: this.alertMetricOptions[0], operator: '>', value: '' }); },
+                saveAlertConfig() { this.isAlertConfigOpen = false; this.$dispatch('notify', '告警設定已儲存'); },
+                askAi(preset) {
+                    const q = (preset || this.aiInput).trim();
+                    if (!q) return;
+                    this.aiChatMessages.push({ role: 'user', content: q });
+                    this.aiInput = '';
+                    this.aiThinking = true;
+                    this.$nextTick(() => { this.$refs.aiChatBody.scrollTop = this.$refs.aiChatBody.scrollHeight; });
+                    setTimeout(() => {
+                        this.aiThinking = false;
+                        const tabName = this.tabs.find(t => t.id === this.currentTab)?.name || '';
+                        this.aiChatMessages.push({ role: 'ai', content: `這是模擬回覆：根據目前「${tabName}」頁籤的資料進行分析...（Demo 用途，實際功能開發中）` });
+                        this.$nextTick(() => { this.$refs.aiChatBody.scrollTop = this.$refs.aiChatBody.scrollHeight; });
+                    }, 900);
+                },
+
+                /* ── Actions ── */
+                switchTab(id) { this.currentTab = id; this.currentPage = 1; this.expandedRows = []; this.fetchData(); },
+                changePage(p) { if (p >= 1 && p <= this.totalPages) this.currentPage = p; },
+                fetchData() { this.isLoading = true; setTimeout(() => { this.isLoading = false; }, 500); },
+
+                toggleDetail(id) {
+                    const idx = this.expandedRows.indexOf(id);
+                    if (idx === -1) this.expandedRows.push(id);
+                    else this.expandedRows.splice(idx, 1);
+                },
+
+                openDetailModal(row) {
+                    this.selectedActivity = row;
+                    this.detailModalOpen = true;
+                },
+
+                /* ── Column Modal ── */
+                openColumnModal() { this.tempColStatus = { ...this.colStatus }; this.isColumnModalOpen = true; },
+                confirmColumnModal() {
+                    if (!Object.values(this.tempColStatus).some(v => v)) {
+                        this.$dispatch('notify', { message: '至少選取 1 個項目' });
+                        return;
+                    }
+                    this.colStatus = { ...this.tempColStatus };
+                    this.isColumnModalOpen = false;
+                },
+                selectedColCount() { return Object.keys(this.activeColLabels).filter(k => this.tempColStatus[k]).length; },
+                isAllChecked() { return this.selectedColCount() === Object.keys(this.activeColLabels).length; },
+                isAllIndeterminate() { const c = this.selectedColCount(); return c > 0 && c < Object.keys(this.activeColLabels).length; },
+                toggleAll() { const c = this.isAllChecked(); Object.keys(this.activeColLabels).forEach(k => this.tempColStatus[k] = !c); },
+
+                /* ── Badge helpers ── */
+                getActivityTypeClass(type) {
+                    const map = {
+                        '終身1次':  'bg-purple-100 text-purple-700',
+                        '循環活動': 'bg-blue-100 text-blue-700',
+                        '節慶限定': 'bg-orange-100 text-orange-700'
+                    };
+                    return map[type] || 'bg-gray-100 text-gray-600';
+                },
+                getActivityCategoryClass(cat) {
+                    const map = {
+                        'Line加官方好友禮': 'bg-green-100 text-green-700',
+                        '手機驗證禮':       'bg-cyan-100 text-cyan-700',
+                        '每日簽到':         'bg-blue-100 text-blue-700',
+                        '即刻救援':         'bg-rose-100 text-rose-700',
+                        '任務挑戰':         'bg-indigo-100 text-indigo-700',
+                        '節慶限定':         'bg-orange-100 text-orange-700',
+                        '循環活動':         'bg-blue-100 text-blue-700'
+                    };
+                    return map[cat] || 'bg-gray-100 text-gray-600';
+                },
+                getActivityCategoryBarClass(cat) {
+                    const map = {
+                        'Line加官方好友禮': 'bg-green-400',
+                        '手機驗證禮':       'bg-cyan-400',
+                        '每日簽到':         'bg-blue-400',
+                        '即刻救援':         'bg-rose-400',
+                        '任務挑戰':         'bg-indigo-400'
+                    };
+                    return map[cat] || 'bg-gray-400';
+                },
+                getStatusClass(status) {
+                    const map = {
+                        'active':   'bg-green-100 text-green-700',
+                        'ended':    'bg-gray-100 text-gray-500',
+                        'upcoming': 'bg-yellow-100 text-yellow-700'
+                    };
+                    return map[status] || 'bg-gray-100 text-gray-600';
+                },
+                getStatusLabel(status) {
+                    const map = { 'active': '進行中', 'ended': '已結束', 'upcoming': '未開始' };
+                    return map[status] || status;
+                },
+
+                /* ── Init ── */
+                init() {
+                    window.addEventListener('resize', () => { this.isMobile = window.innerWidth < 1024; });
+
+                    flatpickr(this.$refs.dateStart, { locale: 'zh_tw', dateFormat: 'Y-m-d', allowInput: true });
+                    flatpickr(this.$refs.dateEnd,   { locale: 'zh_tw', dateFormat: 'Y-m-d', allowInput: true });
+
+                    /* ── Mock Activity Data ── */
+                    const activityDefs = [
+                        { name: '新會員歡迎禮',     type: '終身1次',  category: 'Line加官方好友禮', status: 'active',   startDate: '2025-01-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 500,  maxPerPerson: 300,  baseCostPerPerson: 280,  baseRevMultiplier: 4.5 },
+                        { name: '手機驗證獎勵',     type: '終身1次',  category: '手機驗證禮',       status: 'active',   startDate: '2025-01-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 600,  maxPerPerson: 150,  baseCostPerPerson: 130,  baseRevMultiplier: 5.2 },
+                        { name: '每日登入獎勵',     type: '循環活動', category: '每日簽到',         status: 'active',   startDate: '2025-01-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 1200, maxPerPerson: 50,   baseCostPerPerson: 45,   baseRevMultiplier: 8.0 },
+                        { name: '5月勞動節特惠',    type: '節慶限定', category: '節慶限定',         status: 'ended',    startDate: '2025-05-01', endDate: '2025-05-05', pointsSource: '保險箱移轉', targetParticipants: 800,  maxPerPerson: 1000, baseCostPerPerson: 920,  baseRevMultiplier: 3.8 },
+                        { name: '即刻救援補償',     type: '循環活動', category: '即刻救援',         status: 'active',   startDate: '2025-03-01', endDate: '2025-12-31', pointsSource: '保險箱移轉', targetParticipants: 400,  maxPerPerson: 2000, baseCostPerPerson: 1850, baseRevMultiplier: 2.9 },
+                        { name: '電子遊戲任務挑戰', type: '循環活動', category: '任務挑戰',         status: 'active',   startDate: '2025-04-01', endDate: '2025-06-30', pointsSource: '儲值',       targetParticipants: 700,  maxPerPerson: 500,  baseCostPerPerson: 460,  baseRevMultiplier: 6.3 },
+                        { name: '端午節限定活動',   type: '節慶限定', category: '節慶限定',         status: 'upcoming', startDate: '2025-05-31', endDate: '2025-06-02', pointsSource: '儲值',       targetParticipants: 900,  maxPerPerson: 1200, baseCostPerPerson: 1100, baseRevMultiplier: 4.1 },
+                        { name: '每週儲值加碼',     type: '循環活動', category: '循環活動',         status: 'active',   startDate: '2025-01-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 1000, maxPerPerson: 800,  baseCostPerPerson: 750,  baseRevMultiplier: 5.0 },
+                        { name: '棋牌任務王者',     type: '循環活動', category: '任務挑戰',         status: 'active',   startDate: '2025-02-01', endDate: '2025-07-31', pointsSource: '儲值',       targetParticipants: 550,  maxPerPerson: 600,  baseCostPerPerson: 560,  baseRevMultiplier: 5.8 },
+                        { name: '母親節特別活動',   type: '節慶限定', category: '節慶限定',         status: 'ended',    startDate: '2025-05-10', endDate: '2025-05-12', pointsSource: '儲值',       targetParticipants: 700,  maxPerPerson: 800,  baseCostPerPerson: 740,  baseRevMultiplier: 3.5 },
+                        { name: 'VIP專屬返水',      type: '循環活動', category: '循環活動',         status: 'active',   startDate: '2025-01-01', endDate: '2025-12-31', pointsSource: '保險箱移轉', targetParticipants: 300,  maxPerPerson: 3000, baseCostPerPerson: 2800, baseRevMultiplier: 2.2 },
+                        { name: '新遊戲試玩禮',     type: '終身1次',  category: '手機驗證禮',       status: 'active',   startDate: '2025-03-15', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 450,  maxPerPerson: 200,  baseCostPerPerson: 180,  baseRevMultiplier: 4.8 },
+                        { name: '清明節活動',       type: '節慶限定', category: '節慶限定',         status: 'ended',    startDate: '2025-04-04', endDate: '2025-04-06', pointsSource: '保險箱移轉', targetParticipants: 600,  maxPerPerson: 900,  baseCostPerPerson: 830,  baseRevMultiplier: 3.2 },
+                        { name: '體育賽事競猜',     type: '循環活動', category: '任務挑戰',         status: 'active',   startDate: '2025-04-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 800,  maxPerPerson: 400,  baseCostPerPerson: 370,  baseRevMultiplier: 7.1 },
+                        { name: '好友推薦獎勵',     type: '終身1次',  category: 'Line加官方好友禮', status: 'active',   startDate: '2025-01-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 1500, maxPerPerson: 250,  baseCostPerPerson: 230,  baseRevMultiplier: 5.5 },
+                        { name: '捕魚大賽',         type: '循環活動', category: '任務挑戰',         status: 'upcoming', startDate: '2025-06-01', endDate: '2025-06-30', pointsSource: '儲值',       targetParticipants: 600,  maxPerPerson: 700,  baseCostPerPerson: 650,  baseRevMultiplier: 6.0 },
+                        { name: '週末雙倍點數',     type: '循環活動', category: '循環活動',         status: 'active',   startDate: '2025-01-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 900,  maxPerPerson: 500,  baseCostPerPerson: 460,  baseRevMultiplier: 4.7 },
+                        { name: '春節紅包活動',     type: '節慶限定', category: '節慶限定',         status: 'ended',    startDate: '2025-01-28', endDate: '2025-02-04', pointsSource: '保險箱移轉', targetParticipants: 1200, maxPerPerson: 1500, baseCostPerPerson: 1380, baseRevMultiplier: 4.2 },
+                        { name: '連續登入累積禮',   type: '循環活動', category: '每日簽到',         status: 'active',   startDate: '2025-02-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 1500, maxPerPerson: 30,   baseCostPerPerson: 28,   baseRevMultiplier: 9.2 },
+                        { name: '驗證身份禮',       type: '終身1次',  category: '手機驗證禮',       status: 'active',   startDate: '2025-01-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 800,  maxPerPerson: 100,  baseCostPerPerson: 90,   baseRevMultiplier: 6.8 },
+                        { name: '中秋節限定',       type: '節慶限定', category: '節慶限定',         status: 'upcoming', startDate: '2025-09-06', endDate: '2025-09-08', pointsSource: '儲值',       targetParticipants: 1000, maxPerPerson: 1000, baseCostPerPerson: 920,  baseRevMultiplier: 4.0 },
+                        { name: '電競錦標賽',       type: '循環活動', category: '任務挑戰',         status: 'active',   startDate: '2025-05-01', endDate: '2025-07-31', pointsSource: '儲值',       targetParticipants: 500,  maxPerPerson: 800,  baseCostPerPerson: 740,  baseRevMultiplier: 6.5 },
+                        { name: '生日禮包',         type: '終身1次',  category: 'Line加官方好友禮', status: 'active',   startDate: '2025-01-01', endDate: '2025-12-31', pointsSource: '儲值',       targetParticipants: 2000, maxPerPerson: 200,  baseCostPerPerson: 185,  baseRevMultiplier: 5.0 },
+                        { name: '即刻救援加強版',   type: '循環活動', category: '即刻救援',         status: 'active',   startDate: '2025-04-15', endDate: '2025-12-31', pointsSource: '保險箱移轉', targetParticipants: 350,  maxPerPerson: 2500, baseCostPerPerson: 2300, baseRevMultiplier: 3.1 },
+                        { name: '視訊精選挑戰',     type: '循環活動', category: '任務挑戰',         status: 'active',   startDate: '2025-05-01', endDate: '2025-08-31', pointsSource: '儲值',       targetParticipants: 650,  maxPerPerson: 450,  baseCostPerPerson: 420,  baseRevMultiplier: 5.9 }
+                    ];
+
+                    this.activitiesData = activityDefs.map((def, i) => {
+                        const variance       = (Math.random() * 0.3 + 0.7);
+                        const participants   = def.status === 'upcoming'
+                            ? 0
+                            : Math.floor(def.targetParticipants * variance);
+                        const pointsCost     = def.status === 'upcoming'
+                            ? 0
+                            : participants * def.baseCostPerPerson + Math.floor(Math.random() * 50000);
+                        const betRevenue     = def.status === 'upcoming'
+                            ? 0
+                            : Math.floor(pointsCost * def.baseRevMultiplier * (Math.random() * 0.3 + 0.85));
+                        const roi            = pointsCost > 0 ? Math.round(betRevenue / pointsCost * 100) : 0;
+                        const estimatedCost  = def.targetParticipants * def.baseCostPerPerson;
+                        const estimatedRevenue = Math.floor(estimatedCost * def.baseRevMultiplier);
+                        const roiTrend       = Math.floor(Math.random() * 40) - 10;
+
+                        const durationDays = Math.round((new Date(def.endDate) - new Date(def.startDate)) / 86400000) + 1;
+                        return {
+                            id: i + 1,
+                            name: def.name,
+                            type: def.type,
+                            category: def.category,
+                            status: def.status,
+                            startDate: def.startDate,
+                            endDate: def.endDate,
+                            durationDays,
+                            pointsSource: def.pointsSource,
+                            targetParticipants: def.targetParticipants,
+                            maxPerPerson: def.maxPerPerson,
+                            participants,
+                            pointsCost,
+                            betRevenue,
+                            roi,
+                            estimatedCost,
+                            estimatedRevenue,
+                            roiTrend,
+                            hasDetail: true
+                        };
+                    });
+
+                    /* ── Mock Daily Data (last 30 days) ── */
+                    this.dailyData = Array.from({ length: 30 }, (_, i) => {
+                        const d = new Date(2026, 4, 17 - i);
+                        const dateStr = d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+                        const activeActivities  = Math.floor(Math.random() * 3) + 5;
+                        const newParticipants   = Math.floor(Math.random() * 180) + 20;
+                        const pointsIssued      = newParticipants * (Math.floor(Math.random() * 400) + 150);
+                        const betsGenerated     = Math.floor(pointsIssued * (Math.random() * 4 + 2));
+                        const tasksCompleted    = Math.floor(Math.random() * 300) + 50;
+                        const dailyCost         = pointsIssued;
+                        const dailyRevenue      = betsGenerated;
+                        const dailyRoi          = dailyCost > 0 ? Math.round(dailyRevenue / dailyCost * 100) : 0;
+                        return { date: dateStr, activityCount: activeActivities, newParticipants, pointsIssued, betsGenerated, tasksCompleted, dailyCost, dailyRevenue, dailyRoi };
+                    });
+                }
+            };
+        }
+    </script>
+</body>
+</html>
