@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+body { margin:0; background:#f3f4f6; color:#1f2937; font-family:'Microsoft JhengHei',sans-serif; }
+a { color:#2088ea; }
+a:hover { color:#1a7acb; }
+</style>
+</helmet>
+<div style="min-height:100vh;background:#f8fafc;padding:24px;box-sizing:border-box;font-family:'Microsoft JhengHei',sans-serif;color:#1f2937">
+<div style="max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+    <nav style="display:flex;align-items:center;gap:6px;font-size:14px">
+      <span style="color:#6b7280">報表管理</span>
+      <i class="ph ph-caret-right" style="color:#d1d5db;font-size:12px"></i>
+      <span style="font-weight:600;color:#2088ea">聊天相關報表</span>
+    </nav>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="padding:4px 10px;border-radius:9999px;background:#fff;border:1px solid #e5e7eb;color:#9ca3af;font-size:12px;font-weight:700;white-space:nowrap">v2.0</div>
+      <div style="width:32px;height:32px;border-radius:50%;background:#facc15;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.05);cursor:pointer" title="說明"><i class="ph-fill ph-lightbulb" style="font-size:18px"></i></div>
+      <div style="width:32px;height:32px;border-radius:50%;background:#f3f4f6;border:1px solid #e5e7eb;color:#6b7280;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.05);cursor:pointer" title="資料交換（匯出）"><i class="ph-bold ph-arrows-clockwise" style="font-size:18px"></i></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:4px;border-bottom:1px solid #e5e7eb;padding:8px 16px 0;overflow-x:auto">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+      <div style="padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;border-bottom:2px solid {{ t.border }};color:{{ t.color }};background:{{ t.bg }};border-top-left-radius:6px;border-top-right-radius:6px;white-space:nowrap;flex:none" onClick="{{ t.pick }}">{{ t.label }}</div>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{ isDaily }}" hint-placeholder-val="{{ true }}">
+  <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start">
+    <i class="ph-fill ph-warning-circle" style="color:#f59e0b;font-size:18px;flex:none;margin-top:1px"></i>
+    <div style="font-size:13px;color:#b45309;line-height:1.7">每日跑批產生，故不含當日；上線後預設查詢區間為昨日單日（此稿為看得出樣貌，預帶多日區間）。人均訊息數＝玩家訊息數 ÷ 不重複發言人數，分母僅計成功發出 ≥1 則者。峰值在線人數／平均在線人數取自「公頻上線人數分析」的每小時彙總，不另建取樣。</div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;align-items:end;padding:20px 20px 16px">
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">查詢區間</label>
+        <div style="display:flex;align-items:center">
+          <div style="flex:1;border:1px solid #e5e7eb;border-right:0;border-radius:8px 0 0 8px;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1f2937;white-space:nowrap">{{ dailyStart }}</div>
+          <div style="padding:0 4px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;color:#9ca3af;font-size:13px">~</div>
+          <div style="flex:1;border:1px solid #e5e7eb;border-left:0;border-radius:0 8px 8px 0;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1f2937;white-space:nowrap">{{ dailyEnd }}</div>
+        </div>
+      </div>
+      <div style="grid-column:4;justify-self:end;display:flex;align-items:center;gap:8px">
+        <div style="padding:8px 16px;font-size:14px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;color:#4b5563;font-weight:500;cursor:pointer;white-space:nowrap">清除</div>
+        <div style="width:40px;height:40px;flex:none;background:#2088ea;color:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="ph-bold ph-magnifying-glass" style="font-size:18px"></i></div>
+      </div>
+    </div>
+    <div style="padding:0 20px 16px;font-size:12px;color:#9ca3af">可查詢範圍以熱資料保留期為上限（暫定 2 年，與聊天訊息分開保存）</div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+    <div style="background:#f3f4f6;padding:12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+      <div style="padding-left:16px;display:flex;align-items:baseline;gap:12px">
+        <div style="font-size:14px;font-weight:700;color:#374151">公頻每日訊息數</div>
+        <div style="font-size:12px;color:#9ca3af">排序：日期由新到舊 · 官方訊息數置末</div>
+      </div>
+      <div style="display:flex;flex-direction:column;text-align:right;padding-right:16px">
+        <span style="font-size:12px;color:#6b7280;font-weight:700">筆數</span>
+        <span style="font-size:14px;font-weight:700;color:#1f2937">{{ dailyCount }}</span>
+      </div>
+    </div>
+
+    <div style="overflow-x:auto">
+    <div style="min-width:920px">
+      <div style="display:flex;align-items:center;background:#f9fafb;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+        <div style="flex:1.5;padding:16px 20px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">日期</div>
+        <div style="flex:1.2;padding:16px 20px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">玩家訊息數</div>
+        <div style="flex:1.3;padding:16px 20px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">不重複發言人數</div>
+        <div style="flex:1.1;padding:16px 20px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">人均訊息數</div>
+        <div style="flex:1.1;padding:16px 20px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">被攔截則數</div>
+        <div style="flex:1;padding:16px 20px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">峰值在線人數</div>
+        <div style="flex:1;padding:16px 20px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">平均在線人數</div>
+        <div style="flex:1.1;padding:16px 20px;font-size:12px;font-weight:700;color:#6b7280;text-align:right;white-space:nowrap;border-left:1px solid #e5e7eb">官方訊息數</div>
+      </div>
+
+      <sc-for list="{{ dailyRows }}" as="d" hint-placeholder-count="13">
+        <div style="display:flex;align-items:center;border-bottom:1px solid #f3f4f6;background:#fff" style-hover="background:#eff6ff">
+          <div style="flex:1.5;padding:13px 20px;font-size:13px;color:#4b5563;white-space:nowrap">{{ d.date }}</div>
+          <div style="flex:1.2;padding:13px 20px;font-size:14px;font-weight:700;color:#1f2937;text-align:right">{{ d.msgs }}</div>
+          <div style="flex:1.3;padding:13px 20px;font-size:14px;color:#4b5563;text-align:right">{{ d.speakers }}</div>
+          <div style="flex:1.1;padding:13px 20px;font-size:14px;color:#4b5563;text-align:right">{{ d.perCap }}</div>
+          <div style="flex:1.1;padding:13px 20px;font-size:14px;color:{{ d.blockedColor }};text-align:right">{{ d.blocked }}</div>
+          <div style="flex:1;padding:13px 20px;font-size:14px;color:#4b5563;text-align:right">{{ d.peak }}</div>
+          <div style="flex:1;padding:13px 20px;font-size:14px;color:#4b5563;text-align:right">{{ d.avgOnline }}</div>
+          <div style="flex:1.1;padding:13px 20px;font-size:14px;color:#6b7280;text-align:right;border-left:1px solid #f3f4f6">{{ d.official }}</div>
+        </div>
+      </sc-for>
+
+      <div style="display:flex;align-items:center;background:#f9fafb;border-top:2px solid #e5e7eb">
+        <div style="flex:1.5;padding:15px 20px;font-size:13px;font-weight:700;color:#374151;white-space:nowrap">區間合計</div>
+        <div style="flex:1.2;padding:15px 20px;font-size:14px;font-weight:700;color:#1f2937;text-align:right">{{ total.msgs }}</div>
+        <div style="flex:1.3;padding:15px 20px;font-size:14px;font-weight:700;color:#1f2937;text-align:right">{{ total.speakers }}</div>
+        <div style="flex:1.1;padding:15px 20px;font-size:14px;font-weight:700;color:#1f2937;text-align:right">{{ total.perCap }}</div>
+        <div style="flex:1.1;padding:15px 20px;font-size:14px;font-weight:700;color:#1f2937;text-align:right">{{ total.blocked }}</div>
+        <div style="flex:1;padding:15px 20px;font-size:14px;font-weight:700;color:#1f2937;text-align:right">{{ total.peak }}</div>
+        <div style="flex:1;padding:15px 20px;font-size:14px;font-weight:700;color:#1f2937;text-align:right">{{ total.avgOnline }}</div>
+        <div style="flex:1.1;padding:15px 20px;font-size:14px;font-weight:700;color:#1f2937;text-align:right;border-left:1px solid #e5e7eb">{{ total.official }}</div>
+      </div>
+      <div style="display:flex;align-items:center;background:#f9fafb;border-bottom:1px solid #e5e7eb">
+        <div style="flex:1.5;padding:0 20px 13px;font-size:11px;color:#9ca3af;white-space:nowrap">取值方式</div>
+        <div style="flex:1.2;padding:0 20px 13px;font-size:11px;color:#9ca3af;text-align:right">總計</div>
+        <div style="flex:1.3;padding:0 20px 13px;font-size:11px;color:#9ca3af;text-align:right">區間去重</div>
+        <div style="flex:1.1;padding:0 20px 13px;font-size:11px;color:#9ca3af;text-align:right">總訊息÷去重人數</div>
+        <div style="flex:1.1;padding:0 20px 13px;font-size:11px;color:#9ca3af;text-align:right">總計</div>
+        <div style="flex:1;padding:0 20px 13px;font-size:11px;color:#9ca3af;text-align:right">區間最高</div>
+        <div style="flex:1;padding:0 20px 13px;font-size:11px;color:#9ca3af;text-align:right">區間平均</div>
+        <div style="flex:1.1;padding:0 20px 13px;font-size:11px;color:#9ca3af;text-align:right;border-left:1px solid #f3f4f6">總計</div>
+      </div>
+    </div>
+    </div>
+
+    <div style="padding:14px 24px;display:flex;align-items:center;gap:8px;background:#fff">
+      <i class="ph-fill ph-info" style="color:#d1d5db;font-size:14px"></i>
+      <div style="font-size:12px;color:#9ca3af;line-height:1.6">「不重複發言人數」表尾為區間去重人數，非各日相加；人均訊息數亦以此為分母，因此不等於各日人均的平均值。</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isOnline }}" hint-placeholder-val="{{ false }}">
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;align-items:end;padding:20px 20px 20px">
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">查詢區間</label>
+        <div style="display:flex;align-items:center">
+          <div style="flex:1;border:1px solid #e5e7eb;border-right:0;border-radius:8px 0 0 8px;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1f2937;white-space:nowrap">{{ rangeStart }}</div>
+          <div style="padding:0 4px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;color:#9ca3af;font-size:13px">~</div>
+          <div style="flex:1;border:1px solid #e5e7eb;border-left:0;border-radius:0 8px 8px 0;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1f2937;white-space:nowrap">{{ rangeEnd }}</div>
+        </div>
+      </div>
+      <div style="grid-column:4;justify-self:end;display:flex;align-items:center;gap:8px">
+        <div style="padding:8px 16px;font-size:14px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;color:#4b5563;font-weight:500;cursor:pointer;white-space:nowrap">清除</div>
+        <div style="width:40px;height:40px;flex:none;background:#2088ea;color:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="ph-bold ph-magnifying-glass" style="font-size:18px"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0 4px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <i class="ph-fill ph-info" style="color:#f59e0b;font-size:15px"></i>
+      <div style="font-size:13px;color:#6b7280;font-weight:500">摘要卡與日曲線的計算範圍：{{ scopeNote }}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex:none">
+      <div style="font-size:12px;color:#9ca3af;font-weight:700;white-space:nowrap">顯示指標</div>
+      <div style="display:inline-flex;align-items:center;gap:2px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:9999px;padding:3px">
+        <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 16px;border-radius:9999px;font-size:13px;cursor:pointer;white-space:nowrap;background:{{ m.bg }};color:{{ m.color }};font-weight:{{ m.weight }};box-shadow:{{ m.shadow }}" onClick="{{ m.pick }}">
+            <i class="{{ m.icon }}" style="font-size:15px"></i><span>{{ m.label }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+    <sc-for list="{{ summary }}" as="s" hint-placeholder-count="4">
+      <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);padding:18px 20px;display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:8px;height:8px;border-radius:2px;background:{{ s.dot }}"></div>
+          <div style="font-size:12px;font-weight:700;color:#6b7280;letter-spacing:0.03em">{{ s.title }}</div>
+        </div>
+        <div style="font-size:28px;font-weight:700;color:#1f2937;line-height:1.1;letter-spacing:-0.02em">{{ s.value }}</div>
+        <div style="font-size:12px;color:#9ca3af;line-height:1.5">{{ s.note }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);padding:20px 24px 14px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:16px;font-weight:700;color:#374151">平均日曲線 · {{ metricLabel }}</div>
+        <div style="font-size:12px;color:#9ca3af">區間內每小時的平均值，淺色帶為該時段的最低至最高範圍</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;padding-top:3px">
+        <sc-if value="{{ hasChart }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="width:18px;height:3px;border-radius:2px;background:#2088ea"></div>
+          <div style="font-size:12px;color:#6b7280;font-weight:500">全區間平均</div>
+        </div>
+        <sc-if value="{{ hasWeekendLine }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div style="width:18px;height:0;border-top:3px dashed #f59e0b"></div>
+            <div style="font-size:12px;color:#6b7280;font-weight:500">週末平均</div>
+          </div>
+        </sc-if>
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="width:18px;height:11px;border-radius:3px;background:{{ bandFill }}"></div>
+          <div style="font-size:12px;color:#6b7280;font-weight:500">最低–最高</div>
+        </div>
+        </sc-if>
+      </div>
+    </div>
+    <sc-if value="{{ noChart }}" hint-placeholder-val="{{ false }}">
+      <div style="height:250px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+        <i class="ph ph-chart-line" style="font-size:32px;color:#d1d5db"></i>
+        <div style="font-size:14px;font-weight:700;color:#9ca3af">查詢區間內尚無完整小時的統計資料</div>
+        <div style="font-size:12px;color:#d1d5db">每小時統計於該小時結束後產生</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ hasChart }}" hint-placeholder-val="{{ true }}">
+    <svg viewBox="0 0 1000 250" style="width:100%;height:250px;display:block;overflow:visible">
+      <sc-for list="{{ yTicks }}" as="t" hint-placeholder-count="5">
+        <line x1="46" x2="994" y1="{{ t.y }}" y2="{{ t.y }}" stroke="#f3f4f6" stroke-width="1"></line>
+      </sc-for>
+      <sc-for list="{{ yTicks }}" as="t" hint-placeholder-count="5">
+        <text x="38" y="{{ t.ty }}" text-anchor="end" font-size="11" fill="#9ca3af" font-family="'Microsoft JhengHei',sans-serif">{{ t.label }}</text>
+      </sc-for>
+      <path d="{{ bandPath }}" fill="{{ bandFill }}"></path>
+      <sc-if value="{{ hasWeekendLine }}" hint-placeholder-val="{{ true }}">
+        <path d="{{ weekendPath }}" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="7 5" stroke-linejoin="round" stroke-linecap="round"></path>
+      </sc-if>
+      <path d="{{ meanPath }}" fill="none" stroke="#2088ea" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>
+      <sc-for list="{{ meanDots }}" as="p" hint-placeholder-count="24">
+        <circle cx="{{ p.x }}" cy="{{ p.y }}" r="3.5" fill="#ffffff" stroke="#2088ea" stroke-width="2.5"></circle>
+      </sc-for>
+      <sc-for list="{{ xTicks }}" as="t" hint-placeholder-count="12">
+        <text x="{{ t.x }}" y="242" text-anchor="middle" font-size="11" fill="#9ca3af" font-family="'Microsoft JhengHei',sans-serif">{{ t.label }}</text>
+      </sc-for>
+    </svg>
+    </sc-if>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);padding:20px 24px 18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:16px;font-weight:700;color:#374151">{{ metricLabel }}熱力圖</div>
+        <div style="font-size:12px;color:#9ca3af">點選左側日期可切換下方明細表 · 滑鼠移至格子顯示數值</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:9px">
+        <div style="font-size:12px;color:#9ca3af;font-weight:500">低</div>
+        <div style="display:flex;gap:3px">
+          <sc-for list="{{ legend }}" as="l" hint-placeholder-count="6">
+            <div style="width:26px;height:14px;border-radius:3px;background:{{ l.bg }}"></div>
+          </sc-for>
+        </div>
+        <div style="font-size:12px;color:#9ca3af;font-weight:500">高 {{ maxLabel }}</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:5px">
+      <div style="width:92px;flex:none"></div>
+      <div style="flex:1;display:grid;grid-template-columns:repeat(24,1fr);gap:3px">
+        <sc-for list="{{ hours }}" as="h" hint-placeholder-count="24">
+          <div style="text-align:center;font-size:11px;color:#9ca3af;font-weight:500">{{ h.label }}</div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <sc-for list="{{ rows }}" as="row" hint-placeholder-count="14">
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="width:92px;flex:none;font-size:12px;font-weight:{{ row.weight }};color:{{ row.labelColor }};cursor:pointer;text-align:right;padding-right:2px;white-space:nowrap" onClick="{{ row.select }}">{{ row.label }}</div>
+          <div style="flex:1;display:grid;grid-template-columns:repeat(24,1fr);gap:3px">
+            <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="24">
+              <div style="height:24px;border-radius:4px;box-sizing:border-box;background:{{ cell.bg }};border:{{ cell.border }};outline:{{ cell.outline }};cursor:default" title="{{ cell.tip }}"></div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+    <div style="background:#f3f4f6;padding:12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+      <div style="padding-left:16px;display:flex;align-items:baseline;gap:12px">
+        <div style="font-size:14px;font-weight:700;color:#374151">明細表 · {{ selectedLabel }}</div>
+        <div style="font-size:12px;color:#9ca3af">排序：日期時間由新到舊 · 不設表尾合計</div>
+      </div>
+      <div style="display:flex;flex-direction:column;text-align:right;padding-right:16px">
+        <span style="font-size:12px;color:#6b7280;font-weight:700">筆數</span>
+        <span style="font-size:14px;font-weight:700;color:#1f2937">24</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;background:#f9fafb;border-bottom:1px solid #e5e7eb">
+      <div style="flex:2;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">時段</div>
+      <div style="flex:1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">峰值在線人數</div>
+      <div style="flex:1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">平均在線人數</div>
+      <div style="flex:1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">不重複人數</div>
+    </div>
+    <sc-for list="{{ tableRows }}" as="t" hint-placeholder-count="24">
+      <div style="display:flex;align-items:center;border-bottom:1px solid #f3f4f6;background:#fff" style-hover="background:#eff6ff">
+        <div style="flex:2;padding:12px 24px;font-size:13px;color:#4b5563;white-space:nowrap">{{ t.slot }}</div>
+        <div style="flex:1;padding:12px 24px;font-size:14px;font-weight:700;color:#1f2937;text-align:right">{{ t.peak }}</div>
+        <div style="flex:1;padding:12px 24px;font-size:14px;color:#6b7280;text-align:right">{{ t.avg }}</div>
+        <div style="flex:1;padding:12px 24px;font-size:14px;color:#6b7280;text-align:right">{{ t.uniq }}</div>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isWordStat }}" hint-placeholder-val="{{ false }}">
+  <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start">
+    <i class="ph-fill ph-warning-circle" style="color:#f59e0b;font-size:18px;flex:none;margin-top:1px"></i>
+    <div style="font-size:13px;color:#b45309;line-height:1.65">僅列出查詢區間內觸發次數 ≥ 1 的字詞，依觸發次數由高至低排序，一列一詞、次數為區間總計。用途為找出誤判過多與尚未收錄的字詞。「當前狀態」取自敏感字詞庫的即時狀態，非該區間內的狀態；字詞若於區間中途被停用，停用前已觸發的次數仍計入，故可能出現「已停用但有觸發次數」的列。</div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;align-items:end;padding:20px 20px 20px">
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">查詢區間</label>
+        <div style="display:flex;align-items:center">
+          <div style="flex:1;border:1px solid #e5e7eb;border-right:0;border-radius:8px 0 0 8px;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1f2937;white-space:nowrap">2026/07/13</div>
+          <div style="padding:0 4px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;color:#9ca3af;font-size:13px">~</div>
+          <div style="flex:1;border:1px solid #e5e7eb;border-left:0;border-radius:0 8px 8px 0;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1f2937;white-space:nowrap">2026/08/11</div>
+        </div>
+      </div>
+      <div style="position:relative;grid-column:2">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">字詞</label>
+        <div style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.6rem 0.75rem;min-height:42px;box-sizing:border-box;display:flex;align-items:center;font-size:14px;color:#9ca3af">輸入字詞</div>
+      </div>
+      <div style="grid-column:4;justify-self:end;display:flex;align-items:center;gap:8px">
+        <div style="padding:8px 16px;font-size:14px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;color:#4b5563;font-weight:500;cursor:pointer;white-space:nowrap">清除</div>
+        <div style="width:40px;height:40px;flex:none;background:#2088ea;color:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="ph-bold ph-magnifying-glass" style="font-size:18px"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+    <div style="background:#f3f4f6;padding:12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+      <div style="padding-left:16px;font-size:13px;color:#6b7280">排序：觸發次數由高至低</div>
+      <div style="display:flex;flex-direction:column;text-align:right;padding-right:16px">
+        <span style="font-size:12px;color:#6b7280;font-weight:700">筆數</span>
+        <span style="font-size:14px;font-weight:700;color:#1f2937">37</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;background:#f9fafb;border-bottom:1px solid #e5e7eb">
+      <div style="width:90px;flex:none;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">排名</div>
+      <div style="flex:2;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">敏感字詞</div>
+      <div style="flex:1.1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">觸發次數</div>
+      <div style="flex:1.6;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">佔比</div>
+      <div style="flex:1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">當前狀態</div>
+    </div>
+    <sc-for list="{{ stats }}" as="s" hint-placeholder-count="10">
+      <div style="display:flex;align-items:center;border-bottom:1px solid #f3f4f6;background:#fff" style-hover="background:#eff6ff">
+        <div style="width:90px;flex:none;padding:14px 24px;font-size:14px;color:#9ca3af;font-weight:500">{{ s.rank }}</div>
+        <div style="flex:2;padding:14px 24px;font-size:14px;font-weight:700;color:#374151">{{ s.word }}</div>
+        <div style="flex:1.1;padding:14px 24px;font-size:14px;font-weight:700;color:#1f2937;text-align:right;white-space:nowrap">{{ s.count }}</div>
+        <div style="flex:1.6;display:flex;align-items:center;gap:10px;padding:14px 24px">
+          <div style="flex:1;height:6px;border-radius:3px;background:#e5e7eb;overflow:hidden">
+            <div style="height:100%;border-radius:3px;background:#2088ea;width:{{ s.pct }}"></div>
+          </div>
+          <div style="font-size:12px;color:#9ca3af;width:38px;text-align:right">{{ s.pctLabel }}</div>
+        </div>
+        <div style="flex:1;padding:14px 24px">
+          <span style="padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:700;white-space:nowrap;background:{{ s.stBg }};color:{{ s.stColor }};border:1px solid {{ s.stBorder }}">{{ s.status }}</span>
+        </div>
+      </div>
+    </sc-for>
+    <div style="padding:16px 24px;font-size:12px;color:#9ca3af;font-weight:500;text-align:right">1 - 10 共 37</div>
+  </div>
+  </sc-if>
+
+  <div style="font-size:12px;color:#9ca3af;padding:0 4px">此為呈現方式提案，資料為模擬；除頁籤、指標切換與日期點選外，其餘控制項為靜態外觀</div>
+
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1200},&quot;dayCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:14,&quot;min&quot;:1,&quot;max&quot;:30,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;模擬資料&quot;},&quot;todayHours&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:14,&quot;min&quot;:0,&quot;max&quot;:24,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;模擬資料&quot;,&quot;unit&quot;:&quot;時&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'daily', metric: 'peak', selected: 0 };
+
+  seed(d, h, k) {
+    const x = Math.sin(d * 127.1 + h * 311.7 + k * 74.7) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  build() {
+    const days = this.props.dayCount ?? 14;
+    const todayHours = Math.max(0, Math.min(24, this.props.todayHours ?? 14));
+    const hourWeight = [22,14,9,6,5,5,7,12,20,28,34,40,44,42,40,44,52,60,72,86,100,96,74,44];
+    const out = [];
+    for (let d = 0; d < days; d++) {
+      const date = new Date(2026, 7, 7);
+      date.setDate(date.getDate() - d);
+      const dow = date.getDay();
+      const weekend = (dow === 0 || dow === 6) ? 1.28 : 1;
+      const cells = [];
+      for (let h = 0; h < 24; h++) {
+        const noise = 0.85 + this.seed(d, h, 1) * 0.3;
+        const peak = Math.round(hourWeight[h] * 4.2 * weekend * noise);
+        const avg = Math.round(peak * (0.72 + this.seed(d, h, 2) * 0.14));
+        const uniq = Math.round(peak * (1.9 + this.seed(d, h, 3) * 0.9));
+        if (d === 0 && h >= todayHours) cells.push({ h, peak: null, avg: null, uniq: null, pending: true });
+        else cells.push({ h, peak, avg, uniq });
+      }
+      out.push({
+        date,
+        incomplete: d === 0 && todayHours < 24,
+        label: `${date.getMonth() + 1}/${String(date.getDate()).padStart(2, '0')} ${'日一二三四五六'[dow]}`,
+        full: `2026/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}（${'日一二三四五六'[dow]}）`,
+        cells
+      });
+    }
+    return out;
+  }
+
+  dailyStats(data) {
+    const done = data.filter(r => !r.incomplete);
+    const rows = done.map((r, i) => {
+      const wk = [0, 6].includes(r.date.getDay()) ? 1.22 : 1;
+      const speakers = Math.round((640 + this.seed(i, 3, 11) * 300) * wk);
+      const msgs = Math.round(speakers * (3.4 + this.seed(i, 5, 12) * 2.3));
+      const blocked = Math.round(msgs * (0.006 + this.seed(i, 7, 13) * 0.013));
+      const official = 6 + Math.round(this.seed(i, 9, 14) * 12);
+      const hp = r.cells.filter(c => !c.pending);
+      const peak = Math.max(...hp.map(c => c.peak));
+      const avgOnline = Math.round(hp.reduce((s, c) => s + c.avg, 0) / hp.length);
+      return { r, speakers, msgs, blocked, official, peak, avgOnline };
+    });
+    const sum = k => rows.reduce((s, o) => s + o[k], 0);
+    const msgsT = sum('msgs');
+    const uniqRange = Math.round(sum('speakers') * 0.38);
+    return {
+      rows,
+      total: {
+        msgs: msgsT.toLocaleString(),
+        speakers: uniqRange.toLocaleString(),
+        perCap: (msgsT / uniqRange).toFixed(1),
+        blocked: sum('blocked').toLocaleString(),
+        peak: Math.max(...rows.map(o => o.peak)).toLocaleString(),
+        avgOnline: Math.round(sum('avgOnline') / rows.length).toLocaleString(),
+        official: sum('official').toLocaleString()
+      }
+    };
+  }
+
+  renderVals() {
+    const heat = '#2088ea';
+    const rgb = [32, 136, 234];
+    const data = this.build();
+    const metric = this.state.metric;
+    const metricLabel = { peak: '峰值在線人數', avg: '平均在線人數', uniq: '不重複人數' }[metric];
+    let max = 0;
+    data.forEach(r => r.cells.forEach(c => { if (c[metric] !== null && c[metric] > max) max = c[metric]; }));
+    if (!max) max = 1;
+
+    const tint = t => {
+      const a = t <= 0 ? 0.04 : 0.07 + Math.pow(t, 0.72) * 0.93;
+      return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a.toFixed(3)})`;
+    };
+
+    const sel = this.state.selected;
+    const rows = data.map((r, i) => ({
+      label: r.label,
+      weight: i === sel ? 700 : 400,
+      labelColor: i === sel ? '#2088ea' : '#6b7280',
+      select: () => this.setState({ selected: i }),
+      cells: r.cells.map(c => ({
+        bg: c.pending ? '#f9fafb' : tint(c[metric] / max),
+        border: c.pending ? '1px dashed #e5e7eb' : '0',
+        outline: i === sel ? '1.5px solid rgba(32,136,234,0.6)' : 'none',
+        tip: c.pending
+          ? `${r.full} ${String(c.h).padStart(2, '0')}:00–${String(c.h + 1).padStart(2, '0')}:00\n尚未產生統計`
+          : `${r.full} ${String(c.h).padStart(2, '0')}:00–${String(c.h + 1).padStart(2, '0')}:00\n峰值在線人數 ${c.peak}　平均在線人數 ${c.avg}　不重複人數 ${c.uniq}`
+      }))
+    }));
+
+    const cur = data[sel];
+    const tableRows = cur.cells.slice().reverse().map(c => ({
+      slot: `${cur.full.slice(0, 10)} ${String(c.h).padStart(2, '0')}:00–${String(c.h + 1).padStart(2, '0')}:00`,
+      peak: c.pending ? '—' : c.peak.toLocaleString(),
+      avg: c.pending ? '—' : c.avg.toLocaleString(),
+      uniq: c.pending ? '—' : c.uniq.toLocaleString()
+    }));
+
+    const metrics = ['peak', 'avg', 'uniq'].map(k => ({
+      label: { peak: '峰值在線人數', avg: '平均在線人數', uniq: '不重複人數' }[k],
+      icon: { peak: 'ph-fill ph-trend-up', avg: 'ph-fill ph-wave-sine', uniq: 'ph-fill ph-users-three' }[k],
+      bg: metric === k ? '#ffffff' : 'transparent',
+      color: metric === k ? '#2088ea' : '#6b7280',
+      weight: metric === k ? 700 : 500,
+      shadow: metric === k ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+      pick: () => this.setState({ metric: k })
+    }));
+
+    const avgOf = a => a.reduce((s, v) => s + v, 0) / a.length;
+    const isWk = r => [0, 6].includes(r.date.getDay());
+    const complete = data.filter(r => !r.incomplete);
+    const partialOnly = complete.length === 0;
+    const src = partialOnly ? data : complete;
+    const wkDays = src.filter(isWk), wdDays = src.filter(r => !isWk(r));
+    const hasCompare = wkDays.length > 0 && wdDays.length > 0;
+    let scopeNote = partialOnly
+      ? '當日資料尚未完整，數值僅供參考'
+      : (data[0].incomplete
+        ? `統計至 ${complete[0].full.slice(5, 10)}，已排除資料未完整的當日`
+        : '區間內所有日期皆已完整');
+
+    const byHour = Array.from({ length: 24 }, (_, h) => {
+      const all = src.map(r => r.cells[h][metric]).filter(v => v !== null);
+      if (!all.length) return null;
+      const wk = wkDays.map(r => r.cells[h][metric]).filter(v => v !== null);
+      return { h, mean: avgOf(all), lo: Math.min(...all), hi: Math.max(...all), weekend: wk.length ? avgOf(wk) : null };
+    }).filter(Boolean);
+
+    const noData = byHour.length === 0;
+    const W = 1000, H = 250, pl = 46, pr = 6, pt = 12, pb = 30;
+    const yMaxRaw = noData ? 100 : Math.max(...byHour.map(o => o.hi));
+    const step = Math.pow(10, Math.floor(Math.log10(yMaxRaw))) / 2;
+    const yMax = Math.ceil(yMaxRaw / step) * step;
+    const X = h => pl + (h / 23) * (W - pl - pr);
+    const Y = v => H - pb - (v / yMax) * (H - pt - pb);
+    const line = key => byHour.filter(o => o[key] !== null).map((o, i) => `${i ? 'L' : 'M'}${X(o.h).toFixed(1)},${Y(o[key]).toFixed(1)}`).join(' ');
+
+    const peakH = noData ? null : byHour.reduce((a, b) => (b.mean > a.mean ? b : a));
+    const lowH = noData ? null : byHour.reduce((a, b) => (b.mean < a.mean ? b : a));
+    const dayTotal = r => r.cells.reduce((s, c) => s + (c[metric] ?? 0), 0);
+    const diff = hasCompare ? Math.round(((avgOf(wkDays.map(dayTotal)) / avgOf(wdDays.map(dayTotal))) - 1) * 100) : null;
+    let topDay = src[0], topVal = 0, topHour = 0;
+    src.forEach(r => r.cells.forEach(c => { if (c[metric] !== null && c[metric] > topVal) { topVal = c[metric]; topDay = r; topHour = c.h; } }));
+    const hh = h => `${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00`;
+    if (noData) scopeNote = '查詢區間內尚無完整小時的統計資料';
+
+    const summary = noData ? [
+      { dot: '#d1d5db', title: '尖峰時段', value: '—', note: '尚無完整小時資料' },
+      { dot: '#d1d5db', title: '離峰時段', value: '—', note: '尚無完整小時資料' },
+      { dot: '#d1d5db', title: '週末 vs 平日', value: '—', note: '尚無完整小時資料' },
+      { dot: '#d1d5db', title: '區間單日最高', value: '—', note: '尚無完整小時資料' }
+    ] : [
+      { dot: heat, title: '尖峰時段', value: hh(peakH.h), note: `${metricLabel}平均 ${Math.round(peakH.mean).toLocaleString()} 人` },
+      { dot: '#9ca3af', title: '離峰時段', value: hh(lowH.h), note: `${metricLabel}平均 ${Math.round(lowH.mean).toLocaleString()} 人` },
+      hasCompare
+        ? { dot: '#f59e0b', title: '週末 vs 平日', value: `${diff >= 0 ? '+' : ''}${diff}%`, note: `週末整日${diff >= 0 ? '高於' : '低於'}平日` }
+        : { dot: '#d1d5db', title: '週末 vs 平日', value: '—', note: wkDays.length ? '區間內無平日資料' : '區間內無週末資料' },
+      { dot: '#15803d', title: '區間單日最高', value: topVal.toLocaleString(), note: `${topDay.full.slice(5, 10)} ${hh(topHour)}` }
+    ];
+
+    const daily = this.dailyStats(data);
+
+    const raw = [
+      ['幹', 812, '啟用'], ['外掛', 431, '啟用'], ['加賴', 288, '啟用'],
+      ['代練', 194, '啟用'], ['收購帳號', 137, '啟用'], ['私下交易', 96, '啟用'],
+      ['賭場', 74, '啟用'], ['洗錢', 41, '啟用'], ['詐騙', 28, '啟用'], ['三倍券', 12, '停用']
+    ];
+    const top = raw[0][1];
+
+    return {
+      tabs: [['daily', '公頻每日訊息數'], ['online', '公頻上線人數分析'], ['wordstat', '敏感字觸發次數統計']].map(([k, label]) => ({
+        label,
+        bg: this.state.tab === k ? '#ffffff' : 'transparent',
+        color: this.state.tab === k ? '#2088ea' : '#9ca3af',
+        border: this.state.tab === k ? '#2088ea' : 'transparent',
+        pick: () => this.setState({ tab: k })
+      })),
+      isDaily: this.state.tab === 'daily',
+      isOnline: this.state.tab === 'online',
+      isWordStat: this.state.tab === 'wordstat',
+
+      dailyCount: daily.rows.length,
+      dailyStart: daily.rows.length ? daily.rows[daily.rows.length - 1].r.full.slice(0, 10) : '—',
+      dailyEnd: daily.rows.length ? daily.rows[0].r.full.slice(0, 10) : '—',
+      dailyRows: daily.rows.map(o => ({
+        date: o.r.full,
+        msgs: o.msgs.toLocaleString(),
+        speakers: o.speakers.toLocaleString(),
+        perCap: (o.msgs / o.speakers).toFixed(1),
+        blocked: o.blocked.toLocaleString(),
+        blockedColor: o.blocked > 60 ? '#b91c1c' : '#4b5563',
+        peak: o.peak.toLocaleString(),
+        avgOnline: o.avgOnline.toLocaleString(),
+        official: o.official.toLocaleString()
+      })),
+      total: daily.total,
+
+      stats: raw.map(([word, count, status], i) => ({
+        rank: i + 1, word, count: count.toLocaleString(),
+        pct: `${Math.round((count / top) * 100)}%`,
+        pctLabel: `${Math.round((count / top) * 100)}%`,
+        status,
+        stBg: status === '啟用' ? '#dcfce7' : '#f3f4f6',
+        stColor: status === '啟用' ? '#15803d' : '#6b7280',
+        stBorder: status === '啟用' ? '#bbf7d0' : '#e5e7eb'
+      })),
+
+      summary, scopeNote,
+      hasChart: !noData, noChart: noData,
+      hasWeekendLine: !noData && wkDays.length > 0,
+      bandFill: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.13)`,
+      meanPath: line('mean'),
+      weekendPath: line('weekend'),
+      bandPath: byHour.map((o, i) => `${i ? 'L' : 'M'}${X(o.h).toFixed(1)},${Y(o.hi).toFixed(1)}`).join(' ') + ' ' + byHour.slice().reverse().map(o => `L${X(o.h).toFixed(1)},${Y(o.lo).toFixed(1)}`).join(' ') + ' Z',
+      meanDots: byHour.map(o => ({ x: X(o.h).toFixed(1), y: Y(o.mean).toFixed(1) })),
+      yTicks: [0, 0.25, 0.5, 0.75, 1].map(t => ({ y: Y(yMax * t).toFixed(1), ty: (Y(yMax * t) + 4).toFixed(1), label: Math.round(yMax * t).toLocaleString() })),
+      xTicks: Array.from({ length: 24 }, (_, h) => h).filter(h => h % 2 === 0).map(h => ({ x: X(h).toFixed(1), label: String(h) })),
+      metrics, metricLabel, rows, tableRows,
+      maxLabel: max.toLocaleString(),
+      selectedLabel: cur.full,
+      rangeStart: data[data.length - 1].full.slice(0, 10),
+      rangeEnd: data[0].full.slice(0, 10),
+      hours: Array.from({ length: 24 }, (_, h) => ({ label: h % 2 === 0 ? String(h) : '' })),
+      legend: [0.05, 0.2, 0.4, 0.6, 0.8, 1].map(t => ({ bg: tint(t) }))
+    };
+  }
+}
+</script>
+</body>
+</html>
