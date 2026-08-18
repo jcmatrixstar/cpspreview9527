@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+body { margin:0; background:#f3f4f6; color:#1f2937; font-family:'Microsoft JhengHei',sans-serif; }
+a { color:#2088ea; }
+a:hover { color:#1a7acb; }
+</style>
+</helmet>
+<div style="min-height:100vh;background:#f8fafc;padding:24px;box-sizing:border-box;font-family:'Microsoft JhengHei',sans-serif;color:#1f2937;{{ rootFix }}">
+<div style="max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+    <nav style="display:flex;align-items:center;gap:6px;font-size:14px">
+      <span style="color:#6b7280">設定管理</span>
+      <i class="ph ph-caret-right" style="color:#d1d5db;font-size:12px"></i>
+      <span style="font-weight:600;color:#2088ea">聊天設定</span>
+    </nav>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="padding:4px 10px;border-radius:9999px;background:#fff;border:1px solid #e5e7eb;color:#9ca3af;font-size:12px;font-weight:700;white-space:nowrap">v4.38</div>
+      <div style="width:32px;height:32px;border-radius:50%;background:#f9fafb;border:1px solid #e5e7eb;color:#6b7280;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.05);cursor:pointer" style-hover="background:#f3f4f6;color:#2088ea" title="設定" onClick="{{ openParamsPanel }}"><i class="ph-bold ph-gear-six" style="font-size:18px"></i></div>
+      <div style="position:relative" data-tip-root="1">
+        <div style="width:32px;height:32px;border-radius:50%;background:{{ tipBtnBg }};border:1px solid {{ tipBtnBorder }};color:{{ tipBtnColor }};display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.05);cursor:pointer" title="說明" onClick="{{ toggleTip }}"><i class="{{ tipBtnIcon }}" style="font-size:18px"></i></div>
+        <sc-if value="{{ tipOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:calc(100% + 8px);right:0;width:360px;background:#fffdf2;border:1px solid #fde68a;border-radius:8px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);padding:16px 18px;display:flex;gap:12px;align-items:flex-start;z-index:120">
+            <i class="ph-fill ph-lightbulb" style="color:#facc15;font-size:20px;flex:none;margin-top:1px"></i>
+            <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+              <div style="font-size:14px;font-weight:700;color:#78350f">說明：</div>
+              <div style="display:flex;gap:8px;align-items:flex-start">
+                <span style="color:#b45309;font-size:13px;line-height:1.7;flex:none">•</span>
+                <div style="font-size:13px;color:#78350f;line-height:1.7;user-select:text;cursor:text">{{ tipText }}</div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+      <sc-if value="{{ showAdd }}" hint-placeholder-val="{{ true }}">
+        <div style="width:32px;height:32px;border-radius:50%;background:#2088ea;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);cursor:pointer" title="新增" onClick="{{ openAdd }}"><i class="ph-bold ph-plus" style="font-size:18px"></i></div>
+      </sc-if>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:4px;border-bottom:1px solid #e5e7eb;padding:8px 16px 0;overflow-x:auto">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+      <div style="padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;border-bottom:2px solid {{ t.border }};color:{{ t.color }};background:{{ t.bg }};border-top-left-radius:6px;border-top-right-radius:6px;white-space:nowrap;flex:none" onClick="{{ t.pick }}">{{ t.label }}</div>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{ isOfficial }}" hint-placeholder-val="{{ true }}">
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;align-items:end;padding:20px 20px 16px">
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">類型</label>
+        <div style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.6rem 0.75rem;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#1f2937;cursor:pointer" onClick="{{ toggleTypeFilter }}">
+          <span>{{ typeFilterLabel }}</span><i class="{{ typeFilterCaret }}" style="color:#9ca3af"></i>
+        </div>
+        <sc-if value="{{ typeFilterOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:100%;left:0;width:100%;margin-top:4px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);z-index:110;padding:4px;max-height:220px;overflow-y:auto">
+            <sc-for list="{{ typeFilterOptions }}" as="t" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:4px;cursor:pointer;font-size:14px;background:{{ t.bg }};color:{{ t.color }};font-weight:{{ t.weight }}" style-hover="background:#f9fafb" onClick="{{ t.pick }}">
+                <span>{{ t.label }}</span>
+                <i class="ph-bold ph-check" style="font-size:12px;color:#2088ea;opacity:{{ t.checkOpacity }}"></i>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">內容關鍵字</label>
+        <div style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.6rem 0.75rem;min-height:42px;box-sizing:border-box;display:flex;align-items:center;font-size:14px;color:#9ca3af">輸入關鍵字</div>
+      </div>
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">發送時間</label>
+        <div style="display:flex;align-items:center">
+          <div style="flex:1;border:1px solid #e5e7eb;border-right:0;border-radius:8px 0 0 8px;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#9ca3af">起</div>
+          <div style="padding:0 4px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;color:#9ca3af;font-size:13px">~</div>
+          <div style="flex:1;border:1px solid #e5e7eb;border-left:0;border-radius:0 8px 8px 0;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#9ca3af">迄</div>
+        </div>
+      </div>
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">狀態</label>
+        <div style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.6rem 0.75rem;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#1f2937">
+          <span>全部</span><i class="ph ph-caret-down" style="color:#9ca3af"></i>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:flex-end;padding:0 20px 16px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:40px;height:40px;background:#2088ea;color:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="ph-bold ph-magnifying-glass" style="font-size:18px"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+    <div style="background:#f3f4f6;padding:12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+      <div style="padding-left:16px;font-size:13px;color:#6b7280">排序：發送時間由新到舊　·　點「下架」即手動下架，下架不可復原</div>
+      <div style="display:flex;flex-direction:column;text-align:right;padding-right:16px">
+        <span style="font-size:12px;color:#6b7280;font-weight:700">筆數</span>
+        <span style="font-size:14px;font-weight:700;color:#1f2937">58</span>
+      </div>
+    </div>
+    <div style="overflow:auto;max-height:calc(100vh - 320px)">
+    <div style="min-width:1420px">
+    <div style="display:flex;align-items:center;background:#f9fafb;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05);position:sticky;top:0;z-index:20">
+      <div style="flex:1.1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">類型</div>
+      <div style="width:96px;flex:none;padding:16px 8px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap;text-align:center">圖片</div>
+      <div style="flex:2.6;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">內容摘要</div>
+      <div style="flex:0.9;padding:16px 16px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">發送方式</div>
+      <div style="flex:1.4;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">發送時間</div>
+      <div style="flex:1;padding:16px 16px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">重複性</div>
+      <div style="flex:0.9;padding:16px 16px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">狀態</div>
+      <div style="flex:1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">操作者</div>
+      <div style="flex:1.1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">備註</div>
+      <div style="flex:1;padding:16px 16px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap;text-align:center">操作</div>
+    </div>
+    <sc-for list="{{ officials }}" as="o" hint-placeholder-count="6">
+      <div style="display:flex;align-items:center;border-bottom:1px solid #f3f4f6;background:#fff" style-hover="background:#eff6ff">
+        <div style="flex:1.1;display:flex;align-items:center;padding:14px 24px">
+          <span style="padding:2px 10px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap;background:{{ o.typeBg }};color:{{ o.typeColor }}">{{ o.type }}</span>
+        </div>
+        <div style="width:96px;flex:none;display:flex;align-items:center;justify-content:center;padding:10px 8px">
+          <sc-if value="{{ o.hasThumb }}" hint-placeholder-val="{{ true }}">
+            <div style="width:80px;height:20px;border-radius:4px;background:#e5e7eb;border:1px solid #d1d5db;display:flex;align-items:center;justify-content:center">
+              <i class="ph-fill ph-image" style="font-size:16px;color:#9ca3af"></i>
+            </div>
+          </sc-if>
+          <sc-if value="{{ o.hasSquareThumb }}" hint-placeholder-val="{{ false }}">
+            <div style="width:40px;height:40px;border-radius:4px;background:#e5e7eb;border:1px solid #d1d5db;display:flex;align-items:center;justify-content:center" title="遊戲圖檔由系統自動帶入">
+              <i class="ph-fill ph-game-controller" style="font-size:18px;color:#9ca3af"></i>
+            </div>
+          </sc-if>
+          <sc-if value="{{ o.noThumb }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:14px;color:#d1d5db">—</span>
+          </sc-if>
+        </div>
+        <div style="flex:2.6;display:flex;align-items:center;padding:14px 24px;font-size:14px;color:#374151">{{ o.summary }}</div>
+        <div style="flex:0.9;display:flex;align-items:center;padding:14px 16px;font-size:13px;color:#4b5563;white-space:nowrap">{{ o.send }}</div>
+        <div style="flex:1.4;display:flex;align-items:center;padding:14px 24px;font-size:12px;color:#4b5563;font-family:ui-monospace,monospace;white-space:nowrap">{{ o.sendAt }}</div>
+        <div style="flex:1;display:flex;align-items:center;padding:14px 16px;font-size:13px;color:#4b5563;white-space:nowrap">{{ o.repeat }}</div>
+        <div style="flex:0.9;display:flex;align-items:center;padding:14px 16px">
+          <span style="padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:700;white-space:nowrap;background:{{ o.stBg }};color:{{ o.stColor }};border:1px solid {{ o.stBorder }}">{{ o.statusText }}</span>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;padding:14px 24px;font-size:14px;color:#4b5563">
+          <i class="ph-fill ph-user-circle" style="color:#9ca3af;font-size:18px"></i><span>{{ o.operator }}</span>
+        </div>
+        <div style="flex:1.1;display:flex;align-items:center;padding:14px 24px;font-size:13px;color:#9ca3af;font-style:italic">{{ o.remark }}</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:2px;padding:14px 16px">
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer" style-hover="background:#f3f4f6;color:#2088ea" title="檢視" onClick="{{ o.open }}"><i class="ph ph-caret-right" style="font-size:18px"></i></div>
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:{{ o.takedownColor }};cursor:{{ o.switchCursor }}" style-hover="background:#fef2f2" title="{{ o.takedownTip }}" onClick="{{ o.toggleRow }}"><i class="ph ph-arrow-circle-down" style="font-size:18px"></i></div>
+        </div>
+      </div>
+    </sc-for>
+    </div>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;justify-content:flex-end;gap:16px">
+      <div style="display:flex;align-items:center;gap:8px;color:#9ca3af">
+        <i class="ph ph-skip-back" style="font-size:14px;cursor:pointer"></i>
+        <i class="ph ph-caret-left" style="font-size:14px;cursor:pointer"></i>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <sc-for list="{{ offPages }}" as="p" hint-placeholder-count="5">
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;cursor:pointer;background:{{ p.bg }};color:{{ p.color }};box-shadow:{{ p.shadow }}">{{ p.label }}</div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;color:#9ca3af">
+        <i class="ph ph-caret-right" style="font-size:14px;cursor:pointer"></i>
+        <i class="ph ph-skip-forward" style="font-size:14px;cursor:pointer"></i>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:#6b7280;font-weight:500;white-space:nowrap">每頁筆數</span>
+        <div style="position:relative">
+          <div style="min-width:72px;padding:6px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;color:#374151;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onClick="{{ offPerToggle }}">
+            <span>{{ offPerSize }}</span><i class="{{ offPerCaret }}" style="font-size:12px;color:#9ca3af"></i>
+          </div>
+          <sc-if value="{{ offPerOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;bottom:calc(100% + 4px);right:0;min-width:96px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);z-index:40;overflow:hidden">
+              <sc-for list="{{ offPerOptions }}" as="n" hint-placeholder-count="4">
+                <div style="padding:9px 14px;font-size:14px;cursor:pointer;background:{{ n.bg }};color:{{ n.color }};font-weight:{{ n.weight }}" style-hover="background:#f3f4f6" onClick="{{ n.pick }}">{{ n.label }}</div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#9ca3af;font-weight:500;white-space:nowrap">{{ offPerRange }}</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isWords }}" hint-placeholder-val="{{ true }}">
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;align-items:end;padding:20px 20px 20px">
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">字詞</label>
+        <div style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.6rem 0.75rem;min-height:42px;box-sizing:border-box;display:flex;align-items:center;font-size:14px;color:#9ca3af">輸入字詞</div>
+      </div>
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">狀態</label>
+        <div style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.6rem 0.75rem;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#1f2937">
+          <span>全部</span><i class="ph ph-caret-down" style="color:#9ca3af"></i>
+        </div>
+      </div>
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">最後更新</label>
+        <div style="display:flex;align-items:center">
+          <div style="flex:1;border:1px solid #e5e7eb;border-right:0;border-radius:8px 0 0 8px;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#9ca3af">起</div>
+          <div style="padding:0 4px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;color:#9ca3af;font-size:13px">~</div>
+          <div style="flex:1;border:1px solid #e5e7eb;border-left:0;border-radius:0 8px 8px 0;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#9ca3af">迄</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end">
+        <div style="width:40px;height:40px;background:#2088ea;color:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="ph-bold ph-magnifying-glass" style="font-size:18px"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+    <div style="background:#f3f4f6;padding:12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:12px;padding-left:16px">
+        <div style="font-size:14px;font-weight:700;color:#2563eb">{{ selText }}</div>
+        <div style="display:flex;gap:8px">
+          <div style="padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;background:{{ batchBg }};color:{{ batchColor }};font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">批次停用</div>
+          <div style="padding:6px 14px;border:1px solid #e5e7eb;border-radius:6px;background:{{ batchBg }};color:{{ batchColor }};font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">批次刪除</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;text-align:right;padding-right:16px">
+        <span style="font-size:12px;color:#6b7280;font-weight:700">筆數</span>
+        <span style="font-size:14px;font-weight:700;color:#1f2937">1,284</span>
+      </div>
+    </div>
+
+    <div style="overflow:auto;max-height:calc(100vh - 320px)">
+    <div style="min-width:1080px">
+    <div style="display:flex;align-items:center;background:#f9fafb;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05);position:sticky;top:0;z-index:20">
+      <div style="width:56px;flex:none;display:flex;align-items:center;justify-content:center;padding:16px 0">
+        <div style="width:16px;height:16px;border:2px solid {{ allBoxBorder }};border-radius:4px;background:{{ allBoxBg }};cursor:pointer;display:flex;align-items:center;justify-content:center" onClick="{{ toggleAll }}"><i class="ph-bold ph-check" style="font-size:11px;color:#fff;opacity:{{ allCheckOpacity }}"></i></div>
+      </div>
+      <sc-for list="{{ headers }}" as="h" hint-placeholder-count="5">
+        <div style="flex:{{ h.flex }};display:flex;align-items:center;justify-content:{{ h.align }};padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">{{ h.label }}</div>
+      </sc-for>
+    </div>
+
+    <sc-for list="{{ words }}" as="w" hint-placeholder-count="10">
+      <div style="display:flex;align-items:center;border-bottom:1px solid #f3f4f6;background:#fff" style-hover="background:#eff6ff">
+        <div style="width:56px;flex:none;display:flex;align-items:center;justify-content:center;padding:14px 0">
+          <div style="width:16px;height:16px;border:2px solid {{ w.boxBorder }};border-radius:4px;background:{{ w.boxBg }};cursor:pointer;display:flex;align-items:center;justify-content:center" onClick="{{ w.toggle }}"><i class="ph-bold ph-check" style="font-size:11px;color:#fff;opacity:{{ w.checkOpacity }}"></i></div>
+        </div>
+        <div style="flex:2.2;display:flex;align-items:center;padding:14px 24px;font-size:14px;font-weight:700;color:#374151">{{ w.word }}</div>
+        <div style="flex:1;display:flex;align-items:center;padding:14px 24px">
+          <span style="padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:700;white-space:nowrap;background:{{ w.stBg }};color:{{ w.stColor }};border:1px solid {{ w.stBorder }}">{{ w.status }}</span>
+        </div>
+        <div style="flex:1.4;display:flex;align-items:center;padding:14px 24px;font-size:12px;font-weight:500;color:#6b7280;white-space:nowrap">{{ w.updated }}</div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;padding:14px 24px;font-size:14px;color:#4b5563">
+          <i class="ph-fill ph-user-circle" style="color:#9ca3af;font-size:18px"></i><span>{{ w.operator }}</span>
+        </div>
+        <div style="flex:1.1;display:flex;align-items:center;padding:14px 24px;font-size:13px;color:#9ca3af;font-style:italic">{{ w.remark }}</div>
+        <div style="flex:0.9;display:flex;align-items:center;justify-content:center;gap:2px;padding:14px 24px">
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer" style-hover="background:#f3f4f6;color:#2088ea" title="編輯" onClick="{{ w.open }}"><i class="ph ph-pencil-simple" style="font-size:18px"></i></div>
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer" style-hover="background:#fef2f2;color:#ef4444" title="刪除"><i class="ph ph-trash" style="font-size:18px"></i></div>
+        </div>
+      </div>
+    </sc-for>
+    </div>
+    </div>
+
+    <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;justify-content:flex-end;gap:16px">
+      <div style="display:flex;align-items:center;gap:8px;color:#9ca3af">
+        <i class="ph ph-skip-back" style="font-size:14px;cursor:pointer"></i>
+        <i class="ph ph-caret-left" style="font-size:14px;cursor:pointer"></i>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <sc-for list="{{ pages }}" as="p" hint-placeholder-count="5">
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;cursor:pointer;background:{{ p.bg }};color:{{ p.color }};box-shadow:{{ p.shadow }}">{{ p.label }}</div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;color:#9ca3af">
+        <i class="ph ph-caret-right" style="font-size:14px;cursor:pointer"></i>
+        <i class="ph ph-skip-forward" style="font-size:14px;cursor:pointer"></i>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:#6b7280;font-weight:500;white-space:nowrap">每頁筆數</span>
+        <div style="position:relative">
+          <div style="min-width:72px;padding:6px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;color:#374151;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onClick="{{ wordPerToggle }}">
+            <span>{{ wordPerSize }}</span><i class="{{ wordPerCaret }}" style="font-size:12px;color:#9ca3af"></i>
+          </div>
+          <sc-if value="{{ wordPerOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;bottom:calc(100% + 4px);right:0;min-width:96px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);z-index:40;overflow:hidden">
+              <sc-for list="{{ wordPerOptions }}" as="n" hint-placeholder-count="4">
+                <div style="padding:9px 14px;font-size:14px;cursor:pointer;background:{{ n.bg }};color:{{ n.color }};font-weight:{{ n.weight }}" style-hover="background:#f3f4f6" onClick="{{ n.pick }}">{{ n.label }}</div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#9ca3af;font-weight:500;white-space:nowrap">{{ wordPerRange }}</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isMute }}" hint-placeholder-val="{{ false }}">
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;align-items:end;padding:20px 20px 20px">
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">{{ muteSearchLabel }}</label>
+        <div style="display:flex">
+          <div style="width:48px;flex:none;display:flex;align-items:center;justify-content:center;background:#f9fafb;border:1px solid #e5e7eb;border-right:0;border-radius:8px 0 0 8px;cursor:pointer" title="點擊切換類型" onClick="{{ toggleMuteSearch }}">
+            <i class="{{ muteSearchIcon }}" style="color:#6b7280;font-size:18px"></i>
+          </div>
+          <div style="flex:1;border:1px solid #e5e7eb;border-radius:0 8px 8px 0;background:#f9fafb;padding:0.6rem 0.75rem;min-height:42px;box-sizing:border-box;display:flex;align-items:center;font-size:14px;color:#9ca3af">{{ muteSearchPlaceholder }}</div>
+        </div>
+      </div>
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">狀態</label>
+        <div style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.6rem 0.75rem;min-height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#1f2937">
+          <span>全部</span><i class="ph ph-caret-down" style="color:#9ca3af"></i>
+        </div>
+      </div>
+      <div style="position:relative">
+        <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">禁言起始日</label>
+        <div style="display:flex;align-items:center">
+          <div style="flex:1;border:1px solid #e5e7eb;border-right:0;border-radius:8px 0 0 8px;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#9ca3af">起</div>
+          <div style="padding:0 4px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;color:#9ca3af;font-size:13px">~</div>
+          <div style="flex:1;border:1px solid #e5e7eb;border-left:0;border-radius:0 8px 8px 0;background:#f9fafb;height:42px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:12px;color:#9ca3af">迄</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end">
+        <div style="width:40px;height:40px;background:#2088ea;color:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><i class="ph-bold ph-magnifying-glass" style="font-size:18px"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+    <div style="background:#f3f4f6;padding:12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+      <div></div>
+      <div style="display:flex;flex-direction:column;text-align:right;padding-right:16px">
+        <span style="font-size:12px;color:#6b7280;font-weight:700">禁言中</span>
+        <span style="font-size:14px;font-weight:700;color:#dc2626">5</span>
+      </div>
+    </div>
+    <div style="overflow:auto;max-height:calc(100vh - 320px)">
+    <div style="min-width:1480px">
+    <div style="display:flex;align-items:center;background:#f9fafb;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05);position:sticky;top:0;z-index:20">
+      <div style="width:150px;flex:none;padding:16px 24px;box-sizing:border-box;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">暱稱</div>
+      <div style="width:330px;flex:none;padding:16px 24px;box-sizing:border-box;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">禁言期間</div>
+      <div style="width:150px;flex:none;padding:16px 24px;box-sizing:border-box;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">剩餘時間</div>
+      <div style="width:120px;flex:none;padding:16px 24px;box-sizing:border-box;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">狀態</div>
+      <div style="width:100px;flex:none;padding:16px 16px;box-sizing:border-box;font-size:12px;font-weight:700;color:#374151;white-space:nowrap;text-align:center">累積次數</div>
+      <div style="width:200px;flex:none;padding:16px 24px;box-sizing:border-box;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">禁言原因</div>
+      <div style="width:150px;flex:none;padding:16px 24px;box-sizing:border-box;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">操作者</div>
+      <div style="width:160px;flex:none;padding:16px 24px;box-sizing:border-box;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">備註</div>
+      <div style="width:120px;flex:none;padding:16px 24px;box-sizing:border-box;font-size:12px;font-weight:700;color:#374151;text-align:center;white-space:nowrap">操作</div>
+    </div>
+    <sc-for list="{{ mutes }}" as="m" hint-placeholder-count="8">
+      <div style="display:flex;align-items:center;border-bottom:1px solid #f3f4f6;background:#fff" style-hover="background:#eff6ff">
+        <div style="width:150px;flex:none;box-sizing:border-box;display:flex;align-items:center;padding:14px 24px;font-size:14px;font-weight:700;color:#374151;word-break:break-all;line-height:1.5">{{ m.nickname }}</div>
+        <div style="width:330px;flex:none;box-sizing:border-box;display:flex;align-items:center;padding:14px 24px;font-size:12px;color:#4b5563;font-family:ui-monospace,monospace;white-space:nowrap">{{ m.period }}</div>
+        <div style="width:150px;flex:none;box-sizing:border-box;display:flex;align-items:center;padding:14px 24px;font-size:13px;color:{{ m.leftColor }};font-weight:{{ m.leftWeight }};white-space:nowrap">{{ m.left }}</div>
+        <div style="width:120px;flex:none;box-sizing:border-box;display:flex;align-items:center;padding:14px 24px">
+          <span style="padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:700;white-space:nowrap;background:{{ m.stBg }};color:{{ m.stColor }};border:1px solid {{ m.stBorder }}">{{ m.status }}</span>
+        </div>
+        <div style="width:100px;flex:none;box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:14px 16px;font-size:14px;color:{{ m.countColor }};font-weight:{{ m.countWeight }};font-family:ui-monospace,monospace">{{ m.count }}</div>
+        <div style="width:200px;flex:none;box-sizing:border-box;display:flex;align-items:center;padding:14px 24px;font-size:13px;color:#4b5563;word-break:break-all;line-height:1.5">{{ m.reason }}</div>
+        <div style="width:150px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:14px 24px;font-size:14px;color:#4b5563;white-space:nowrap">
+          <i class="ph-fill ph-user-circle" style="color:#9ca3af;font-size:18px;flex:none"></i><span>{{ m.operator }}</span>
+        </div>
+        <div style="width:160px;flex:none;box-sizing:border-box;display:flex;align-items:center;padding:14px 24px;font-size:13px;color:#9ca3af;font-style:italic;word-break:break-all;line-height:1.5">{{ m.remark }}</div>
+        <div style="width:120px;flex:none;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:2px;padding:14px 24px">
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer" style-hover="background:#f3f4f6;color:#2088ea" title="檢視" onClick="{{ m.open }}"><i class="ph ph-caret-right" style="font-size:18px"></i></div>
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:{{ m.releaseColor }};cursor:{{ m.releaseCursor }}" style-hover="background:#f3f4f6" title="解除禁言" onClick="{{ m.release }}"><i class="ph ph-lock-open" style="font-size:18px"></i></div>
+        </div>
+      </div>
+    </sc-for>
+    </div>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;justify-content:flex-end;gap:16px">
+      <div style="display:flex;align-items:center;gap:8px;color:#9ca3af">
+        <i class="ph ph-skip-back" style="font-size:14px;cursor:pointer"></i>
+        <i class="ph ph-caret-left" style="font-size:14px;cursor:pointer"></i>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <sc-for list="{{ mutePages }}" as="p" hint-placeholder-count="4">
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;cursor:pointer;background:{{ p.bg }};color:{{ p.color }};box-shadow:{{ p.shadow }}">{{ p.label }}</div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;color:#9ca3af">
+        <i class="ph ph-caret-right" style="font-size:14px;cursor:pointer"></i>
+        <i class="ph ph-skip-forward" style="font-size:14px;cursor:pointer"></i>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:#6b7280;font-weight:500;white-space:nowrap">每頁筆數</span>
+        <div style="position:relative">
+          <div style="min-width:72px;padding:6px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;color:#374151;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer" onClick="{{ mutePerToggle }}">
+            <span>{{ mutePerSize }}</span><i class="{{ mutePerCaret }}" style="font-size:12px;color:#9ca3af"></i>
+          </div>
+          <sc-if value="{{ mutePerOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;bottom:calc(100% + 4px);right:0;min-width:96px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);z-index:40;overflow:hidden">
+              <sc-for list="{{ mutePerOptions }}" as="n" hint-placeholder-count="4">
+                <div style="padding:9px 14px;font-size:14px;cursor:pointer;background:{{ n.bg }};color:{{ n.color }};font-weight:{{ n.weight }}" style-hover="background:#f3f4f6" onClick="{{ n.pick }}">{{ n.label }}</div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#9ca3af;font-weight:500;white-space:nowrap">{{ mutePerRange }}</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ paramsPanelOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:240;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px)" onClick="{{ closeParamsPanel }}">
+  <div style="background:#f8fafc;border-radius:8px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);width:70vw;height:80vh;display:flex;flex-direction:column;overflow:hidden" onClick="{{ stop }}">
+  <div style="padding:16px 24px;border-bottom:1px solid #e5e7eb;background:#fff;display:flex;align-items:baseline;gap:10px;flex:none">
+    <div style="display:flex;align-items:center;gap:8px">
+      <i class="ph-bold ph-gear-six" style="color:#6b7280;font-size:18px"></i>
+      <span style="font-size:18px;font-weight:700;color:#374151">聊天設定</span>
+    </div>
+    <span style="font-size:14px;color:#9ca3af">參數設定</span>
+  </div>
+  <div style="padding:24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px">
+  <div style="flex:none;background:#fff9db;border:1px solid #fde68a;border-radius:8px;padding:16px 18px;display:flex;gap:12px;align-items:flex-start">
+    <i class="ph-fill ph-lightbulb" style="color:#f59e0b;font-size:18px;flex:none;margin-top:2px"></i>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div style="font-size:14px;font-weight:700;color:#78350f">複合式參數採 Group（複合）類型</div>
+      <div style="font-size:13px;color:#92400e;line-height:1.7">一列一組規則，內容欄顯示組合後的摘要，詳情頁展開為多個數值欄位。關聯性清楚、一次儲存即一次異動紀錄；後台框架須支援可定義子欄位（名稱、單位、上下限）的類型，屬共用元件改動。</div>
+    </div>
+  </div>
+
+  <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+    <div style="background:#f3f4f6;padding:12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between">
+      <div style="padding-left:16px;font-size:13px;color:#6b7280">點操作欄的檢視 icon 看詳情頁欄位設計</div>
+      <div style="display:flex;flex-direction:column;text-align:right;padding-right:16px">
+        <span style="font-size:12px;color:#6b7280;font-weight:700">筆數</span>
+        <span style="font-size:14px;font-weight:700;color:#1f2937">{{ paramCount }}</span>
+      </div>
+    </div>
+    <div style="overflow:auto;max-height:calc(100vh - 320px)">
+    <div style="min-width:980px">
+    <div style="display:flex;align-items:center;background:#f9fafb;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 2px rgba(0,0,0,0.05);position:sticky;top:0;z-index:20">
+      <div style="flex:2.1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">名稱</div>
+      <div style="flex:2.2;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">內容</div>
+      <div style="flex:1.3;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">類型</div>
+      <div style="flex:0.7;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">必填</div>
+      <div style="flex:1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">操作者</div>
+      <div style="flex:1.1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">備註</div>
+      <div style="flex:0.7;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;text-align:center;white-space:nowrap">操作</div>
+    </div>
+    <sc-for list="{{ paramRows }}" as="r" hint-placeholder-count="8">
+      <div style="display:flex;align-items:center;border-bottom:1px solid #f3f4f6;background:{{ r.bg }}" style-hover="background:#eff6ff">
+        <div style="flex:2.1;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:14px 24px">
+          <div style="font-size:14px;font-weight:700;color:#374151">{{ r.name }}</div>
+          <div style="font-size:12px;color:#9ca3af;font-family:ui-monospace,monospace">{{ r.key }}</div>
+        </div>
+        <div style="flex:2.2;display:flex;align-items:center;padding:14px 24px">
+          <span style="display:inline-block;padding:2px 10px;border-radius:4px;font-size:13px;background:{{ r.valBg }};color:{{ r.valColor }};font-weight:{{ r.valWeight }};border:1px solid {{ r.valBorder }}">{{ r.value }}</span>
+        </div>
+        <div style="flex:1.3;display:flex;align-items:center;padding:14px 24px;font-size:13px;color:{{ r.typeColor }};font-weight:{{ r.typeWeight }};white-space:nowrap">{{ r.type }}</div>
+        <div style="flex:0.7;display:flex;align-items:center;padding:14px 24px;font-size:13px;color:#6b7280">{{ r.required }}</div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;padding:14px 24px;font-size:14px;color:#4b5563">
+          <i class="ph-fill ph-user-circle" style="color:#9ca3af;font-size:18px"></i><span>admin</span>
+        </div>
+        <div style="flex:1.1;display:flex;align-items:center;padding:14px 24px;font-size:13px;color:#9ca3af;font-style:italic">{{ r.remark }}</div>
+        <div style="flex:0.7;display:flex;align-items:center;justify-content:center;padding:14px 24px">
+          <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer" style-hover="background:#f3f4f6;color:#2088ea" title="檢視" onClick="{{ r.open }}"><i class="ph ph-caret-right" style="font-size:18px"></i></div>
+        </div>
+      </div>
+    </sc-for>
+    </div>
+    </div>
+  </div>
+  </div>
+  <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#fff;display:flex;justify-content:flex-end;flex:none">
+    <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ closeParamsPanel }}">關閉</div>
+  </div>
+  </div>
+  </div>
+  </sc-if>
+
+</div>
+
+  <sc-if value="{{ wordModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);padding:24px" onClick="{{ close }}">
+      <div style="background:#f8fafc;border-radius:8px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);width:100%;max-width:512px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden" onClick="{{ stop }}">
+
+        <div style="padding:16px 24px;border-bottom:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;flex:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:18px;font-weight:700;color:#374151">敏感字詞庫</div>
+            <div style="font-size:14px;color:#9ca3af;font-weight:400">{{ wordModalSub }}</div>
+          </div>
+        </div>
+
+        <div style="padding:24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px">
+
+          <sc-if value="{{ wordHasMeta }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:none;background:#dfe3e8;border:1px solid #cbd5e1;border-radius:8px;padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;row-gap:16px">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">最後異動時間</div>
+              <div style="font-size:12px;color:#374151;font-family:ui-monospace,monospace">{{ wordModal.updated }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">操作者</div>
+              <div style="font-size:14px;color:#374151;font-weight:500">{{ wordModal.operator }}</div>
+            </div>
+          </div>
+          </sc-if>
+          <sc-if value="{{ wordEditNote }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:none;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+              <i class="ph-fill ph-lock-simple" style="color:#d97706;font-size:16px;flex:none;margin-top:1px"></i>
+              <div style="font-size:13px;color:#b45309;line-height:1.6">既有字詞僅「狀態」與「備註」可修改；字詞本身維持唯讀。若字詞本身不適當，請刪除後重新新增。</div>
+            </div>
+          </sc-if>
+
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ toggleBasic }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+                <i class="ph-fill ph-identification-card"></i> 基本
+              </div>
+              <i class="{{ basicCaret }}" style="color:#9ca3af;font-size:14px"></i>
+            </div>
+            <sc-if value="{{ basicOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:700;color:#6b7280">
+                  <span style="color:#ef4444;margin-right:4px;display:{{ reqStar }}">*</span>字詞
+                </label>
+                <sc-if value="{{ wordFieldRead }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;min-height:44px;box-sizing:border-box;display:flex;align-items:center;font-size:14px;color:#1f2937;font-weight:500">{{ wordModal.word }}</div>
+                </sc-if>
+                <sc-if value="{{ wordFieldEdit }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;color:{{ wordModal.wordColor }}">{{ wordModal.word }}</div>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:700;color:#6b7280">狀態</label>
+                <sc-if value="{{ wordReading }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;min-height:44px;box-sizing:border-box;display:flex;align-items:center">
+                    <span style="padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;background:{{ wordModal.stBg }};color:{{ wordModal.stColor }}">{{ wordModal.status }}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ wordEditing }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;color:#1f2937;display:flex;align-items:center;justify-content:space-between">
+                    <span>{{ wordModal.status }}</span><i class="ph ph-caret-down" style="color:#9ca3af;font-size:13px"></i>
+                  </div>
+                </sc-if>
+                <div style="font-size:11px;color:#9ca3af;line-height:1.5">停用後字詞保留於詞庫，但不再攔截；欲永久移除請使用刪除。</div>
+              </div>
+
+            </div>
+            </sc-if>
+          </div>
+
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ toggleOther }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+                <i class="ph-fill ph-note-pencil"></i> 其他
+              </div>
+              <i class="{{ otherCaret }}" style="color:#9ca3af;font-size:14px"></i>
+            </div>
+            <sc-if value="{{ otherOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:20px;display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:12px;font-weight:700;color:#6b7280">備註</label>
+              <sc-if value="{{ wordReading }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;font-size:14px;color:#374151;min-height:44px;box-sizing:border-box;display:flex;align-items:center">(無)</div>
+              </sc-if>
+              <sc-if value="{{ wordEditing }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;color:#9ca3af;min-height:72px;box-sizing:border-box">選填，例如新增原因</div>
+              </sc-if>
+            </div>
+            </sc-if>
+          </div>
+
+        </div>
+
+        <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#fff;display:flex;justify-content:flex-end;gap:12px;flex:none">
+          <sc-if value="{{ wordReading }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:12px">
+              <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ close }}">關閉</div>
+              <div style="padding:8px 16px;border-radius:4px;background:#fbbf24;color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f59e0b" onClick="{{ startEdit }}">編輯</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ wordEditing }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:12px">
+              <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ cancelWordEdit }}">取消</div>
+              <div style="padding:8px 16px;border-radius:4px;background:#2088ea;color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#1a7acb" onClick="{{ close }}">儲存</div>
+            </div>
+          </sc-if>
+        </div>
+
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ confirmOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:320;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);padding:24px" onClick="{{ confirmNo }}">
+      <div style="background:#fff;border-radius:8px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);width:100%;max-width:440px;display:flex;flex-direction:column;overflow:hidden" onClick="{{ stop }}">
+        <div style="padding:20px 24px 16px;display:flex;gap:14px;align-items:flex-start">
+          <div style="width:40px;height:40px;flex:none;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center">
+            <i class="ph-fill ph-warning" style="color:#d97706;font-size:20px"></i>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:16px;font-weight:700;color:#1f2937">{{ confirmTitle }}</div>
+            <div style="font-size:13px;color:#6b7280;line-height:1.65">{{ confirmBody }}</div>
+            <div style="margin-top:2px;padding:10px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;display:flex;flex-direction:column;gap:3px">
+              <div style="font-size:11px;color:#9ca3af;font-weight:700">{{ confirmType }}</div>
+              <div style="font-size:13px;color:#374151">{{ confirmSummary }}</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;display:flex;justify-content:flex-end;gap:12px">
+          <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f3f4f6" onClick="{{ confirmNo }}">取消</div>
+          <div style="padding:8px 16px;border-radius:4px;background:{{ confirmBtnBg }};color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" onClick="{{ confirmYes }}">{{ confirmBtn }}</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ offModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);padding:24px" onClick="{{ close }}">
+      <div style="background:#f8fafc;border-radius:8px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);width:100%;max-width:576px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden" onClick="{{ stop }}">
+
+        <div style="padding:16px 24px;border-bottom:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;flex:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:18px;font-weight:700;color:#374151">官方發言</div>
+            <div style="font-size:14px;color:#9ca3af;font-weight:400">{{ offModalSub }}</div>
+          </div>
+        </div>
+
+        <div style="padding:24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px">
+
+          <sc-if value="{{ offHasMeta }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:none;background:#dfe3e8;border:1px solid #cbd5e1;border-radius:8px;padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;row-gap:16px">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">發送時間</div>
+              <div style="font-size:12px;color:#374151;font-family:ui-monospace,monospace">{{ offModal.sendAt }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">操作者</div>
+              <div style="font-size:14px;color:#374151;font-weight:500">{{ offModal.operator }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">發送方式</div>
+              <div style="font-size:12px;color:#4b5563">{{ offModal.send }}　·　{{ offModal.repeat }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">狀態</div>
+              <span style="padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;background:{{ offModal.stBg }};color:{{ offModal.stColor }}">{{ offModal.status }}</span>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ offDownNote }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+              <i class="ph-fill ph-arrow-circle-down" style="color:#dc2626;font-size:16px;flex:none;margin-top:1px"></i>
+              <div style="font-size:13px;color:#b91c1c;line-height:1.6">此則已下架，客端介面不再顯示，後續排程亦不再觸發。下架不可復原，僅供檢視；如需再次發送請以「複製」建立新的一則。</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ offLockedNote }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:none;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+              <i class="ph-fill ph-lock-simple" style="color:#d97706;font-size:16px;flex:none;margin-top:1px"></i>
+              <div style="font-size:13px;color:#b45309;line-height:1.6">此則已開始發送，僅「備註」可變更；版型、發言內容與發送時間皆維持唯讀。若需修改內容，請下架後以「複製」建立新的一則。</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ offIsCopy }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+              <i class="ph-bold ph-copy" style="color:#2088ea;font-size:16px;flex:none;margin-top:1px"></i>
+              <div style="font-size:13px;color:#1d4ed8;line-height:1.6">已帶入「{{ offCopiedFrom }}」的設定，可直接調整後儲存為新的一則。發送時間已重設為最早可指定時間，狀態為待發送。</div>
+            </div>
+          </sc-if>
+
+          <div style="flex:none;display:flex;align-items:flex-start;gap:6px;padding:8px 12px;background:#fffbeb;border:1px solid #fef3c7;border-radius:4px">
+            <i class="ph ph-info" style="color:#f59e0b;font-size:14px;flex:none;margin-top:2px"></i>
+            <span style="font-size:12px;color:#b45309;line-height:1.55">[客端前台] 以官方版型呈現於公頻，不佔玩家發言泡泡，不受敏感字與頻率限制。</span>
+          </div>
+
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ toggleBasic }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+                <i class="ph-fill ph-identification-card"></i> 基本
+              </div>
+              <i class="{{ basicCaret }}" style="color:#9ca3af;font-size:14px"></i>
+            </div>
+            <sc-if value="{{ basicOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:700;color:#6b7280"><span style="color:#ef4444;margin-right:4px;display:{{ offReqStar }}">*</span>版型</label>
+                <sc-if value="{{ offFieldRead }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;min-height:44px;box-sizing:border-box;display:flex;align-items:center;font-size:14px;color:#1f2937;font-weight:500">{{ offModal.type }}</div>
+                </sc-if>
+                <sc-if value="{{ offFieldEdit }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <sc-for list="{{ offTypes }}" as="t" hint-placeholder-count="4">
+                      <div style="padding:5px 14px;border-radius:9999px;font-size:13px;font-weight:500;cursor:pointer;background:{{ t.bg }};color:{{ t.color }};border:1px solid {{ t.border }}" onClick="{{ t.pick }}">{{ t.label }}</div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+
+                            <sc-for list="{{ offModal.fields }}" as="f" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <label style="font-size:12px;font-weight:700;color:#6b7280"><span style="color:#ef4444;margin-right:4px;display:{{ f.star }}">*</span>{{ f.label }}</label>
+                  <sc-if value="{{ f.isImageEdit }}" hint-placeholder-val="{{ false }}">
+                    <div style="border:1px dashed #d1d5db;border-radius:6px;background:#f9fafb;height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+                      <i class="ph ph-image" style="font-size:26px;color:#d1d5db"></i>
+                      <span style="font-size:12px;color:#9ca3af">建議尺寸 {{ f.value }}</span>
+                      <div style="padding:4px 14px;border:1px solid #d1d5db;border-radius:4px;background:#fff;font-size:12px;font-weight:500;color:#374151;cursor:pointer">上傳圖片</div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ f.isImageRead }}" hint-placeholder-val="{{ false }}">
+                    <div style="border:1px solid #f3f4f6;border-radius:4px;background:#f9fafb;padding:12px;display:flex;align-items:center;gap:12px">
+                      <div style="width:{{ f.thumbW }};height:{{ f.thumbH }};border-radius:4px;background:#e5e7eb;border:1px solid #d1d5db;display:flex;align-items:center;justify-content:center;flex:none">
+                        <i class="ph-fill ph-image" style="font-size:{{ f.thumbIcon }};color:#9ca3af"></i>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:2px">
+                        <span style="font-size:14px;color:#374151;font-weight:500">{{ f.imageState }}</span>
+                        <span style="font-size:12px;color:#9ca3af">{{ f.value }}</span>
+                      </div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ f.isSelectEdit }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:10px 12px;background:{{ f.bg }};border:1px solid {{ f.border }};border-radius:4px;font-size:14px;color:{{ f.textColor }};min-height:44px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between">
+                      <span>{{ f.display }}</span><i class="ph ph-magnifying-glass" style="color:#9ca3af;font-size:14px"></i>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ f.isSelectRead }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:10px 12px;background:{{ f.bg }};border:1px solid {{ f.border }};border-radius:4px;font-size:14px;color:{{ f.textColor }};min-height:44px;box-sizing:border-box;display:flex;align-items:center">{{ f.display }}</div>
+                  </sc-if>
+                  <sc-if value="{{ f.isDropEdit }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:relative">
+                      <div style="padding:10px 12px;background:#fff;border:1px solid {{ f.border }};border-radius:4px;font-size:14px;color:{{ f.textColor }};min-height:44px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onClick="{{ f.toggleDrop }}">
+                        <span>{{ f.display }}</span><i class="{{ f.dropCaret }}" style="color:#9ca3af;font-size:13px"></i>
+                      </div>
+                      <sc-if value="{{ f.dropIsOpen }}" hint-placeholder-val="{{ false }}">
+                        <div style="position:absolute;bottom:calc(100% + 4px);left:0;right:0;z-index:30;background:#fff;border:1px solid #e5e7eb;border-radius:4px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);overflow:hidden;max-height:220px;overflow-y:auto">
+                          <sc-for list="{{ f.dropOpts }}" as="o" hint-placeholder-count="3">
+                            <div style="padding:9px 12px;font-size:14px;cursor:pointer;background:{{ o.bg }};color:{{ o.color }};font-weight:{{ o.weight }}" style-hover="background:#f3f4f6" onClick="{{ o.pick }}">{{ o.label }}</div>
+                          </sc-for>
+                          <sc-if value="{{ f.dropEmpty }}" hint-placeholder-val="{{ false }}">
+                            <div style="padding:9px 12px;font-size:13px;color:#9ca3af">請先選擇活動子分類</div>
+                          </sc-if>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ f.isDropRead }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:10px 12px;background:{{ f.bg }};border:1px solid {{ f.border }};border-radius:4px;font-size:14px;color:{{ f.textColor }};min-height:44px;box-sizing:border-box;display:flex;align-items:center">{{ f.display }}</div>
+                  </sc-if>
+                  <sc-if value="{{ f.isMode }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                      <sc-for list="{{ f.modes }}" as="m" hint-placeholder-count="2">
+                        <div style="padding:7px 16px;border-radius:9999px;font-size:13px;cursor:pointer;white-space:nowrap;background:{{ m.bg }};color:{{ m.color }};border:1px solid {{ m.border }};font-weight:{{ m.weight }}" onClick="{{ m.pick }}">{{ m.label }}</div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ f.isArea }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:10px 12px;background:{{ f.bg }};border:1px solid {{ f.border }};border-radius:4px;font-size:14px;color:{{ f.textColor }};min-height:80px;box-sizing:border-box;line-height:1.6">{{ f.display }}</div>
+                  </sc-if>
+                  <sc-if value="{{ f.isLine }}" hint-placeholder-val="{{ true }}">
+                    <div style="padding:10px 12px;background:{{ f.bg }};border:1px solid {{ f.border }};border-radius:4px;font-size:14px;color:{{ f.textColor }};min-height:44px;box-sizing:border-box;display:flex;align-items:center;line-height:1.6">{{ f.display }}</div>
+                  </sc-if>
+                  <sc-if value="{{ f.hasHint }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:11px;color:#9ca3af;line-height:1.5">{{ f.hint }}</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            </sc-if>
+          </div>
+
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+              <i class="ph-fill ph-clock"></i> 發送時間
+            </div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:700;color:#6b7280"><span style="color:#ef4444;margin-right:4px;display:{{ offReqStar }}">*</span>發送方式與時間</label>
+                <sc-if value="{{ offFieldRead }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;align-items:baseline;gap:10px"><div style="width:72px;flex:none;font-size:12px;color:#9ca3af">方式</div><div style="font-size:14px;color:#374151">{{ offModal.send }}</div></div>
+                    <div style="display:flex;align-items:baseline;gap:10px"><div style="width:72px;flex:none;font-size:12px;color:#9ca3af">時間</div><div style="font-size:13px;color:#374151;font-family:ui-monospace,monospace">{{ offModal.sendAt }}</div></div>
+                    <div style="display:flex;align-items:baseline;gap:10px"><div style="width:72px;flex:none;font-size:12px;color:#9ca3af">重複性</div><div style="font-size:14px;color:#374151">{{ offModal.repeat }}</div></div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ offFieldEdit }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <div style="width:72px;flex:none;font-size:12px;color:#6b7280">方式</div>
+                      <div style="display:flex;gap:6px">
+                        <sc-for list="{{ offSends }}" as="s" hint-placeholder-count="2">
+                          <div style="padding:6px 18px;border-radius:9999px;font-size:13px;font-weight:500;cursor:pointer;background:{{ s.bg }};color:{{ s.color }};border:1px solid {{ s.border }}" onClick="{{ s.pick }}">{{ s.label }}</div>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <div style="width:72px;flex:none;font-size:12px;color:#6b7280">時間</div>
+                      <sc-if value="{{ offSendIsSchedule }}" hint-placeholder-val="{{ false }}">
+                        <div style="flex:1;padding:8px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:13px;color:#9ca3af;font-family:ui-monospace,monospace;display:flex;align-items:center;justify-content:space-between">
+                          <span>{{ earliest }}</span><i class="ph ph-calendar-blank" style="color:#9ca3af;font-size:14px"></i>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ offSendIsNow }}" hint-placeholder-val="{{ true }}">
+                        <div style="flex:1;padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;font-size:13px;color:#6b7280;font-family:ui-monospace,monospace">{{ earliest }}</div>
+                      </sc-if>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:6px;padding:8px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px">
+                      <i class="ph ph-clock" style="color:#2088ea;font-size:14px;flex:none;margin-top:2px"></i>
+                      <span style="font-size:12px;color:#1d4ed8;line-height:1.55">{{ earliestHint }}</span>
+                    </div>
+                    <sc-if value="{{ showRepeat }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;border-top:1px solid #f3f4f6">
+                      <div style="display:flex;align-items:center;gap:10px;padding-top:8px">
+                        <div style="width:72px;flex:none;font-size:12px;color:#6b7280">重複性</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                          <sc-for list="{{ repeatModes }}" as="r" hint-placeholder-count="4">
+                            <div style="padding:6px 16px;border-radius:9999px;font-size:13px;font-weight:500;cursor:pointer;background:{{ r.bg }};color:{{ r.color }};border:1px solid {{ r.border }}" onClick="{{ r.pick }}">{{ r.label }}</div>
+                          </sc-for>
+                        </div>
+                      </div>
+
+                      <sc-if value="{{ isWeekly }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div style="width:72px;flex:none;font-size:12px;color:#6b7280">指定星期</div>
+                          <div style="display:flex;gap:5px">
+                            <sc-for list="{{ weekdayChips }}" as="w" hint-placeholder-count="7">
+                              <div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;cursor:pointer;background:{{ w.bg }};color:{{ w.color }};border:1px solid {{ w.border }}" onClick="{{ w.pick }}">{{ w.label }}</div>
+                            </sc-for>
+                          </div>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ isMonthly }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;align-items:flex-start;gap:10px">
+                          <div style="width:72px;flex:none;font-size:12px;color:#6b7280;padding-top:8px">指定日期</div>
+                          <div style="flex:1;display:grid;grid-template-columns:repeat(10,1fr);gap:4px">
+                            <sc-for list="{{ monthDayChips }}" as="d" hint-placeholder-count="31">
+                              <div style="height:30px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;cursor:pointer;background:{{ d.bg }};color:{{ d.color }};border:1px solid {{ d.border }}" onClick="{{ d.pick }}">{{ d.label }}</div>
+                            </sc-for>
+                          </div>
+                        </div>
+                        <sc-if value="{{ repeatWarn }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:flex;align-items:flex-start;gap:6px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;margin-left:82px">
+                            <i class="ph ph-warning" style="color:#f59e0b;font-size:13px;flex:none;margin-top:2px"></i>
+                            <span style="font-size:11px;color:#b45309;line-height:1.5">選取 29–31 日時，該月無該日則往前遞補到最近的未占用日（多日設定時由大到小依序遞補）</span>
+                          </div>
+                        </sc-if>
+                      </sc-if>
+
+                      <sc-if value="{{ isRecurring }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;align-items:center;gap:10px">
+                          <div style="width:72px;flex:none;font-size:12px;color:#6b7280">結束條件</div>
+                          <div style="display:flex;gap:6px;align-items:center">
+                            <sc-for list="{{ endModes }}" as="e" hint-placeholder-count="2">
+                              <div style="padding:6px 14px;border-radius:9999px;font-size:13px;font-weight:500;cursor:pointer;background:{{ e.bg }};color:{{ e.color }};border:1px solid {{ e.border }}" onClick="{{ e.pick }}">{{ e.label }}</div>
+                            </sc-for>
+                            <sc-if value="{{ endHasDate }}" hint-placeholder-val="{{ false }}">
+                              <div style="padding:6px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:13px;color:#9ca3af;font-family:ui-monospace,monospace;display:flex;align-items:center;gap:8px">
+                                <span>2026/12/31</span><i class="ph ph-calendar-blank" style="font-size:13px"></i>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </div>
+                      </sc-if>
+
+                      <sc-if value="{{ repeatOk }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:flex;align-items:flex-start;gap:6px;padding:8px 10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;margin-left:82px">
+                          <i class="ph ph-repeat" style="color:#6b7280;font-size:13px;flex:none;margin-top:2px"></i>
+                          <span style="font-size:12px;color:#374151;line-height:1.55">{{ repeatSummary }}</span>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{ repeatMissing }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:flex;align-items:flex-start;gap:6px;padding:8px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;margin-left:82px">
+                          <i class="ph-fill ph-warning-circle" style="color:#ef4444;font-size:13px;flex:none;margin-top:2px"></i>
+                          <span style="font-size:12px;color:#dc2626;font-weight:500;line-height:1.55">{{ repeatMissingText }}</span>
+                        </div>
+                      </sc-if>
+                    </div>
+                    </sc-if>
+                    <div style="font-size:11px;color:#9ca3af;line-height:1.5">立即發送不可設定重複性；已發送者不可再編輯內容與發送時間，但可下架，下架後該則立即自客端介面消失，作為內容有誤的補救手段。</div>
+                  </div>
+                </sc-if>
+              </div>
+
+                          </div>
+          </div>
+
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ toggleOther }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+                <i class="ph-fill ph-note-pencil"></i> 其他
+              </div>
+              <i class="{{ otherCaret }}" style="color:#9ca3af;font-size:14px"></i>
+            </div>
+            <sc-if value="{{ otherOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:20px;display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:12px;font-weight:700;color:#6b7280">備註</label>
+              <sc-if value="{{ offReading }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;font-size:14px;color:#374151;min-height:44px;box-sizing:border-box;display:flex;align-items:center">{{ offModal.remark }}</div>
+              </sc-if>
+              <sc-if value="{{ offEditing }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;color:#374151;min-height:72px;box-sizing:border-box">{{ offModal.remark }}</div>
+              </sc-if>
+            </div>
+            </sc-if>
+          </div>
+
+        </div>
+
+        <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#fff;display:flex;justify-content:flex-end;gap:12px;flex:none">
+          <sc-if value="{{ offReading }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:14px">
+              <sc-if value="{{ offLocked }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af">
+                  <i class="ph-fill ph-lock-simple" style="font-size:14px"></i><span>已開始發送，僅可變更備註</span>
+                </div>
+              </sc-if>
+              <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ close }}">關閉</div>
+              <sc-if value="{{ offCanCopy }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:8px 16px;border:1px solid #2088ea;border-radius:4px;background:#fff;color:#2088ea;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px" style-hover="background:#eff6ff" onClick="{{ copyRow }}">
+                  <i class="ph-bold ph-copy" style="font-size:15px"></i><span>複製</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ offCanEdit }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:8px 16px;border-radius:4px;background:#fbbf24;color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f59e0b" onClick="{{ startEdit }}">編輯</div>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{ offEditing }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:12px">
+              <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ cancelOffEdit }}">取消</div>
+              <div style="padding:8px 16px;border-radius:4px;background:#2088ea;color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#1a7acb" onClick="{{ close }}">儲存</div>
+            </div>
+          </sc-if>
+        </div>
+
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ releaseModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);padding:24px" onClick="{{ closeRelease }}">
+      <div style="background:#fff;border-radius:8px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);width:100%;max-width:448px;display:flex;flex-direction:column;overflow:hidden" onClick="{{ stop }}">
+        <div style="padding:16px 24px;border-bottom:1px solid #e5e7eb;background:#f9fafb;display:flex;align-items:center;gap:8px">
+          <i class="ph-fill ph-lock-open" style="color:#dc2626;font-size:18px"></i>
+          <div style="font-size:18px;font-weight:700;color:#374151">解除禁言</div>
+        </div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:18px">
+          <div style="font-size:14px;color:#4b5563;line-height:1.6">將解除 <span style="font-weight:700;color:#1f2937">{{ releaseTarget }}</span> 的禁言，解除後可立即發言，本筆紀錄保留於清單中。</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="font-size:12px;font-weight:700;color:#6b7280"><span style="color:#ef4444;margin-right:4px">*</span>解除理由</label>
+            <div style="padding:10px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;color:#9ca3af;min-height:72px;box-sizing:border-box;line-height:1.6">請說明解除理由（必填）</div>
+            <div style="font-size:11px;color:#9ca3af;line-height:1.5">自填內容會顯示於詳情頁的解除資訊。</div>
+          </div>
+        </div>
+        <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;display:flex;justify-content:flex-end;gap:12px">
+          <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ closeRelease }}">取消</div>
+          <div style="padding:8px 16px;border-radius:4px;background:#ef4444;color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#dc2626" onClick="{{ closeRelease }}">確定解除</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ muteModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);padding:24px" onClick="{{ close }}">
+      <div style="background:#f8fafc;border-radius:8px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);width:100%;max-width:512px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden" onClick="{{ stop }}">
+
+        <div style="padding:16px 24px;border-bottom:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;flex:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:18px;font-weight:700;color:#374151">玩家禁言</div>
+            <div style="font-size:14px;color:#9ca3af;font-weight:400">{{ muteModalSub }}</div>
+          </div>
+        </div>
+
+        <div style="padding:24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px">
+
+          <sc-if value="{{ muteHasMeta }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:none;background:#dfe3e8;border:1px solid #cbd5e1;border-radius:8px;padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;row-gap:16px">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">建立時間</div>
+              <div style="font-size:12px;color:#374151;font-family:ui-monospace,monospace">{{ muteModal.createdAt }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">操作者</div>
+              <div style="font-size:14px;color:#374151;font-weight:500">{{ muteModal.operator }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">剩餘時間</div>
+              <div style="font-size:12px;color:#4b5563">{{ muteModal.left }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">狀態</div>
+              <span style="padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;background:{{ muteModal.stBg }};color:{{ muteModal.stColor }}">{{ muteModal.status }}</span>
+            </div>
+          </div>
+          <sc-if value="{{ muteEditNote }}" hint-placeholder-val="{{ false }}">
+            <div style="flex:none;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start">
+              <i class="ph-fill ph-lock-simple" style="color:#d97706;font-size:16px;flex:none;margin-top:1px"></i>
+              <div style="font-size:13px;color:#b45309;line-height:1.6">既有禁言紀錄僅「備註」可修改；暱稱、禁言期間與禁言原因皆維持唯讀。若為操作失誤，請直接執行「解除禁言」並填寫解除理由。</div>
+            </div>
+          </sc-if>
+          </sc-if>
+
+          <div style="flex:none;display:flex;align-items:flex-start;gap:6px;padding:8px 12px;background:#fffbeb;border:1px solid #fef3c7;border-radius:4px">
+            <i class="ph ph-info" style="color:#f59e0b;font-size:14px;flex:none;margin-top:2px"></i>
+            <span style="font-size:12px;color:#b45309;line-height:1.55">[客端前台] 禁言期間可讀取公頻訊息，但無法發言；送出時顯示提示。到期自動解除。</span>
+          </div>
+
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ toggleBasic }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+                <i class="ph-fill ph-identification-card"></i> 基本
+              </div>
+              <i class="{{ basicCaret }}" style="color:#9ca3af;font-size:14px"></i>
+            </div>
+            <sc-if value="{{ basicOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:700;color:#6b7280">
+                  <span style="color:#ef4444;margin-right:4px;display:{{ muteReqStar }}">*</span>
+                  暱稱
+                </label>
+                <sc-if value="{{ muteFieldRead }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;min-height:44px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-size:14px;color:#1f2937;font-weight:500">{{ muteModal.nickname }}</span>
+                    <span style="font-size:12px;color:#6b7280">累積違規 <span style="font-weight:700;color:#dc2626;font-family:ui-monospace,monospace">{{ muteModal.count }}</span> 次</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ muteFieldEdit }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;color:{{ muteModal.playerColor }};display:flex;align-items:center;justify-content:space-between">
+                    <span>{{ muteModal.nickname }}</span><i class="ph ph-magnifying-glass" style="color:#9ca3af;font-size:14px"></i>
+                  </div>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:700;color:#6b7280">
+                  <span style="color:#ef4444;margin-right:4px;display:{{ muteReqStar }}">*</span>禁言期間
+                </label>
+                <sc-if value="{{ muteFieldRead }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;min-height:44px;box-sizing:border-box;display:flex;align-items:center;font-size:12px;color:#374151;font-family:ui-monospace,monospace">{{ muteModal.period }}</div>
+                </sc-if>
+                <sc-if value="{{ muteFieldEdit }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                      <sc-for list="{{ durations }}" as="d" hint-placeholder-count="4">
+                        <div style="padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:500;cursor:pointer;background:{{ d.bg }};color:{{ d.color }};border:1px solid {{ d.border }}" onClick="{{ d.pick }}">{{ d.label }}</div>
+                      </sc-for>
+                    </div>
+                    <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;font-size:12px;color:#374151;font-family:ui-monospace,monospace">{{ mutePeriodPreview }}</div>
+                    <div style="font-size:11px;color:#9ca3af;line-height:1.5">禁言期間不另行指定，起訖時間以伺服器寫入成功的 yyyy/mm/dd hh:mm:ss 為準，結束時間為起訖時間加上所選天數。</div>
+                  </div>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:700;color:#6b7280">
+                  <span style="color:#ef4444;margin-right:4px;display:{{ muteReqStar }}">*</span>禁言原因
+                </label>
+                <sc-if value="{{ muteFieldRead }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;min-height:44px;box-sizing:border-box;display:flex;align-items:center;font-size:14px;color:#374151">{{ muteModal.reason }}</div>
+                </sc-if>
+                <sc-if value="{{ muteFieldEdit }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:10px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;color:#9ca3af;min-height:72px;box-sizing:border-box;line-height:1.6">請說明禁言原因（必填）</div>
+                  <div style="font-size:11px;color:#9ca3af;line-height:1.5">自填內容會一併顯示於列表的禁言原因。</div>
+                </sc-if>
+              </div>
+
+            </div>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ muteReleased }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+              <i class="ph-fill ph-lock-open"></i> 解除資訊
+            </div>
+            <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;row-gap:14px">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-size:12px;color:#6b7280;font-weight:700">解除方式</div>
+                <div style="font-size:14px;color:#374151">{{ muteModal.releaseType }}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-size:12px;color:#6b7280;font-weight:700">解除時間</div>
+                <div style="font-size:12px;color:#374151;font-family:ui-monospace,monospace">{{ muteModal.releaseAt }}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-size:12px;color:#6b7280;font-weight:700">解除理由</div>
+                <div style="font-size:14px;color:#374151">{{ muteModal.releaseReason }}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="font-size:12px;color:#6b7280;font-weight:700">解除者</div>
+                <div style="font-size:14px;color:#374151">{{ muteModal.releaseBy }}</div>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ toggleOther }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+                <i class="ph-fill ph-note-pencil"></i> 其他
+              </div>
+              <i class="{{ otherCaret }}" style="color:#9ca3af;font-size:14px"></i>
+            </div>
+            <sc-if value="{{ otherOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:20px;display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:12px;font-weight:700;color:#6b7280">備註</label>
+              <sc-if value="{{ muteReading }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;font-size:14px;color:#374151;min-height:44px;box-sizing:border-box;display:flex;align-items:center">{{ muteModal.remark }}</div>
+              </sc-if>
+              <sc-if value="{{ muteEditing }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;color:#9ca3af;min-height:72px;box-sizing:border-box">選填，內部備忘說明</div>
+              </sc-if>
+            </div>
+            </sc-if>
+          </div>
+
+        </div>
+
+        <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#fff;display:flex;justify-content:flex-end;gap:12px;flex:none">
+          <sc-if value="{{ muteReading }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:12px">
+              <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ close }}">關閉</div>
+              <sc-if value="{{ muteCanRelease }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:8px 16px;border:1px solid #fecaca;border-radius:4px;background:#fff;color:#dc2626;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#fef2f2" onClick="{{ openReleaseFromDetail }}">解除禁言</div>
+              </sc-if>
+              <div style="padding:8px 16px;border-radius:4px;background:#fbbf24;color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f59e0b" onClick="{{ startEdit }}">編輯</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ muteEditing }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:12px">
+              <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ cancelMuteEdit }}">取消</div>
+              <div style="padding:8px 16px;border-radius:4px;background:#2088ea;color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#1a7acb" onClick="{{ close }}">儲存</div>
+            </div>
+          </sc-if>
+        </div>
+
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ paramModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);padding:24px" onClick="{{ close }}">
+      <div style="background:#f8fafc;border-radius:8px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);width:100%;max-width:512px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden" onClick="{{ stop }}">
+
+        <div style="padding:16px 24px;border-bottom:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;flex:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:18px;font-weight:700;color:#374151">參數管理</div>
+            <div style="font-size:14px;color:#9ca3af;font-weight:400">{{ paramModal.name }}</div>
+          </div>
+        </div>
+
+        <div style="padding:24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:16px">
+
+          <div style="flex:none;background:#dfe3e8;border:1px solid #cbd5e1;border-radius:8px;padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;row-gap:16px">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">最後異動時間</div>
+              <div style="font-size:12px;color:#374151;font-family:ui-monospace,monospace">{{ paramModal.updatedAt }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">操作者</div>
+              <div style="font-size:14px;color:#374151;font-weight:500">{{ paramModal.operator }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">類型</div>
+              <div style="font-size:12px;color:#4b5563">{{ paramModal.type }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+              <div style="font-size:12px;color:#6b7280;font-weight:500">必填</div>
+              <span style="padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;background:{{ paramModal.reqBg }};color:{{ paramModal.reqColor }}">{{ paramModal.required }}</span>
+            </div>
+          </div>
+
+          <div style="flex:none;display:flex;align-items:flex-start;gap:6px;padding:8px 12px;background:#fffbeb;border:1px solid #fef3c7;border-radius:4px">
+            <i class="ph ph-info" style="color:#f59e0b;font-size:14px;flex:none;margin-top:2px"></i>
+            <span style="font-size:12px;color:#b45309;line-height:1.55">{{ paramModal.hint }}</span>
+          </div>
+
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ toggleBasic }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+                <i class="ph-fill ph-identification-card"></i> 基本
+              </div>
+              <i class="{{ basicCaret }}" style="color:#9ca3af;font-size:14px"></i>
+            </div>
+            <sc-if value="{{ basicOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:700;color:#6b7280">
+                  <span style="border-bottom:1px dashed #9ca3af;cursor:help" title="名稱 / Key">名稱</span>
+                </label>
+                <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:14px;color:#1f2937;font-weight:500">{{ paramModal.name }}</span>
+                  <span style="font-size:11px;color:#9ca3af;font-family:ui-monospace,monospace">{{ paramModal.key }}</span>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;font-weight:700;color:#6b7280">內容</label>
+
+                <sc-if value="{{ isReading }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;min-height:44px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px">
+                  <sc-if value="{{ paramModal.hasSentence }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;row-gap:8px">
+                      <sc-for list="{{ paramModal.sentence }}" as="s" hint-placeholder-count="6">
+                        <sc-if value="{{ s.isNum }}" hint-placeholder-val="{{ true }}">
+                          <span style="font-size:15px;font-weight:700;color:#1f2937;font-family:ui-monospace,monospace">{{ s.value }}</span>
+                        </sc-if>
+                        <sc-if value="{{ s.isText }}" hint-placeholder-val="{{ false }}">
+                          <span style="font-size:14px;color:#4b5563;white-space:nowrap">{{ s.text }}</span>
+                        </sc-if>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ paramModal.hasTxt }}" hint-placeholder-val="{{ false }}">
+                    <sc-for list="{{ paramModal.txtFields }}" as="f" hint-placeholder-count="1">
+                      <div style="font-size:14px;color:#374151;line-height:1.75">{{ f.display }}</div>
+                    </sc-for>
+                  </sc-if>
+                  <sc-if value="{{ paramModal.noSentence }}" hint-placeholder-val="{{ true }}">
+                  <sc-for list="{{ paramModal.numFields }}" as="f" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:baseline;gap:10px">
+                      <div style="width:72px;flex:none;font-size:12px;color:#9ca3af">{{ f.label }}</div>
+                      <div style="font-size:14px;font-weight:700;color:#374151;font-family:ui-monospace,monospace">{{ f.value }}</div>
+                      <div style="font-size:12px;color:#6b7280">{{ f.unit }}</div>
+                    </div>
+                  </sc-for>
+                  </sc-if>
+                  <sc-for list="{{ paramModal.selFields }}" as="f" hint-placeholder-count="1">
+                    <span style="padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;background:{{ f.badgeBg }};color:{{ f.badgeColor }};align-self:flex-start">{{ f.select }}</span>
+                  </sc-for>
+                </div>
+                </sc-if>
+
+                <sc-if value="{{ isEditing }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <sc-if value="{{ paramModal.hasSentence }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;row-gap:10px">
+                      <sc-for list="{{ paramModal.sentence }}" as="s" hint-placeholder-count="6">
+                        <sc-if value="{{ s.isNum }}" hint-placeholder-val="{{ true }}">
+                          <div style="border:1px solid #e5e7eb;border-radius:4px;background:#fff;padding:8px 10px;width:{{ s.width }};box-sizing:border-box;text-align:center;font-size:14px;font-weight:700;color:#1f2937;font-family:ui-monospace,monospace">{{ s.value }}</div>
+                        </sc-if>
+                        <sc-if value="{{ s.isText }}" hint-placeholder-val="{{ false }}">
+                          <span style="font-size:14px;color:#374151;white-space:nowrap">{{ s.text }}</span>
+                        </sc-if>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{ paramModal.hasRanges }}" hint-placeholder-val="{{ true }}">
+                      <div style="font-size:11px;color:#9ca3af;line-height:1.6">允許範圍：{{ paramModal.ranges }}</div>
+                    </sc-if>
+                  </sc-if>
+                  <sc-if value="{{ paramModal.hasTxt }}" hint-placeholder-val="{{ false }}">
+                    <sc-for list="{{ paramModal.txtFields }}" as="f" hint-placeholder-count="1">
+                      <div style="display:flex;flex-direction:column;gap:6px">
+                        <div style="border:1px solid #e5e7eb;border-radius:4px;background:#fff;padding:10px 12px;min-height:96px;box-sizing:border-box;font-size:14px;color:#374151;line-height:1.75">{{ f.display }}</div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                          <span style="font-size:11px;color:#9ca3af;line-height:1.5">{{ f.hint }}</span>
+                          <span style="font-size:11px;color:#9ca3af;font-family:ui-monospace,monospace;flex:none">{{ f.count }}</span>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </sc-if>
+                  <sc-if value="{{ paramModal.noSentence }}" hint-placeholder-val="{{ true }}">
+                  <sc-for list="{{ paramModal.numFields }}" as="f" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <div style="width:72px;flex:none;font-size:12px;color:#6b7280">{{ f.label }}</div>
+                      <div style="border:1px solid #e5e7eb;border-radius:4px;background:#fff;padding:8px 12px;width:110px;box-sizing:border-box;text-align:right;font-size:14px;color:#1f2937;font-family:ui-monospace,monospace">{{ f.value }}</div>
+                      <div style="font-size:13px;color:#6b7280;width:30px">{{ f.unit }}</div>
+                      <div style="font-size:11px;color:#9ca3af">允許 {{ f.range }}</div>
+                    </div>
+                  </sc-for>
+                  </sc-if>
+                  <sc-for list="{{ paramModal.selFields }}" as="f" hint-placeholder-count="1">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <div style="width:72px;flex:none;font-size:12px;color:#6b7280">{{ f.label }}</div>
+                      <div style="position:relative;flex:1">
+                        <div style="border:1px solid #e5e7eb;border-radius:4px;background:#fff;padding:8px 12px;font-size:14px;color:#1f2937;display:flex;align-items:center;justify-content:space-between">
+                          <span>{{ f.select }}</span><i class="ph ph-caret-down" style="color:#9ca3af;font-size:13px"></i>
+                        </div>
+                      </div>
+                      <div style="font-size:11px;color:#9ca3af">{{ f.options }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+                </sc-if>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ toggleOther }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+                <i class="ph-fill ph-note-pencil"></i> 其他
+              </div>
+              <i class="{{ otherCaret }}" style="color:#9ca3af;font-size:14px"></i>
+            </div>
+            <sc-if value="{{ otherOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:20px;display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:12px;font-weight:700;color:#6b7280">備註</label>
+              <sc-if value="{{ isReading }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:8px 12px;background:#f9fafb;border:1px solid #f3f4f6;border-radius:4px;font-size:14px;color:#374151;min-height:44px;box-sizing:border-box;display:flex;align-items:center">(無)</div>
+              </sc-if>
+              <sc-if value="{{ isEditing }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:8px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:4px;font-size:14px;color:#9ca3af;min-height:72px;box-sizing:border-box">選填，內部備忘說明</div>
+              </sc-if>
+            </div>
+            </sc-if>
+          </div>
+
+        </div>
+
+        <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#fff;display:flex;justify-content:flex-end;gap:12px;flex:none">
+          <sc-if value="{{ isReading }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:12px">
+              <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ close }}">關閉</div>
+              <div style="padding:8px 16px;border-radius:4px;background:#fbbf24;color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f59e0b" onClick="{{ startEdit }}">編輯</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isEditing }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:12px">
+              <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ cancelEdit }}">取消</div>
+              <div style="padding:8px 16px;border-radius:4px;background:#2088ea;color:#fff;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#1a7acb" onClick="{{ close }}">儲存</div>
+            </div>
+          </sc-if>
+        </div>
+
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:980}}">
+class Component extends DCLogic {
+  state = { shellRect: null, tipOpen: false, perOpen: null, perSize: { offPer: 10, wordPer: 10, mutePer: 10 }, actName: null, gameName: null, bnCat: null, bnName: null, bnLinkMode: '指定活動', dropOpen: null, tab: 'official', paramsPanel: false, muteReason: null, reasonOpen: false, offSwitch: {}, confirmIdx: null, switchOpen: false, copiedFrom: null, offLinkMode: '指定活動', offModal: null, offType: null, offSend: null, repeatMode: '不重複', weekdays: [3, 6], monthDays: [1], endMode: '無期限', typeFilter: '全部', typeFilterOpen: false, muteModal: null, releaseModal: null, releaseReason: '申訴成立', muteSearch: '暱稱', duration: '3 天', wordModal: null, paramModal: null, sel: [], editing: false, basicOpen: true, otherOpen: true };
+
+  componentDidMount() {
+    this._onDocClick = e => {
+      if (!this.state.tipOpen) return;
+      const inTip = e.target.closest && e.target.closest('[data-tip-root]');
+      const sel = window.getSelection && window.getSelection().toString();
+      if (inTip && sel) return;
+      this.setState({ tipOpen: false });
+    };
+    document.addEventListener('mouseup', this._onDocClick);
+    this._onShellMsg = e => {
+      if (!e.data) return;
+      if (e.data.dcShell === 'dismiss') this.dismissTop();
+      if (e.data.dcShellRect) this.setState({ shellRect: e.data.dcShellRect });
+    };
+    window.addEventListener('message', this._onShellMsg);
+    if (window.parent !== window) window.parent.postMessage({ dcNeedRect: true }, '*');
+    this.postDim();
+  }
+  componentDidUpdate() { this.postDim(); this.syncBg(); }
+  syncBg() {
+    const float = this.anyModal() && !!this.state.shellRect;
+    const bg = float ? 'transparent' : '#f3f4f6';
+    document.body.style.background = bg;
+    document.documentElement.style.background = bg;
+  }
+  componentWillUnmount() { window.removeEventListener('message', this._onShellMsg); document.removeEventListener('mouseup', this._onDocClick); }
+
+  anyModal() {
+    const s = this.state;
+    return !!(s.paramsPanel || s.offModal != null || s.confirmIdx != null || s.wordModal != null
+      || s.muteModal != null || s.releaseModal != null || s.paramModal != null);
+  }
+  postDim() {
+    const v = this.anyModal();
+    if (v === this._lastDim) return;
+    this._lastDim = v;
+    if (window.parent !== window) window.parent.postMessage({ dcModal: v }, '*');
+  }
+  dismissTop() {
+    const s = this.state;
+    if (s.confirmIdx != null) this.setState({ confirmIdx: null });
+    else if (s.releaseModal != null) this.setState({ releaseModal: null });
+    else if (s.muteModal != null) this.setState({ muteModal: null, editing: false });
+    else if (s.wordModal != null) this.setState({ wordModal: null, editing: false });
+    else if (s.offModal != null) this.setState({ offModal: null, editing: false });
+    else if (s.paramModal != null) this.setState({ paramModal: null, editing: false });
+    else if (s.paramsPanel) this.setState({ paramsPanel: false });
+  }
+
+  rootFix() {
+    const r = this.state.shellRect;
+    if (!r || !this.anyModal()) return '';
+    return 'position:absolute;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;min-height:0;overflow:hidden';
+  }
+
+  perBlock(key, total) {
+    const size = this.state.perSize[key];
+    const end = Math.min(size, total);
+    return {
+      [key + 'Size']: size,
+      [key + 'Open']: this.state.perOpen === key,
+      [key + 'Caret']: this.state.perOpen === key ? 'ph ph-caret-up' : 'ph ph-caret-down',
+      [key + 'Toggle']: () => this.setState({ perOpen: this.state.perOpen === key ? null : key }),
+      [key + 'Range']: `1 ~ ${end} / ${total.toLocaleString()}`,
+      [key + 'Options']: [10, 50, 100, 500].map(n => ({
+        label: String(n),
+        bg: size === n ? '#eff6ff' : '#fff',
+        color: size === n ? '#2088ea' : '#4b5563',
+        weight: size === n ? 700 : 500,
+        pick: () => this.setState({ perSize: { ...this.state.perSize, [key]: n }, perOpen: null })
+      }))
+    };
+  }
+
+  words() {
+    return [
+      { word: '外掛', status: '啟用', updated: '2026/08/09 14:22', operator: 'admin' },
+      { word: '詐騙', status: '啟用', updated: '2026/08/09 14:18', operator: 'admin' },
+      { word: '靠北', status: '啟用', updated: '2026/08/08 17:40', operator: 'john' },
+      { word: '白痴', status: '啟用', updated: '2026/08/08 17:38', operator: 'john' },
+      { word: '智障', status: '啟用', updated: '2026/08/08 17:36', operator: 'john' },
+      { word: '代練', status: '啟用', updated: '2026/08/09 14:20', operator: 'admin' },
+      { word: '幹', status: '啟用', updated: '2026/08/05 10:03', operator: 'john' },
+      { word: '賭場', status: '啟用', updated: '2026/08/02 09:41', operator: 'admin' },
+      { word: '私下交易', status: '啟用', updated: '2026/07/30 16:55', operator: 'john' },
+      { word: '收購帳號', status: '啟用', updated: '2026/07/30 16:52', operator: 'john' },
+      { word: '客服', status: '停用', updated: '2026/07/28 11:10', operator: 'admin' },
+      { word: '加賴', status: '啟用', updated: '2026/07/25 13:37', operator: 'admin' },
+      { word: '博弈', status: '停用', updated: '2026/07/21 15:08', operator: 'john' },
+      { word: '洗錢', status: '啟用', updated: '2026/07/18 08:26', operator: 'admin' }
+    ];
+  }
+
+  params() {
+    const sel = { type: 'Select（單選）', diff: false };
+    const shared = [
+      { name: '公頻頻道開關', key: 'ChannelPublic', value: '啟用', ...sel,
+        hint: '[客端前台] 關閉時，首頁不顯示聊天入口；聊天介面中的玩家將被導回大廳。',
+        fields: [{ label: '狀態', select: '啟用', options: '啟用／停用' }] },
+      { name: '系統提示罐頭語', key: 'SystemNotice', value: '小福星溫馨提醒您：請保持友善交談，互相尊重，遵守遊戲規章，不得透過任何形式企圖進行任何不法行為。並且近期詐騙猖獗，還請提高警惕，注意帳戶安全！', type: 'Text（文字）', diff: true, remark: '(無)',
+        hint: '[客端前台] 每次進入公頻時顯示於訊息列中的常駐提醒；留空則不顯示。',
+        optional: true,
+        fields: [{ label: '文字內容', value: '小福星溫馨提醒您：請保持友善交談，互相尊重，遵守遊戲規章，不得透過任何形式企圖進行任何不法行為。並且近期詐騙猖獗，還請提高警惕，注意帳戶安全！', isArea: true, maxLen: 100, hint: '上限 100 字；留空則不顯示此則提醒' }] },
+      { name: '聊天發言字數上限', key: 'MsgMaxLength', value: '200', type: 'Number（數值）', diff: true,
+        sentence: ['單則發言最多', '@0', '字'],
+        hint: '[客端前台] 輸入框可輸入的最大字數；超過時無法繼續輸入。',
+        fields: [{ label: '字數上限', value: '200', unit: '字', range: '1–500' }] },
+      { name: 'VIP 等級限制發言', key: 'SpeakMinVip', value: 'VIP3', ...sel,
+        hint: '[客端前台] 未達此等級的玩家可閱讀公頻，但無法發言。',
+        fields: [{ label: '最低等級', select: 'VIP3', options: 'VIP0–VIP10' }] }
+    ];
+
+    return [
+      shared[0], shared[1], shared[2],
+      { name: '訊息讀取量', key: 'MsgLoadRule', value: '12 小時內 50 則，單次載入 20 則', type: 'Group（複合）', diff: true,
+        sentence: ['@0', '小時內', '@1', '則，單次載入', '@2', '則'],
+        hint: '[客端前台] 進入公頻時的歷史訊息讀取規則；三項數值同時生效。',
+        fields: [
+          { label: '時間範圍', value: '12', unit: '小時', range: '1–72' },
+          { label: '則數上限', value: '50', unit: '則', range: '10–200' },
+          { label: '單次載入', value: '20', unit: '則', range: '5–50' }
+        ] },
+      shared[3],
+      { name: '發言頻率限制', key: 'SpeakLimitRule', value: '2 秒內最多發言 1 次', type: 'Group（複合）', diff: true,
+        sentence: ['@0', '秒內最多發言', '@1', '次'],
+        hint: '[客端前台] 發言頻率的限制規則；超過時提示並阻擋送出。',
+        fields: [
+          { label: '間隔秒數', value: '2', unit: '秒', range: '1–60' },
+          { label: '容許次數', value: '1', unit: '次', range: '1–10' }
+        ] },
+      { name: '重複訊息發送限制', key: 'DupLimitRule', value: '60 秒內同一則內容最多 2 次', type: 'Group（複合）', diff: true,
+        sentence: ['@0', '秒內同一則內容最多發送', '@1', '次'],
+        hint: '[客端前台] 相同內容的重複發送限制；超過時提示並阻擋送出。',
+        fields: [
+          { label: '判定秒數', value: '60', unit: '秒', range: '10–300' },
+          { label: '容許次數', value: '2', unit: '次', range: '1–10' }
+        ] }
+    ];
+  }
+
+  officialList() {
+    return [
+      { type: '純文字', summary: '本週六 20:00 全站雙倍積分，記得上線！', send: '排程', sendAt: '2026/08/14 20:00', repeat: '不重複', status: '待發送', enabled: true, operator: 'admin', remark: '(無)',
+        fields: [{ label: '文案', value: '本週六 20:00 全站雙倍積分，記得上線！' }] },
+      { type: '遊戲推廣', summary: '大過年', send: '排程', sendAt: '2026/08/13 12:00', repeat: '每日', status: '進行中', enabled: true, operator: 'mary', remark: '春節檔期',
+        fields: [{ label: '文案', value: '過年就是要路路發，今日限定加碼！' }, { label: '指定遊戲', value: '大過年' }] },
+      { type: '儲優促銷', summary: '首儲 +30% 加碼', send: '立即', sendAt: '2026/08/12 15:42', repeat: '不重複', status: '已發送', enabled: true, operator: 'admin', remark: '(無)',
+        fields: [{ label: '文案', value: '首儲 +30%，只到月底。' }, { label: '導向設定', value: '指定活動' }, { label: '指定活動', value: '首儲 +30% 加碼(進行中)' }, { label: '禮包圖', value: '192 × 192', isImage: true }] },
+      { type: '活動Banner', summary: '中元回饋週 主視覺', send: '排程', sendAt: '2026/08/15 10:00', repeat: '不重複', status: '待發送', enabled: true, operator: 'john', remark: '待素材確認',
+        fields: [{ label: '快顯專用文案', value: '中元回饋週開跑' }, { label: '導向設定', value: '指定活動' }, { label: '導向活動子分類', value: '序號設定' }, { label: '導向活動名稱', value: '中元序號禮包(進行中)' }, { label: '圖片', value: '1440 × 360', isImage: true }] },
+      { type: '純文字', summary: '系統維護公告：08/20 03:00-05:00', send: '排程', sendAt: '2026/08/19 21:00', repeat: '不重複', status: '已下架', enabled: false, operator: 'admin', remark: '維護時間待確認',
+        fields: [{ label: '文案', value: '系統維護公告：08/20 03:00-05:00 暫停服務。' }] },
+      { type: '遊戲推廣', summary: '蜜糖爆擊2', send: '排程', sendAt: '2026/08/12 21:00', repeat: '每週三·六', status: '進行中', enabled: true, operator: 'mary', remark: '(無)',
+        fields: [{ label: '文案', value: '甜到爆擊！新機上線試手氣。' }, { label: '指定遊戲', value: '蜜糖爆擊2' }] }
+    ];
+  }
+
+  storeActivityOptions() {
+    return ['首儲 +30% 加碼(進行中)', '八月儲值回饋(進行中)', '儲值抽好禮(進行中)', '九月首儲加碼(未開始)', '中秋儲優限定(未開始)'];
+  }
+
+  activityOptions(cat) {
+    if (cat === '終身限定') return ['首儲 +30% 加碼(進行中)', '終身回饋金(進行中)', '新手三日禮(未開始)'];
+    if (cat === '週期任務') return ['每週儲值任務(進行中)', '八月連續登入(進行中)', '九月衝榜任務(未開始)'];
+    if (cat === '序號設定') return ['中元序號禮包(進行中)', '中秋限定序號(未開始)'];
+    return [];
+  }
+
+  typeFieldSet(type) {
+    if (type === '遊戲推廣') return [
+      { label: '文案', value: '', placeholder: '輸入推廣文案', required: true, hint: '上限 60 字' },
+      { label: '指定遊戲', value: this.state.gameName || '', placeholder: '請選擇', required: true, isDrop: true, dropKey: 'gameName', options: ['請選擇', '大過年', '黃金秘寶', '蜜糖爆擊2', '多牛多財', '蹦金DJ'], hint: '圖片由系統自動帶入該遊戲既有圖檔，不需另外上傳；下架或維護中的遊戲不可選' }
+    ];
+    if (type === '儲優促銷') return [
+      { label: '文案', value: '', placeholder: '輸入促銷文案', required: true, hint: '上限 60 字' },
+      { label: '導向設定', value: this.state.offLinkMode, isMode: true, modeKey: 'offLinkMode', required: true, hint: '二選一，預設「指定活動」；切換後另一種的輸入內容不保留' },
+      ...(this.state.offLinkMode === '自行輸入連結'
+        ? [{ label: '導向連結', value: '', placeholder: 'https://', required: true, hint: '需為完整網址；適用於活動列表尚未建立的檔期' }]
+        : [{ label: '指定活動', value: this.state.actName || '', placeholder: '請選擇', required: true, isDrop: true, dropKey: 'actName', options: ['請選擇', ...this.storeActivityOptions()], hint: '僅列出進行中或未開始的活動，點擊後導向該活動頁' }]),
+      { label: '禮包圖', value: '192 × 192', isImage: true, required: true, hint: '方形禮包圖，JPG／PNG，2MB 以內（前台顯示 64 × 64，需提供 3 倍圖）' }
+    ];
+    if (type === '活動Banner') return [
+      { label: '快顯專用文案', value: '', placeholder: '輸入快顯列顯示的文字', required: true, hint: '僅用於首頁快顯，公頻內不顯示；上限 30 字' },
+      { label: '導向設定', value: this.state.bnLinkMode, isMode: true, modeKey: 'bnLinkMode', required: true, hint: '二選一，預設「指定活動」；切換後另一種的輸入內容不保留' },
+      ...(this.state.bnLinkMode === '自行輸入連結'
+        ? [{ label: '導向連結', value: '', placeholder: 'https://', required: true, hint: '需為完整網址；適用於活動列表尚未建立的檔期' }]
+        : [{ label: '導向活動子分類', value: this.state.bnCat || '', placeholder: '請選擇', required: true, isDrop: true, dropKey: 'bnCat', options: ['請選擇', '終身限定', '週期任務', '序號設定'], hint: '對應活動設定的三種子分類' },
+           { label: '導向活動名稱', value: this.state.bnName || '', placeholder: '請選擇', required: true, isDrop: true, dropKey: 'bnName', options: this.state.bnCat ? ['請選擇', ...this.activityOptions(this.state.bnCat)] : [], hint: '僅列出進行中或未開始的活動' }]),
+      { label: '圖片', value: '1440 × 360', isImage: true, required: true, hint: 'JPG／PNG，2MB 以內；純圖版型，前台不另顯示文字' }
+    ];
+    return [
+      { label: '文案', value: '', placeholder: '輸入發送內容', required: true, isArea: true, hint: '上限 200 字，與玩家發言字數上限一致' },
+      { label: '導向連結', value: '', placeholder: '選填，點擊文字後前往的頁面', isSelect: true, hint: '未設定則訊息不可點擊' }
+    ];
+  }
+
+  mutePreview() {
+    const d = this.state.duration;
+    if (!d) return '選擇禁言時長後帶出';
+    const p = n => String(n).padStart(2, '0');
+    const fmt = t => `${t.getFullYear()}/${p(t.getMonth() + 1)}/${p(t.getDate())} ${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}`;
+    const now = new Date();
+    if (d === '永久') return `${fmt(now)} ~ 永久`;
+    const days = parseInt(d, 10);
+    return `${fmt(now)} ~ ${fmt(new Date(now.getTime() + days * 86400000))}`;
+  }
+
+  earliestTime() {
+    const d = new Date(Date.now() + 15 * 60000);
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  officialBadge(status) {
+    if (status === '進行中') return { stBg: '#dcfce7', stColor: '#15803d', stBorder: '#bbf7d0' };
+    if (status === '待發送') return { stBg: '#dbeafe', stColor: '#1d4ed8', stBorder: '#bfdbfe' };
+    if (status === '已下架') return { stBg: '#fee2e2', stColor: '#dc2626', stBorder: '#fecaca' };
+    return { stBg: '#f3f4f6', stColor: '#6b7280', stBorder: '#e5e7eb' };
+  }
+
+  muteList() {
+    return [
+      { nickname: '小明愛吃雞', period: '2026/08/12 14:20 ~ 2026/08/15 14:20', left: '2 天 6 小時', status: '禁言中', reason: '洗頻', count: 3, operator: 'admin', remark: '(無)' },
+      { nickname: '發財小天使', period: '2026/08/12 09:05 ~ 2026/08/13 09:05', left: '15 小時', status: '禁言中', reason: '廣告訊息', count: 2, operator: 'john', remark: '第 2 次' },
+      { nickname: 'ken1234', period: '2026/08/11 22:41 ~ 2026/08/18 22:41', left: '5 天 14 小時', status: '禁言中', reason: '辱罵他人', count: 1, operator: 'admin', remark: '(無)' },
+      { nickname: '夜貓子', period: '2026/08/11 18:03 ~ 2026/08/12 18:03', left: '—', status: '已解除', releaseType: '到期自動解除', releaseAt: '2026/08/12 18:03', releaseReason: '—', releaseBy: '系統', reason: '洗頻', count: 1, operator: 'mary', remark: '(無)' },
+      { nickname: '賺錢達人', period: '2026/08/10 11:27 ~ 永久', left: '永久禁言', permanent: true, status: '禁言中', reason: '疑似詐騙', count: 5, operator: 'admin', remark: '客服通報' },
+      { nickname: '路過的甲', period: '2026/08/09 20:15 ~ 2026/08/10 20:15', left: '—', status: '已解除', releaseType: '手動解除', releaseAt: '2026/08/09 21:02', releaseReason: '誤判', releaseBy: 'john', reason: '辱罵他人', count: 1, operator: 'john', remark: '誤判，已還原' },
+      { nickname: '大戶阿明', period: '2026/08/09 16:48 ~ 2026/08/16 16:48', left: '3 天 8 小時', status: '禁言中', reason: '其他（違反活動規則）', count: 2, operator: 'mary', remark: '違反活動規則' },
+      { nickname: 'lucky777', period: '2026/08/08 13:32 ~ 永久', left: '—', status: '已解除', releaseType: '手動解除', releaseAt: '2026/08/09 10:11', releaseReason: '申訴成立', releaseBy: 'admin', reason: '廣告訊息', count: 4, operator: 'admin', remark: '(無)' }
+    ];
+  }
+
+  muteBadge(status) {
+    return status === '禁言中'
+      ? { stBg: '#fee2e2', stColor: '#dc2626', stBorder: '#fecaca' }
+      : { stBg: '#f3f4f6', stColor: '#6b7280', stBorder: '#e5e7eb' };
+  }
+
+  badge(status) {
+    return status === '啟用'
+      ? { stBg: '#dcfce7', stColor: '#15803d', stBorder: '#bbf7d0' }
+      : { stBg: '#f3f4f6', stColor: '#6b7280', stBorder: '#e5e7eb' };
+  }
+
+  renderVals() {
+    const tab = this.state.tab;
+    const list = this.words();
+    const params = this.params();
+    const sel = this.state.sel;
+    const pm = params[this.state.paramModal ?? 0];
+    const officials = this.officialList();
+    const oIdx = this.state.offModal;
+    const oRow = (oIdx !== null && oIdx >= 0) ? officials[oIdx] : null;
+    const offIsAdd = oIdx === -1;
+    const offSwitch = this.state.offSwitch || {};
+    const isOn = (i, o) => (offSwitch[i] === undefined ? o.enabled : offSwitch[i]);
+    const flip = (i, o) => { if (!o || !isOn(i, o)) return; this.setState({ offSwitch: { ...offSwitch, [i]: false } }); };
+    const modalOn = !!oRow && isOn(this.state.offModal, oRow);
+    const cIdx = this.state.confirmIdx;
+    const cRow = (cIdx === null || cIdx === undefined) ? null : officials[cIdx];
+    const cOn = cRow ? isOn(cIdx, cRow) : false;
+    const offLocked = !!oRow && (oRow.status === '已發送' || oRow.status === '進行中');
+    const offEditMode = offIsAdd || (this.state.editing && (!oRow || modalOn));
+    const offFieldEdit = offEditMode && !offLocked;
+    const srcRow = this.state.copiedFrom ? officials.find(o => o.summary === this.state.copiedFrom) : null;
+    const curType = this.state.offType || (oRow ? oRow.type : '純文字');
+    const curSend = this.state.offSend || (oRow ? oRow.send : '立即');
+    const earliest = this.earliestTime();
+    const rMode = this.state.repeatMode;
+    const wd = this.state.weekdays;
+    const md = this.state.monthDays;
+    const clock = (oRow && oRow.sendAt ? oRow.sendAt : earliest).slice(-5);
+    const endText = this.state.endMode === '無期限' ? '不設結束日' : '至 2026/12/31 止';
+    const wdText = wd.map(i => '日一二三四五六'[i]).join('、');
+    const mdText = md.join('、');
+    const repeatMissing = (rMode === '每週' && !wd.length) || (rMode === '每月' && !md.length);
+    const repeatSummary = rMode === '不重複' ? `僅於 ${(oRow && oRow.sendAt) || earliest} 送出一次`
+      : rMode === '每日' ? `每日 ${clock} 送出，${endText}`
+      : rMode === '每週' ? `每週 ${wdText} 的 ${clock} 送出，${endText}`
+      : `每月 ${mdText} 日 ${clock} 送出，${endText}`;
+    const mergeExisting = tmpl => {
+      if (!oRow || oRow.type !== curType) return tmpl;
+      return tmpl.map(f => {
+        const src = (oRow.fields || []).find(x => x.label === f.label);
+        return src && !f.isImage ? { ...f, value: src.value } : (src && f.isImage ? { ...f, value: src.value, uploaded: true } : f);
+      });
+    };
+    const decorate = fs => (fs || []).map(f => ({
+      ...f,
+      isText: !f.isImage,
+      isImageEdit: !!f.isImage && offFieldEdit,
+      isImageRead: !!f.isImage && !offFieldEdit,
+      thumbW: f.label === '禮包圖' ? '40px' : '80px',
+      thumbH: f.label === '禮包圖' ? '40px' : '20px',
+      thumbIcon: f.label === '禮包圖' ? '18px' : '16px',
+      imageState: f.uploaded || !offFieldEdit ? '已上傳圖片' : '未設定',
+      isPlain: !f.isImage && !f.isSelect && !f.isDrop,
+      isArea: !!f.isArea,
+      isMode: !!f.isMode && offFieldEdit,
+      isLine: !f.isImage && !f.isSelect && !f.isDrop && !f.isArea && !(f.isMode && offFieldEdit),
+      modes: f.isMode ? ['指定活動', '自行輸入連結'].map(label => ({
+        label,
+        bg: this.state[f.modeKey] === label ? '#2088ea' : '#fff',
+        color: this.state[f.modeKey] === label ? '#fff' : '#4b5563',
+        border: this.state[f.modeKey] === label ? '#2088ea' : '#d1d5db',
+        weight: this.state[f.modeKey] === label ? 700 : 500,
+        pick: () => this.setState({ [f.modeKey]: label })
+      })) : [],
+      star: f.required ? 'inline' : 'none',
+      display: f.value || f.placeholder || '',
+      textColor: (f.value || !offFieldEdit) ? '#374151' : '#9ca3af',
+      isSelectEdit: !!f.isSelect && offFieldEdit,
+      isDropEdit: !!f.isDrop && offFieldEdit,
+      isDropRead: !!f.isDrop && !offFieldEdit,
+      dropIsOpen: !!f.isDrop && this.state.dropOpen === f.dropKey,
+      dropCaret: this.state.dropOpen === f.dropKey ? 'ph ph-caret-up' : 'ph ph-caret-down',
+      dropEmpty: !!f.isDrop && !(f.options || []).length,
+      toggleDrop: () => this.setState({ dropOpen: this.state.dropOpen === f.dropKey ? null : f.dropKey }),
+      dropOpts: (f.options || []).map(label => ({
+        label,
+        bg: this.state[f.dropKey] === label ? '#eff6ff' : '#fff',
+        color: this.state[f.dropKey] === label ? '#2088ea' : '#4b5563',
+        weight: this.state[f.dropKey] === label ? 700 : 500,
+        pick: () => this.setState(f.dropKey === 'bnCat'
+          ? { bnCat: label === '請選擇' ? null : label, bnName: null, dropOpen: null }
+          : { [f.dropKey]: label === '請選擇' ? null : label, dropOpen: null })
+      })),
+      isSelectRead: !!f.isSelect && !offFieldEdit,
+      hint: f.hint || '',
+      hasHint: !!f.hint,
+      bg: offFieldEdit ? '#fff' : '#f9fafb',
+      border: offFieldEdit ? '#e5e7eb' : '#f3f4f6'
+    }));
+    const mutes = this.muteList();
+    const rRow = this.state.releaseModal !== null ? mutes[this.state.releaseModal] : null;
+    const mIdx = this.state.muteModal;
+    const mRow = (mIdx !== null && mIdx >= 0) ? mutes[mIdx] : null;
+    const muteIsAdd = mIdx === -1;
+    const wIdx = this.state.wordModal;
+    const wRow = (wIdx !== null && wIdx >= 0) ? list[wIdx] : null;
+    const isAdd = wIdx === -1;
+
+    return {
+      rootFix: this.rootFix(),
+      tabs: [
+        ['official', '官方發言'],
+        ['words', '敏感字詞庫'],
+        ['mute', '玩家禁言']
+      ].map(([k, label]) => ({
+        label,
+        bg: tab === k ? '#ffffff' : 'transparent',
+        color: tab === k ? '#2088ea' : '#9ca3af',
+        border: tab === k ? '#2088ea' : 'transparent',
+        pick: () => this.setState({ tab: k, wordModal: null, paramModal: null, muteModal: null, offModal: null })
+      })),
+      isOfficial: tab === 'official',
+      isWords: tab === 'words',
+      tipOpen: this.state.tipOpen,
+      tipText: tab === 'words'
+        ? '[客端前台] 玩家發言含此字詞時，整句阻擋不送出並顯示提示。'
+        : (tab === 'official'
+          ? '官方訊息不經輸入框送出，不受發言限制規範。四種版型對應前台 4.2.1 純文字、4.2.2 遊戲推廣、4.2.3 儲優促銷、4.2.4 活動 Banner。'
+          : '[客端前台] 禁言期間內，該玩家可讀取聊天訊息但無法發言。'),
+      toggleTip: () => this.setState({ tipOpen: !this.state.tipOpen }),
+      tipBtnBg: this.state.tipOpen ? '#fff' : '#facc15',
+      tipBtnBorder: this.state.tipOpen ? '#facc15' : 'transparent',
+      tipBtnColor: this.state.tipOpen ? '#facc15' : '#fff',
+      tipBtnIcon: this.state.tipOpen ? 'ph ph-lightbulb' : 'ph-fill ph-lightbulb',
+      isMute: tab === 'mute',
+      paramsPanelOpen: !!this.state.paramsPanel,
+      openParamsPanel: () => this.setState({ paramsPanel: true }),
+      closeParamsPanel: () => this.setState({ paramsPanel: false, paramModal: null, editing: false }),
+      showAdd: tab === 'words' || tab === 'mute' || tab === 'official',
+      officials: officials.map((o, i) => ({
+        ...o, ...this.officialBadge(o.status),
+        hasThumb: o.type === '活動Banner',
+        hasSquareThumb: o.type === '遊戲推廣' || o.type === '儲優促銷',
+        noThumb: o.type !== '活動Banner' && o.type !== '遊戲推廣' && o.type !== '儲優促銷',
+        typeBg: o.type === '純文字' ? '#f3f4f6' : '#dbeafe',
+        typeColor: o.type === '純文字' ? '#4b5563' : '#1d4ed8',
+        switchBg: isOn(i, o) ? '#22c55e' : '#d1d5db',
+        switchX: isOn(i, o) ? '22px' : '2px',
+        toggleRow: () => { if (isOn(i, o)) this.setState({ confirmIdx: i }); },
+        switchCursor: isOn(i, o) ? 'pointer' : 'not-allowed',
+        takedownColor: isOn(i, o) ? '#dc2626' : '#d1d5db',
+        takedownTip: isOn(i, o) ? '下架' : '已下架',
+        statusText: isOn(i, o) ? o.status : (o.status === '已下架' ? '已下架' : o.status + ' · 已下架'),
+        ...this.officialBadge(isOn(i, o) ? o.status : '已下架'),
+        open: () => this.setState({ copiedFrom: null, offModal: i, offType: o.type, offSend: o.send, repeatMode: o.repeat === '不重複' ? '不重複' : (o.repeat === '每日' ? '每日' : (o.repeat.indexOf('每週') === 0 ? '每週' : '每月')), editing: false, basicOpen: true, otherOpen: true })
+      })),
+      ...this.perBlock('offPer', 58),
+      offPages: ['1', '2', '3', '4', '5', '6', '7'].map(label => ({
+        label,
+        bg: label === '1' ? '#2088ea' : 'transparent',
+        color: label === '1' ? '#fff' : '#4b5563',
+        shadow: label === '1' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+      })),
+      offModalOpen: this.state.offModal !== null,
+      offModalSub: offIsAdd ? '新增' : (oRow ? oRow.type : ''),
+      offHasMeta: !offIsAdd,
+      offReading: !offIsAdd && !offEditMode,
+      offEditing: offEditMode,
+      offFieldRead: !offFieldEdit,
+      offFieldEdit: offFieldEdit,
+      offLockedNote: offEditMode && offLocked,
+      offDownNote: !offIsAdd && !modalOn,
+      offLocked: offLocked,
+      offCanEdit: offIsAdd || modalOn,
+      offCanCopy: !offIsAdd,
+      copyRow: () => this.setState({ offModal: -1, editing: true, copiedFrom: oRow ? oRow.summary : null, offType: oRow ? oRow.type : '純文字', offSend: oRow ? oRow.send : '立即', repeatMode: oRow && oRow.repeat !== '不重複' ? (oRow.repeat === '每日' ? '每日' : (oRow.repeat.indexOf('每週') === 0 ? '每週' : '每月')) : '不重複', switchOpen: false }),
+      offCopiedFrom: this.state.copiedFrom || '',
+      offIsCopy: !!this.state.copiedFrom && offIsAdd,
+      confirmOpen: this.state.confirmIdx !== null && this.state.confirmIdx !== undefined,
+      confirmTitle: '確認下架此則發言？',
+      confirmBody: cRow === null ? '' : ((cRow.status === '已發送'
+        ? '下架後該則將立即自客端介面消失，包含已顯示於歷史訊息中者。'
+        : '下架後排程保留，但不會送出。') + '下架後不可復原，如需再次發送請重新建立一則。'),
+      confirmSummary: cRow === null ? '' : cRow.summary,
+      confirmType: cRow === null ? '' : cRow.type,
+      confirmBtn: '確定下架',
+      confirmBtnBg: '#dc2626',
+      confirmYes: () => { flip(this.state.confirmIdx, cRow); this.setState({ confirmIdx: null }); },
+      confirmNo: () => this.setState({ confirmIdx: null }),
+      offReqStar: offIsAdd ? 'inline' : 'none',
+      offModal: offIsAdd
+        ? (this.state.copiedFrom && srcRow
+          ? { type: curType, summary: srcRow.summary, send: curSend, sendAt: earliest, repeat: srcRow.repeat, status: '待發送', operator: '—', remark: srcRow.remark, enabled: true, switchBg: '#22c55e', switchX: '22px', switchText: '啟用', switchColor: '#15803d', switchHint: '下架後排程保留但不會送出，且不可復原', switchToggle: () => {}, fields: decorate((srcRow.type === curType ? srcRow.fields.map(f => ({ ...f, uploaded: !!f.isImage })) : this.typeFieldSet(curType))), ...this.officialBadge('待發送') }
+          : { type: curType, summary: '', send: curSend, sendAt: earliest, repeat: '不重複', status: '待發送', operator: '—', remark: '(無)', enabled: true, switchBg: '#22c55e', switchX: '22px', switchText: '啟用', switchColor: '#15803d', switchHint: '下架後排程保留，但不會送出', switchToggle: () => {}, fields: decorate(this.typeFieldSet(curType)), ...this.officialBadge('待發送') })
+        : { ...oRow, send: curSend, fields: decorate(offEditMode ? mergeExisting(this.typeFieldSet(curType)) : (oRow ? oRow.fields : [])), switchBg: modalOn ? '#22c55e' : '#d1d5db', switchX: modalOn ? '22px' : '2px', switchText: modalOn ? '啟用' : '停用', switchColor: modalOn ? '#15803d' : '#6b7280', switchHint: !modalOn ? '已下架，不可復原' : '下架後不可復原', switchToggle: () => {}, status: (!oRow || modalOn) ? (oRow ? oRow.status : '待發送') : (oRow.status === '已下架' ? '已下架' : oRow.status + ' · 已下架'), ...this.officialBadge((!oRow || modalOn) ? (oRow ? oRow.status : '待發送') : '已下架') },
+      offTypes: ['純文字', '遊戲推廣', '儲優促銷', '活動Banner'].map(label => ({
+        label,
+        bg: curType === label ? '#2088ea' : '#fff',
+        color: curType === label ? '#fff' : '#4b5563',
+        border: curType === label ? '#2088ea' : '#e5e7eb',
+        pick: () => this.setState({ offType: label })
+      })),
+      offSends: ['立即', '排程'].map(label => ({
+        label,
+        bg: curSend === label ? '#2088ea' : '#fff',
+        color: curSend === label ? '#fff' : '#4b5563',
+        border: curSend === label ? '#2088ea' : '#e5e7eb',
+        pick: () => this.setState({ offSend: label })
+      })),
+      showRepeat: curSend === '排程',
+      repeatModes: ['不重複', '每日', '每週', '每月'].map(label => ({
+        label,
+        bg: rMode === label ? '#2088ea' : '#fff',
+        color: rMode === label ? '#fff' : '#4b5563',
+        border: rMode === label ? '#2088ea' : '#e5e7eb',
+        pick: () => this.setState({ repeatMode: label })
+      })),
+      isWeekly: rMode === '每週',
+      isMonthly: rMode === '每月',
+      isRecurring: rMode !== '不重複',
+      weekdayChips: ['日', '一', '二', '三', '四', '五', '六'].map((label, i) => ({
+        label,
+        bg: wd.includes(i) ? '#2088ea' : '#fff',
+        color: wd.includes(i) ? '#fff' : '#4b5563',
+        border: wd.includes(i) ? '#2088ea' : '#e5e7eb',
+        pick: () => this.setState({ weekdays: wd.includes(i) ? wd.filter(x => x !== i) : [...wd, i].sort() })
+      })),
+      monthDayChips: Array.from({ length: 31 }, (_, i) => i + 1).map(d => ({
+        label: String(d),
+        bg: md.includes(d) ? '#2088ea' : '#fff',
+        color: md.includes(d) ? '#fff' : '#4b5563',
+        border: md.includes(d) ? '#2088ea' : '#e5e7eb',
+        pick: () => this.setState({ monthDays: md.includes(d) ? md.filter(x => x !== d) : [...md, d].sort((a, b) => a - b) })
+      })),
+      endModes: ['無期限', '指定結束日期'].map(label => ({
+        label,
+        bg: this.state.endMode === label ? '#2088ea' : '#fff',
+        color: this.state.endMode === label ? '#fff' : '#4b5563',
+        border: this.state.endMode === label ? '#2088ea' : '#e5e7eb',
+        pick: () => this.setState({ endMode: label })
+      })),
+      endHasDate: this.state.endMode === '指定結束日期',
+      repeatSummary: repeatSummary,
+      repeatMissing: repeatMissing,
+      repeatOk: !repeatMissing,
+      repeatMissingText: rMode === '每週' ? '指定星期需至少選擇一項' : '指定日期需至少選擇一項',
+      repeatWarn: (rMode === '每月' && md.some(d => d > 28)),
+      offSendIsNow: curSend === '立即',
+      offSendIsSchedule: curSend === '排程',
+      earliest: (offIsAdd || !oRow || curSend === '立即') ? earliest
+        : ((oRow.sendAt && oRow.sendAt > earliest) ? oRow.sendAt : earliest),
+      earliestHint: curSend === '立即'
+        ? `立即發送仍需 15 分鐘前置作業，實際送出時間為 ${earliest}`
+        : `最早可選時間為 ${earliest}（當下 ＋15 分鐘），早於此時間無法儲存`,
+      typeFilterLabel: this.state.typeFilter,
+      typeFilterOpen: this.state.typeFilterOpen,
+      typeFilterCaret: this.state.typeFilterOpen ? 'ph ph-caret-up' : 'ph ph-caret-down',
+      toggleTypeFilter: () => this.setState({ typeFilterOpen: !this.state.typeFilterOpen }),
+      typeFilterOptions: ['全部', '純文字', '遊戲推廣', '儲優促銷', '活動Banner'].map(label => ({
+        label,
+        bg: this.state.typeFilter === label ? '#eff6ff' : '#fff',
+        color: this.state.typeFilter === label ? '#1d4ed8' : '#374151',
+        weight: this.state.typeFilter === label ? 700 : 400,
+        checkOpacity: this.state.typeFilter === label ? '1' : '0',
+        pick: () => this.setState({ typeFilter: label, typeFilterOpen: false })
+      })),
+
+      headers: [
+        { label: '字詞', align: 'flex-start', flex: '2.2' },
+        { label: '狀態', align: 'flex-start', flex: '1' },
+        { label: '最後更新', align: 'flex-start', flex: '1.4' },
+        { label: '操作者', align: 'flex-start', flex: '1' },
+        { label: '備註', align: 'flex-start', flex: '1.1' },
+        { label: '操作', align: 'center', flex: '0.9' }
+      ],
+      words: list.map((w, i) => ({
+        ...w, ...this.badge(w.status), remark: '(無)',
+        boxBg: sel.includes(i) ? '#2088ea' : '#fff',
+        boxBorder: sel.includes(i) ? '#2088ea' : '#d1d5db',
+        checkOpacity: sel.includes(i) ? '1' : '0',
+        toggle: () => this.setState({ sel: sel.includes(i) ? sel.filter(x => x !== i) : [...sel, i] }),
+        open: () => this.setState({ wordModal: i, editing: false, basicOpen: true, otherOpen: true })
+      })),
+      selText: sel.length ? `共 ${sel.length} 筆` : '',
+      batchBg: sel.length ? '#fff' : '#f9fafb',
+      batchColor: sel.length ? '#374151' : '#d1d5db',
+      allBoxBg: sel.length === list.length ? '#2088ea' : '#fff',
+      allBoxBorder: sel.length === list.length ? '#2088ea' : '#d1d5db',
+      allCheckOpacity: sel.length === list.length ? '1' : '0',
+      toggleAll: () => this.setState({ sel: sel.length === list.length ? [] : list.map((_, i) => i) }),
+      ...this.perBlock('wordPer', 1284),
+      pages: ['1', '2', '3', '4', '5', '6', '7'].map(label => ({
+        label,
+        bg: label === '1' ? '#2088ea' : 'transparent',
+        color: label === '1' ? '#fff' : '#4b5563',
+        shadow: label === '1' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+      })),
+
+      paramCount: params.length,
+      paramRows: params.map((r, i) => ({
+        name: r.name, key: r.key, type: r.type, remark: '(無)',
+        value: r.value.length > 28 ? r.value.slice(0, 28) + '…' : r.value,
+        required: r.optional ? '選填' : '必填',
+        bg: '#fff',
+        valBg: '#f3f4f6',
+        valColor: '#4b5563',
+        valWeight: 400,
+        valBorder: '#e5e7eb',
+        typeColor: '#6b7280',
+        typeWeight: 400,
+        open: () => this.setState({ paramModal: i, editing: false, basicOpen: true, otherOpen: true })
+      })),
+      isReading: !this.state.editing,
+      isEditing: this.state.editing,
+      basicOpen: this.state.basicOpen,
+      otherOpen: this.state.otherOpen,
+      basicCaret: this.state.basicOpen ? 'ph ph-caret-up' : 'ph ph-caret-down',
+      otherCaret: this.state.otherOpen ? 'ph ph-caret-up' : 'ph ph-caret-down',
+      toggleBasic: () => this.setState({ basicOpen: !this.state.basicOpen }),
+      toggleOther: () => this.setState({ otherOpen: !this.state.otherOpen }),
+      startEdit: () => this.setState({ editing: true }),
+      cancelEdit: () => this.setState({ editing: false }),
+      cancelWordEdit: () => (isAdd ? this.setState({ wordModal: null, editing: false }) : this.setState({ editing: false })),
+
+      wordModalOpen: this.state.wordModal !== null,
+      wordModalSub: isAdd ? '新增' : (wRow ? wRow.word : ''),
+      wordHasMeta: !isAdd,
+      wordReading: !isAdd && !this.state.editing,
+      wordEditing: isAdd || this.state.editing,
+      wordFieldRead: !isAdd,
+      wordFieldEdit: isAdd,
+      wordEditNote: !isAdd && this.state.editing,
+      reqStar: isAdd ? 'inline' : 'none',
+      wordModal: isAdd
+        ? { word: '輸入單一字詞', wordColor: '#9ca3af', status: '啟用', updated: '—', operator: '—', ...this.badge('啟用') }
+        : { ...wRow, wordColor: '#1f2937', ...this.badge(wRow ? wRow.status : '啟用') },
+      paramModalOpen: this.state.paramModal !== null,
+      paramModal: {
+        ...pm,
+        updatedAt: ['2026/08/09 14:22:31', '2026/08/05 10:03:47', '2026/07/30 16:52:08'][(this.state.paramModal ?? 0) % 3],
+        operator: ['admin', 'john', 'mary'][(this.state.paramModal ?? 0) % 3],
+        numFields: (pm.fields || []).filter(f => !f.select && !f.isArea),
+        txtFields: (pm.fields || []).filter(f => f.isArea).map(f => ({
+          ...f,
+          empty: !f.value,
+          display: f.value || '(未設定，前台不顯示此則提醒)',
+          count: (f.value || '').length + ' / ' + f.maxLen + ' 字'
+        })),
+        hasTxt: (pm.fields || []).some(f => f.isArea),
+        required: pm.optional ? '選填' : '必填',
+        reqBg: pm.optional ? '#f3f4f6' : '#dcfce7',
+        reqColor: pm.optional ? '#6b7280' : '#15803d',
+        hasSentence: !!pm.sentence,
+        noSentence: !pm.sentence && !(pm.fields || []).some(f => f.isArea),
+        sentence: (pm.sentence || []).map(tok => {
+          if (typeof tok === 'string' && tok.charAt(0) === '@') {
+            const f = (pm.fields || []).filter(x => !x.select)[Number(tok.slice(1))] || {};
+            return { isNum: true, isText: false, value: f.value || '', width: String(f.value || '').length > 2 ? '72px' : '60px' };
+          }
+          return { isNum: false, isText: true, text: tok };
+        }),
+        ranges: (pm.fields || []).filter(f => !f.select && f.range).map(f => `${f.label} ${f.range} ${f.unit || ''}`).join('　·　'),
+        hasRanges: (pm.fields || []).some(f => !f.select && f.range),
+        selFields: (pm.fields || []).filter(f => f.select).map(f => ({
+          ...f,
+          badgeBg: f.select === '啟用' ? '#dcfce7' : '#dbeafe',
+          badgeColor: f.select === '啟用' ? '#15803d' : '#1d4ed8'
+        }))
+      },
+      muteSearchLabel: this.state.muteSearch,
+      muteSearchIcon: this.state.muteSearch === '暱稱' ? 'ph ph-text-aa' : 'ph ph-hash',
+      muteSearchPlaceholder: this.state.muteSearch === '暱稱' ? '輸入暱稱' : '輸入會員帳號',
+      toggleMuteSearch: () => this.setState({ muteSearch: this.state.muteSearch === '暱稱' ? '會員帳號' : '暱稱' }),
+      mutes: mutes.map((m, i) => ({
+        ...m, ...this.muteBadge(m.status),
+        countColor: m.count >= 3 ? '#dc2626' : '#4b5563',
+        countWeight: m.count >= 3 ? 700 : 400,
+        leftColor: m.status !== '禁言中' ? '#9ca3af' : (m.permanent ? '#7c2d12' : '#dc2626'),
+        leftWeight: m.status === '禁言中' ? 700 : 400,
+        releaseColor: m.status === '禁言中' ? '#dc2626' : '#e5e7eb',
+        releaseCursor: m.status === '禁言中' ? 'pointer' : 'not-allowed',
+        release: () => (m.status === '禁言中' ? this.setState({ releaseModal: i, releaseReason: '申訴成立' }) : null),
+        open: () => this.setState({ muteModal: i, editing: false, basicOpen: true, otherOpen: true })
+      })),
+      releaseModalOpen: this.state.releaseModal !== null,
+      releaseTarget: rRow ? rRow.nickname : '',
+      releaseReasonValue: this.state.releaseReason,
+      closeRelease: () => this.setState({ releaseModal: null }),
+      openReleaseFromDetail: () => this.setState({ releaseModal: this.state.muteModal, releaseReason: '申訴成立' }),
+      ...this.perBlock('mutePer', 142),
+      mutePages: ['1', '2', '3', '4', '5', '6', '7'].map(label => ({
+        label,
+        bg: label === '1' ? '#2088ea' : 'transparent',
+        color: label === '1' ? '#fff' : '#4b5563',
+        shadow: label === '1' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+      })),
+      muteModalOpen: this.state.muteModal !== null,
+      muteModalSub: muteIsAdd ? '新增' : (mRow ? mRow.nickname : ''),
+      muteHasMeta: !muteIsAdd,
+      muteReading: !muteIsAdd && !this.state.editing,
+      muteEditing: muteIsAdd || this.state.editing,
+      muteFieldRead: !muteIsAdd,
+      muteFieldEdit: muteIsAdd,
+      muteEditNote: !muteIsAdd && this.state.editing,
+      muteReqStar: muteIsAdd ? 'inline' : 'none',
+      muteCanRelease: !!mRow && mRow.status === '禁言中',
+      muteReleased: !!mRow && mRow.status === '已解除',
+      muteModal: muteIsAdd
+        ? { nickname: '搜尋暱稱', playerColor: '#9ca3af', period: '', left: '—', status: '禁言中', reason: '請選擇原因', reasonFree: '選填，補充說明', count: 0, remark: '(無)', createdAt: '—', operator: '—', releaseType: '', releaseAt: '', releaseReason: '', releaseBy: '', ...this.muteBadge('禁言中') }
+        : { ...mRow, playerColor: '#1f2937', reasonFree: mRow && mRow.remark !== '(無)' ? mRow.remark : '(無)', createdAt: mRow ? mRow.period.slice(0, 16) : '', ...this.muteBadge(mRow ? mRow.status : '禁言中') },
+      mutePeriodPreview: this.mutePreview(),
+      durations: ['3 天', '7 天', '30 天', '永久'].map(label => ({
+        label,
+        bg: this.state.duration === label ? '#2088ea' : '#fff',
+        color: this.state.duration === label ? '#fff' : '#4b5563',
+        border: this.state.duration === label ? '#2088ea' : '#e5e7eb',
+        pick: () => this.setState({ duration: label })
+      })),
+      cancelMuteEdit: () => (muteIsAdd ? this.setState({ muteModal: null, editing: false }) : this.setState({ editing: false })),
+      openAdd: () => {
+        const s = { editing: false, basicOpen: true, otherOpen: true };
+        if (tab === 'mute') this.setState({ ...s, muteModal: -1, muteReason: null, reasonOpen: false });
+        else if (tab === 'official') this.setState({ ...s, offModal: -1, offType: '純文字', offSend: '立即', repeatMode: '不重複' });
+        else this.setState({ ...s, wordModal: -1 });
+      },
+      cancelOffEdit: () => (offIsAdd ? this.setState({ offModal: null, editing: false, copiedFrom: null }) : this.setState({ editing: false, switchOpen: false })),
+      close: () => this.setState({ wordModal: null, paramModal: null, muteModal: null, offModal: null, editing: false, copiedFrom: null, switchOpen: false }),
+      stop: e => e.stopPropagation()
+    };
+  }
+}
+</script>
+</body>
+</html>
