@@ -25,8 +25,8 @@ a:hover { color:#1a7acb; }
 <div style="height:100vh;display:flex;overflow:hidden;background:#f3f4f6;font-family:'Microsoft JhengHei',sans-serif;color:#1f2937">
 
   <aside style="width:{{ sidebarWidth }};flex:none;height:100%;background:#fff;border-right:1px solid #e5e7eb;display:flex;flex-direction:column;transition:width 0.3s">
-    <div style="height:64px;flex:none;display:flex;align-items:center;gap:12px;padding:0 20px;border-bottom:1px solid #f3f4f6;overflow:hidden">
-      <div style="width:32px;flex:none;color:#6b7280;cursor:pointer;display:flex;align-items:center" style-hover="color:#2088ea" onClick="{{ toggleSidebar }}">
+    <div style="height:64px;flex:none;display:flex;align-items:center;gap:12px;padding:{{ sidebarPad }};border-bottom:1px solid #f3f4f6;overflow:hidden">
+      <div style="width:32px;flex:none;color:#6b7280;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="color:#2088ea" onClick="{{ toggleSidebar }}">
         <i class="ph ph-list" style="font-size:24px"></i>
       </div>
       <sc-if value="{{ sidebarOpen }}" hint-placeholder-val="{{ true }}">
@@ -34,10 +34,10 @@ a:hover { color:#1a7acb; }
       </sc-if>
     </div>
 
-    <nav class="om-nav" style="flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;overflow-x:hidden;user-select:none">
+    <nav class="om-nav" style="flex:1;padding:{{ navPad }};display:flex;flex-direction:column;gap:4px;overflow-y:auto;overflow-x:hidden;user-select:none">
       <sc-for list="{{ menus }}" as="m" hint-placeholder-count="12">
         <div style="display:flex;flex-direction:column;gap:4px" onMouseEnter="{{ m.hoverEnter }}">
-          <div style="position:relative;display:flex;align-items:center;justify-content:{{ m.justify }};gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;background:{{ m.bg }};color:{{ m.color }}" style-hover="background:#eff6ff" title="{{ m.name }}" onClick="{{ m.toggle }}">
+          <div style="position:relative;display:flex;align-items:center;justify-content:{{ m.justify }};gap:12px;padding:{{ m.pad }};border-radius:8px;cursor:pointer;background:{{ m.bg }};color:{{ m.color }}" style-hover="background:#eff6ff" title="{{ m.name }}" onClick="{{ m.toggle }}">
             <div style="display:flex;align-items:center;gap:12px;min-width:0">
               <i class="ph {{ m.icon }}" style="font-size:20px;flex:none;color:{{ m.iconColor }}"></i>
               <sc-if value="{{ sidebarOpen }}" hint-placeholder-val="{{ true }}">
@@ -65,7 +65,7 @@ a:hover { color:#1a7acb; }
       </sc-for>
     </nav>
 
-    <div style="flex:none;border-top:1px solid #e5e7eb;background:#f9fafb;padding:16px;display:flex;align-items:center;justify-content:{{ footJustify }};gap:16px;flex-direction:{{ footDir }}">
+    <div style="flex:none;border-top:1px solid #e5e7eb;background:#f9fafb;padding:{{ footPad }};display:flex;align-items:center;justify-content:{{ footJustify }};gap:16px;flex-direction:{{ footDir }}">
       <div style="padding:8px;border-radius:8px;color:#6b7280;cursor:pointer;display:flex" style-hover="background:#fff;color:#2088ea" title="顯示模式">
         <i class="ph ph-sun" style="font-size:20px"></i>
       </div>
@@ -109,7 +109,7 @@ a:hover { color:#1a7acb; }
   </div>
 
   <sc-if value="{{ flyoutOpen }}" hint-placeholder-val="{{ false }}">
-    <div style="position:fixed;left:80px;top:{{ flyoutTop }};z-index:2000;padding-left:8px" onMouseLeave="{{ closeFlyout }}">
+    <div style="position:fixed;left:60px;top:{{ flyoutTop }};z-index:2000;padding-left:8px" onMouseLeave="{{ closeFlyout }}">
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.15);padding:8px;min-width:200px">
         <div style="padding:8px 16px;font-size:12px;font-weight:700;color:#9ca3af;background:#f9fafb;border-bottom:1px solid #f3f4f6;border-radius:4px 4px 0 0;margin-bottom:4px">{{ flyoutName }}</div>
         <div style="display:flex;flex-direction:column">
@@ -216,7 +216,7 @@ class Component extends DCLogic {
     const open = this.state.sidebarOpen;
     const page = this.state.page;
     const pages = {
-      settings: { title: '聊天設定', src: 'chat-settings-v4.90.dc.html' },
+      settings: { title: '聊天設定', src: 'chat-settings-v5.1.dc.html' },
       reports: { title: '聊天相關報表', src: 'chat-reports-v2.2.dc.html' }
     };
 
@@ -229,7 +229,10 @@ class Component extends DCLogic {
       dismissModal: () => {
         if (this.iframeEl && this.iframeEl.contentWindow) this.iframeEl.contentWindow.postMessage({ dcShell: 'dismiss' }, '*');
       },
-      sidebarWidth: open ? '256px' : '80px',
+      sidebarWidth: open ? '256px' : '60px',
+      sidebarPad: open ? '0 20px' : '0 14px',
+      navPad: open ? '16px 12px' : '16px 8px',
+      footPad: open ? '16px' : '16px 8px',
       toggleSidebar: () => this.setState({ sidebarOpen: !open, open: open ? null : '設定管理', hover: null }),
       flyoutOpen: !open && this.state.hover !== null,
       flyoutTop: this.state.hoverTop + 'px',
@@ -272,6 +275,7 @@ class Component extends DCLogic {
           },
           expanded,
           justify: open ? (m.items ? 'space-between' : 'flex-start') : 'center',
+          pad: open ? '10px 12px' : '10px 6px',
           bg: (expanded || (!open && hasActive)) ? '#eff6ff' : 'transparent',
           color: (expanded || hasActive) ? '#2088ea' : (m.items || []).some(s => s.page) ? '#4b5563' : '#a8b3c2',
           iconColor: (expanded || hasActive) ? '#2088ea' : (m.items || []).some(s => s.page) ? '#6b7280' : '#b6c0cc',
