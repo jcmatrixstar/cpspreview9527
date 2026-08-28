@@ -301,7 +301,7 @@ a:hover { color:#1a7acb; }
   <sc-if value="{{ isWordStat }}" hint-placeholder-val="{{ false }}">
   <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;display:flex;gap:10px;align-items:flex-start">
     <i class="ph-fill ph-warning-circle" style="color:#f59e0b;font-size:18px;flex:none;margin-top:1px"></i>
-    <div style="font-size:13px;color:#b45309;line-height:1.65">僅列出查詢區間內觸發次數 ≥ 1 的字詞，依觸發次數由高至低排序，一列一詞、次數為區間總計。用途為找出誤判過多與尚未收錄的字詞。「當前狀態」取自敏感字詞庫的即時狀態，非該區間內的狀態；字詞若於區間中途被停用，停用前已觸發的次數仍計入，故可能出現「已停用但有觸發次數」的列。</div>
+    <div style="font-size:13px;color:#b45309;line-height:1.65">僅列出查詢區間內觸發次數 ≥ 1 的字詞，依觸發次數由高至低排序，一列一詞、次數為區間總計。用途為找出誤判過多與尚未收錄的字詞。「當前狀態」取自敏感詞詞庫的即時狀態，非該區間內的狀態；字詞若於區間中途被停用，停用前已觸發的次數仍計入，故可能出現「已停用但有觸發次數」的列。</div>
   </div>
 
   <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
@@ -334,7 +334,7 @@ a:hover { color:#1a7acb; }
     </div>
     <div style="display:flex;align-items:center;background:#f9fafb;border-bottom:1px solid #e5e7eb">
       <div style="width:90px;flex:none;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">排名</div>
-      <div style="flex:2;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">敏感字詞</div>
+      <div style="flex:2;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">敏感詞</div>
       <div style="flex:1.1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;text-align:right;white-space:nowrap">觸發次數</div>
       <div style="flex:1.6;padding:16px 24px;font-size:12px;font-weight:700;color:#374151">佔比</div>
       <div style="flex:1;padding:16px 24px;font-size:12px;font-weight:700;color:#374151;white-space:nowrap">當前狀態</div>
@@ -543,7 +543,7 @@ class Component extends DCLogic {
     const top = raw[0][1];
 
     return {
-      tabs: [['daily', '公頻每日訊息數'], ['online', '公頻上線人數分析'], ['wordstat', '敏感字觸發次數統計']].map(([k, label]) => ({
+      tabs: [['daily', '公頻每日訊息數'], ['online', '公頻上線人數分析'], ['wordstat', '敏感詞觸發次數統計']].map(([k, label]) => ({
         label,
         bg: this.state.tab === k ? '#ffffff' : 'transparent',
         color: this.state.tab === k ? '#2088ea' : '#9ca3af',
