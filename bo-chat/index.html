@@ -53,7 +53,7 @@ a:hover { color:#1a7acb; }
           </div>
 
           <sc-if value="{{ m.expanded }}" hint-placeholder-val="{{ false }}">
-            <div style="padding:0 8px 0 40px;display:flex;flex-direction:column;gap:4px">
+            <div style="padding:0 4px 0 32px;display:flex;flex-direction:column;gap:4px">
               <sc-for list="{{ m.items }}" as="s" hint-placeholder-count="4">
                 <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;font-size:14px;cursor:pointer;background:{{ s.bg }};color:{{ s.color }};font-weight:{{ s.weight }}" style-hover="background:#eff6ff;color:#2088ea" onClick="{{ s.pick }}">
                   <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.name }}</span>
@@ -216,7 +216,7 @@ class Component extends DCLogic {
     const open = this.state.sidebarOpen;
     const page = this.state.page;
     const pages = {
-      settings: { title: '聊天設定', src: 'chat-settings-v5.1.dc.html' },
+      settings: { title: '聊天設定', src: 'chat-settings-v5.15.dc.html' },
       reports: { title: '聊天相關報表', src: 'chat-reports-v2.2.dc.html' }
     };
 
@@ -229,9 +229,9 @@ class Component extends DCLogic {
       dismissModal: () => {
         if (this.iframeEl && this.iframeEl.contentWindow) this.iframeEl.contentWindow.postMessage({ dcShell: 'dismiss' }, '*');
       },
-      sidebarWidth: open ? '256px' : '60px',
-      sidebarPad: open ? '0 20px' : '0 14px',
-      navPad: open ? '16px 12px' : '16px 8px',
+      sidebarWidth: open ? '190px' : '60px',
+      sidebarPad: open ? '0 14px' : '0 14px',
+      navPad: open ? '16px 8px' : '16px 8px',
       footPad: open ? '16px' : '16px 8px',
       toggleSidebar: () => this.setState({ sidebarOpen: !open, open: open ? null : '設定管理', hover: null }),
       flyoutOpen: !open && this.state.hover !== null,
