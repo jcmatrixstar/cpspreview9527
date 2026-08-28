@@ -725,9 +725,13 @@ a:hover { color:#1a7acb; }
           </sc-if>
 
           <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
-            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
-              <i class="ph-fill ph-identification-card"></i> 基本
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ toggleBase }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#374151">
+                <i class="ph-fill ph-identification-card"></i> 基本
+              </div>
+              <i class="{{ baseCaret }}" style="color:#9ca3af;font-size:14px"></i>
             </div>
+            <sc-if value="{{ baseOpen }}" hint-placeholder-val="{{ true }}">
             <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:18px 24px;align-items:start">
 
               <div style="display:flex;flex-direction:column;gap:6px">
@@ -923,6 +927,7 @@ a:hover { color:#1a7acb; }
               </div>
 
             </div>
+            </sc-if>
           </div>
 
           <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
@@ -1736,7 +1741,7 @@ class Component extends DCLogic {
 
   officialList() {
     return [
-      { type: '活動橫幅', summary: '中秋限定活動 主視覺', linkUrl: 'https://event.starplay.tw/moon-festival', send: '排程', sendAt: '2026/09/04 20:00:00', repeat: '每週五', endAt: '永久', status: '待發送', enabled: true, operator: 'mary', remark: '中秋檔期', createdAt: '2026/08/26 11:20:38', updatedAt: '2026/08/28 09:05:12',
+      { type: '活動橫幅', summary: '中秋限定活動 主視覺', linkUrl: 'https://event.starplay.tw/moon-festival', send: '排程', sendAt: '2026/09/04 20:00:00', repeat: '每週五', weekdays: [5], endAt: '永久', status: '待發送', enabled: true, operator: 'mary', remark: '中秋檔期', createdAt: '2026/08/26 11:20:38', updatedAt: '2026/08/28 09:05:12',
         fields: [{ label: '連結', value: '原頁轉導' }, { label: '應用場景', value: '九月簽到' }, { label: '內容', value: '中秋限定活動開跑' }] },
       { type: '自訂訊息', summary: '本週六 20:00 全站雙倍積分，記得上線！', linkUrl: 'https://event.starplay.tw/double-points', send: '排程', sendAt: '2026/08/29 20:00:00', repeat: '單次', status: '待發送', enabled: true, operator: 'admin', remark: '（無）', createdAt: '2026/08/26 09:14:02',
         fields: [{ label: '連結', value: '另開分頁' }, { label: '圖片', isImage: true, uploaded: true, value: '1440 × 360' }, { label: '內容', value: '本週六 20:00 全站雙倍積分，記得上線！' }] },
@@ -1746,13 +1751,13 @@ class Component extends DCLogic {
         fields: [{ label: '連結', value: '原頁轉導' }, { label: '禮包', value: '首儲 +30% 加碼(進行中)' }, { label: '內容', value: '首儲 +30%，只到月底。' }] },
       { type: '活動橫幅', summary: '中元回饋週 主視覺', linkUrl: 'https://event.starplay.tw/aug-signin', send: '排程', sendAt: '2026/08/15 10:00:00', repeat: '單次', status: '已發送', enabled: true, operator: 'john', remark: '（無）', createdAt: '2026/08/13 11:02:48',
         fields: [{ label: '連結', value: '原頁轉導' }, { label: '應用場景', value: '八月簽到' }, { label: '內容', value: '中元回饋週開跑' }] },
-      { type: '自訂訊息', summary: '改版優化說明（長文案測試）', linkUrl: '', send: '排程', sendAt: '2026/08/17 09:00:00', repeat: '單次', status: '已發送', enabled: true, operator: 'admin', remark: '長文案截斷測試', createdAt: '2026/08/16 10:05:41',
+      { type: '自訂訊息', summary: '改版優化說明（長文案測試）', linkUrl: '', send: '排程', sendAt: '2026/09/01 09:00:00', repeat: '每月 1·15·31', monthDays: [1, 15, 31], endAt: '2026/12/31 09:00:00', status: '待發送', enabled: true, operator: 'admin', remark: '長文案截斷測試', createdAt: '2026/08/16 10:05:41',
         fields: [{ label: '連結', value: '未設定' }, { label: '圖片', isImage: true, uploaded: false, value: '1440 × 360' }, { label: '內容', value: '親愛的玩家您好，為提供更穩定的遊戲體驗，本次改版已同步優化連線品質與載入速度，若仍遇到異常請聯繫客服協助處理，感謝您的支持與配合。' }] },
       { type: '自訂訊息', summary: '假日客服調整時間公告', linkUrl: '', send: '排程', sendAt: '2026/08/15 10:00:00', repeat: '單次', status: '已發送', enabled: true, operator: 'john', remark: '（無）', createdAt: '2026/08/14 16:45:30',
         fields: [{ label: '連結', value: '未設定' }, { label: '圖片', isImage: true, uploaded: false, value: '1440 × 360' }, { label: '內容', value: '本週六客服服務時間調整為 10:00-18:00。' }] },
       { type: '自訂訊息', summary: '系統維護公告：08/20 03:00-05:00', linkUrl: '', send: '排程', sendAt: '2026/08/16 21:00:00', repeat: '每日', endAt: '永久', downAt: '2026/08/19 22:05:11', status: '已下架', enabled: false, operator: 'admin', remark: '維護時間待確認', createdAt: '2026/08/15 20:11:03', updatedAt: '2026/08/19 22:05:11',
         fields: [{ label: '連結', value: '未設定' }, { label: '圖片', isImage: true, uploaded: true, value: '1440 × 360' }, { label: '內容', value: '系統維護公告：08/20 03:00-05:00 暫停服務。' }] },
-      { type: '遊戲推廣', summary: '蜜糖爆擊2', linkUrl: 'https://game.starplay.tw/honey2', send: '排程', sendAt: '2026/08/12 21:00:00', repeat: '每週三·六', endAt: '永久', status: '進行中', enabled: true, operator: 'mary', remark: '（無）', createdAt: '2026/08/09 14:22:19',
+      { type: '遊戲推廣', summary: '蜜糖爆擊2', linkUrl: 'https://game.starplay.tw/honey2', send: '排程', sendAt: '2026/08/12 21:00:00', repeat: '每週三·六', weekdays: [3, 6], endAt: '永久', status: '進行中', enabled: true, operator: 'mary', remark: '（無）', createdAt: '2026/08/09 14:22:19',
         fields: [{ label: '連結', value: '原頁轉導' }, { label: '遊戲名稱', value: '蜜糖爆擊2' }, { label: '內容', value: '甜到爆擊！新機上線試手氣。' }] }
     ];
   }
@@ -1889,7 +1894,7 @@ class Component extends DCLogic {
     const cRow = (cIdx === null || cIdx === undefined) ? null : officials[cIdx];
     const cOn = cRow ? isOn(cIdx, cRow) : false;
     const cMode = this.state.confirmMode === 'delete' ? 'delete' : 'takedown';
-    const offLocked = !!oRow && (oRow.status === '已發送' || oRow.status === '進行中');
+    const offLocked = !!oRow && (!modalOn || oRow.status !== '待發送');
     const offEditMode = offIsAdd || (this.state.editing && (!oRow || modalOn));
     const offFieldEdit = offEditMode && !offLocked;
     const srcRow = this.state.copiedFrom ? officials.find(o => o.summary === this.state.copiedFrom) : null;
@@ -2147,7 +2152,7 @@ class Component extends DCLogic {
         sendAtFrom: (!isOn(i, o) || o.endAt) ? o.sendAt + ' ~' : o.sendAt,
         sendAtTo: !isOn(i, o) ? downOf(i, o) : (o.endAt || ''),
         ...this.officialBadge(isOn(i, o) ? o.status : '已下架'),
-        open: () => this.setState({ copiedFrom: null, offModal: i, offType: o.type, offSend: o.send, repeatMode: o.repeat === '單次' ? '單次' : (o.repeat === '每日' ? '每日' : (o.repeat.indexOf('每週') === 0 ? '每週' : '每月')), editing: false, basicOpen: true, otherOpen: true, endDate: null, startDate: null, dateCalOpen: null, calOffset: 0, focusKey: null })
+        open: () => this.setState({ copiedFrom: null, offModal: i, offType: o.type, offSend: o.send, repeatMode: o.repeat === '單次' ? '單次' : (o.repeat === '每日' ? '每日' : (o.repeat.indexOf('每週') === 0 ? '每週' : '每月')), monthDays: o.monthDays || [1], weekdays: o.weekdays || [3, 6], editing: false, basicOpen: true, otherOpen: true, endDate: null, startDate: null, dateCalOpen: null, calOffset: 0, focusKey: null })
       })),
       ...this.perBlock('offPer', 58),
       offPages: ['1', '2', '3', '4', '5', '6', '7'].map(label => ({
@@ -2186,8 +2191,8 @@ class Component extends DCLogic {
       offPeriodTo: !oRow ? '' : (!modalOn ? downOf(oIdx, oRow) : (oRow.endAt || '')),
       offHasDown: !offIsAdd && !!oRow && !modalOn,
       offDownAtText: oRow && !modalOn ? downOf(oIdx, oRow) : '',
-      offLockHint: !offIsAdd && !!oRow && (oRow.status === '進行中' || oRow.status === '已發送'),
-      offLockHintText: oRow && oRow.status === '已發送' ? '已發送，不可再修改' : '已開始發送，僅可變更備註',
+      offLockHint: !offIsAdd && offLocked,
+      offLockHintText: !modalOn ? '已下架，不可再修改' : (oRow && oRow.status === '已發送' ? '已發送，不可再修改' : '已開始發送，僅可變更備註'),
       offCanEdit: offIsAdd || (modalOn && (!oRow || oRow.status !== '已發送')),
       offCanCopy: !offIsAdd,
       copyRow: () => this.setState({ offModal: -1, editing: true, copiedFrom: oRow ? oRow.summary : null, offType: oRow ? oRow.type : '自訂訊息', offSend: oRow ? oRow.send : '立即', repeatMode: oRow && oRow.repeat !== '單次' ? (oRow.repeat === '每日' ? '每日' : (oRow.repeat.indexOf('每週') === 0 ? '每週' : '每月')) : '單次', switchOpen: false, endDate: null }),
@@ -2520,6 +2525,9 @@ class Component extends DCLogic {
       isReading: !this.state.editing,
       isEditing: this.state.editing,
       paramModalSub: this.state.editing ? '編輯' : (pm ? pm.name : ''),
+      baseOpen: this.state.baseOpen !== false,
+      baseCaret: (this.state.baseOpen !== false) ? 'ph ph-caret-up' : 'ph ph-caret-down',
+      toggleBase: () => this.setState({ baseOpen: this.state.baseOpen === false }),
       basicOpen: this.state.basicOpen,
       otherOpen: this.state.otherOpen,
       basicCaret: this.state.basicOpen ? 'ph ph-caret-up' : 'ph ph-caret-down',
