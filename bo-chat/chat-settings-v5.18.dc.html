@@ -707,16 +707,12 @@ a:hover { color:#1a7acb; }
             <div style="display:flex;flex-direction:column;gap:4px">
               <div style="font-size:12px;color:#6b7280;font-weight:500">建立時間</div>
               <div style="font-size:12px;color:#374151;font-family:ui-monospace,monospace">{{ offModal.createdAt }}</div>
+              <div style="font-size:11px;color:#6b7280">{{ offCreatedAgo }}</div>
             </div>
-            <sc-if value="{{ offHasDown }}" hint-placeholder-val="{{ false }}">
-              <div style="display:flex;flex-direction:column;gap:4px">
-                <div style="font-size:12px;color:#6b7280;font-weight:500">下架時間</div>
-                <div style="font-size:12px;color:#b91c1c;font-family:ui-monospace,monospace">{{ offDownAtText }}</div>
-              </div>
-              </sc-if>
             <div style="display:flex;flex-direction:column;gap:4px">
               <div style="font-size:12px;color:#6b7280;font-weight:500">最後異動時間</div>
               <div style="font-size:12px;color:#374151;font-family:ui-monospace,monospace">{{ offUpdatedAtText }}</div>
+              <div style="font-size:11px;color:#6b7280">{{ offUpdatedAgo }}</div>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
               <div style="font-size:12px;color:#6b7280;font-weight:500">操作者</div>
@@ -1726,16 +1722,16 @@ class Component extends DCLogic {
     if (isNaN(d)) return '';
     const sec = Math.floor((Date.now() - d.getTime()) / 1000);
     if (sec < 0) return '';
-    if (sec < 60) return sec + ' 秒前';
+    if (sec < 60) return '- ' + sec + ' 秒前';
     const min = Math.floor(sec / 60);
-    if (min < 60) return min + ' 分鐘前';
+    if (min < 60) return '- ' + min + ' 分鐘前';
     const hr = Math.floor(min / 60);
-    if (hr < 24) return hr + ' 小時前';
+    if (hr < 24) return '- ' + hr + ' 小時前';
     const day = Math.floor(hr / 24);
-    if (day < 30) return day + ' 天前';
+    if (day < 30) return '- ' + day + ' 天前';
     const mon = Math.floor(day / 30);
-    if (mon < 12) return mon + ' 個月前';
-    return Math.floor(mon / 12) + ' 年前';
+    if (mon < 12) return '- ' + mon + ' 個月前';
+    return '- ' + Math.floor(mon / 12) + ' 年前';
   }
 
   officialList() {
@@ -1754,7 +1750,7 @@ class Component extends DCLogic {
         fields: [{ label: '連結', value: '未設定' }, { label: '圖片', isImage: true, uploaded: false, value: '1440 × 360' }, { label: '內容', value: '親愛的玩家您好，為提供更穩定的遊戲體驗，本次改版已同步優化連線品質與載入速度，若仍遇到異常請聯繫客服協助處理，感謝您的支持與配合。' }] },
       { type: '自訂訊息', summary: '假日客服調整時間公告', linkUrl: '', send: '排程', sendAt: '2026/08/15 10:00:00', repeat: '單次', status: '已發送', enabled: true, operator: 'john', remark: '（無）', createdAt: '2026/08/14 16:45:30',
         fields: [{ label: '連結', value: '未設定' }, { label: '圖片', isImage: true, uploaded: false, value: '1440 × 360' }, { label: '內容', value: '本週六客服服務時間調整為 10:00-18:00。' }] },
-      { type: '自訂訊息', summary: '系統維護公告：08/20 03:00-05:00', linkUrl: '', send: '排程', sendAt: '2026/08/16 21:00:00', repeat: '每日', endAt: '永久', downAt: '2026/08/19 22:05:11', status: '已下架', enabled: false, operator: 'admin', remark: '維護時間待確認', createdAt: '2026/08/15 20:11:03',
+      { type: '自訂訊息', summary: '系統維護公告：08/20 03:00-05:00', linkUrl: '', send: '排程', sendAt: '2026/08/16 21:00:00', repeat: '每日', endAt: '永久', downAt: '2026/08/19 22:05:11', status: '已下架', enabled: false, operator: 'admin', remark: '維護時間待確認', createdAt: '2026/08/15 20:11:03', updatedAt: '2026/08/19 22:05:11',
         fields: [{ label: '連結', value: '未設定' }, { label: '圖片', isImage: true, uploaded: true, value: '1440 × 360' }, { label: '內容', value: '系統維護公告：08/20 03:00-05:00 暫停服務。' }] },
       { type: '遊戲推廣', summary: '蜜糖爆擊2', linkUrl: 'https://game.starplay.tw/honey2', send: '排程', sendAt: '2026/08/12 21:00:00', repeat: '每週三·六', endAt: '永久', status: '進行中', enabled: true, operator: 'mary', remark: '（無）', createdAt: '2026/08/09 14:22:19',
         fields: [{ label: '連結', value: '原頁轉導' }, { label: '遊戲名稱', value: '蜜糖爆擊2' }, { label: '內容', value: '甜到爆擊！新機上線試手氣。' }] }
@@ -1875,6 +1871,7 @@ class Component extends DCLogic {
       const pick = f.find(x => x.label === '內容');
       return pick ? pick.value : o.summary;
     };
+    const _upd = (i, o) => (!isOn(i, o) ? (downOf(i, o) || o.updatedAt || o.createdAt) : (o.updatedAt || o.createdAt));
     const _hasImg = o => !!(o.fields || []).some(f => f.label === '圖片' && f.uploaded);
     const offRows = officials.map((o, i) => ({ o, i })).filter(x => !offDel[x.i])
       .sort((a, b) => (ts(b.o.sendAt) - ts(a.o.sendAt)) || (ts(b.o.createdAt) - ts(a.o.createdAt)));
@@ -2142,10 +2139,10 @@ class Component extends DCLogic {
         remarkColor: (!o.remark || o.remark === '(無)' || o.remark === '（無）') ? '#d1d5db' : '#9ca3af',
         sendIcon: o.repeat === '單次' ? 'ph ph-lightning' : 'ph ph-calendar-blank',
         sendAgo: o.repeat === '單次' ? this.agoText(o.sendAt) : '',
-        updatedAgo: this.agoText(o.updatedAt || o.createdAt),
+        updatedAgo: this.agoText(_upd(i, o)),
         sendTimeText: o.repeat === '單次' ? o.sendAt : (o.sendAt || '').slice(11),
         typeIcon: o.type === '自訂訊息' ? 'ph ph-chat-text' : (o.type === '遊戲推廣' ? 'ph ph-game-controller' : (o.type === '儲值優惠' ? 'ph ph-gift' : 'ph ph-flag-banner')),
-        updatedAt: o.updatedAt || o.createdAt,
+        updatedAt: _upd(i, o),
         hasEnd: !isOn(i, o) || !!o.endAt,
         sendAtFrom: (!isOn(i, o) || o.endAt) ? o.sendAt + ' ~' : o.sendAt,
         sendAtTo: !isOn(i, o) ? downOf(i, o) : (o.endAt || ''),
@@ -2180,9 +2177,11 @@ class Component extends DCLogic {
       offLocked: offLocked,
       offPeriodIsRange: !!oRow && (!modalOn || !!oRow.endAt),
       offPeriodIsSingle: !!oRow && modalOn && !oRow.endAt,
-      offUpdatedAtText: oRow ? (oRow.updatedAt || oRow.createdAt || '—') : '—',
-      offSendFieldLabel: offFieldEdit ? '發送方式' : '發送時間',
-      offSendAtText: oRow ? oRow.sendAt : (curSend === '立即' ? earliest : earliest),
+      offUpdatedAtText: oRow ? (_upd(oIdx, oRow) || '—') : '—',
+      offUpdatedAgo: oRow ? this.agoText(_upd(oIdx, oRow)) : '',
+      offCreatedAgo: oRow ? this.agoText(oRow.createdAt) : '',
+      offSendFieldLabel: '發送時間',
+      offSendAtText: oRow ? (oRow.repeat === '單次' ? oRow.sendAt : (oRow.sendAt || '').slice(11)) : (curSend === '立即' ? earliest : earliest),
       offPeriodFrom: oRow ? oRow.sendAt : '',
       offPeriodTo: !oRow ? '' : (!modalOn ? downOf(oIdx, oRow) : (oRow.endAt || '')),
       offHasDown: !offIsAdd && !!oRow && !modalOn,
@@ -2369,7 +2368,7 @@ class Component extends DCLogic {
         ? (this.state.copiedFrom && srcRow
           ? { type: curType, summary: srcRow.summary, send: curSend, sendAt: earliest, repeat: srcRow.repeat, status: '待發送', operator: '—', createdAt: '—', remark: srcRow.remark, enabled: true, switchBg: '#22c55e', switchX: '22px', switchText: '啟用', switchColor: '#15803d', switchHint: '下架後排程保留但不會送出，且不可復原', switchToggle: () => {}, fields: decorate((srcRow.type === curType ? srcRow.fields.map(f => ({ ...f, uploaded: !!f.isImage })) : this.typeFieldSet(curType))), ...this.officialBadge('待發送') }
           : { type: curType, summary: '', send: curSend, sendAt: earliest, repeat: '單次', status: '待發送', operator: '—', createdAt: '—', remark: '（無）', enabled: true, switchBg: '#22c55e', switchX: '22px', switchText: '啟用', switchColor: '#15803d', switchHint: '下架後排程保留，但不會送出', switchToggle: () => {}, fields: decorate(this.typeFieldSet(curType)), ...this.officialBadge('待發送') })
-        : { ...oRow, send: curSend, fields: decorate(offEditMode ? mergeExisting(this.typeFieldSet(curType)) : (oRow ? oRow.fields : [])), switchBg: modalOn ? '#22c55e' : '#d1d5db', switchX: modalOn ? '22px' : '2px', switchText: modalOn ? '啟用' : '停用', switchColor: modalOn ? '#15803d' : '#6b7280', switchHint: !modalOn ? '已下架，不可復原' : '下架後不可復原', switchToggle: () => {}, status: (!oRow || modalOn) ? (oRow ? oRow.status : '待發送') : (oRow.status === '已下架' ? '已下架' : oRow.status + ' · 已下架'), ...this.officialBadge((!oRow || modalOn) ? (oRow ? oRow.status : '待發送') : '已下架') },
+        : { ...oRow, send: curSend, fields: decorate(offEditMode ? mergeExisting(this.typeFieldSet(curType)) : (oRow ? oRow.fields : [])), switchBg: modalOn ? '#22c55e' : '#d1d5db', switchX: modalOn ? '22px' : '2px', switchText: modalOn ? '啟用' : '停用', switchColor: modalOn ? '#15803d' : '#6b7280', switchHint: !modalOn ? '已下架，不可復原' : '下架後不可復原', switchToggle: () => {}, status: (!oRow || modalOn) ? (oRow ? oRow.status : '待發送') : '已下架', ...this.officialBadge((!oRow || modalOn) ? (oRow ? oRow.status : '待發送') : '已下架') },
       typeDropOpen: !!this.state.typeDropOpen,
       typeDropCaret: this.state.typeDropOpen ? 'ph ph-caret-up' : 'ph ph-caret-down',
       toggleTypeDrop: () => this.setState({ typeDropOpen: !this.state.typeDropOpen, focusKey: 'offtype', dropOpen: null }),
