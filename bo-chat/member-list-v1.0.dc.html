@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+body { margin:0; background:#f3f4f6; color:#1f2937; font-family:'Microsoft JhengHei',sans-serif; }
+a { color:#2088ea; }
+a:hover { color:#1a7acb; }
+input::placeholder { color:#9ca3af; }
+</style>
+</helmet>
+<div style="min-height:100vh;background:#f8fafc;padding:24px;box-sizing:border-box;font-family:'Microsoft JhengHei',sans-serif;color:#1f2937;{{ rootFix }}">
+<div style="max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+    <nav style="display:flex;align-items:center;gap:6px;font-size:14px">
+      <span style="color:#6b7280">會員管理</span>
+      <i class="ph ph-caret-right" style="color:#d1d5db;font-size:12px"></i>
+      <span style="font-weight:600;color:#2088ea">會員列表</span>
+    </nav>
+    <div style="padding:4px 10px;border-radius:9999px;background:#fff;border:1px solid #e5e7eb;color:#9ca3af;font-size:12px;font-weight:700;white-space:nowrap">v1.0</div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:13px;font-weight:500;color:#b45309">
+    <i class="ph-fill ph-info" style="font-size:16px;flex:none"></i><span>此頁僅為進入詳細頁的載體，列表欄位與查詢條件均為簡化示意</span>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);padding:20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:end">
+    <div style="position:relative">
+      <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">暱稱</label>
+      <input placeholder="輸入暱稱" style="width:100%;border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.6rem 0.75rem;height:42px;box-sizing:border-box;font-size:14px;color:#1f2937;font-family:'Microsoft JhengHei',sans-serif;outline:none">
+    </div>
+    <div style="position:relative">
+      <label style="position:absolute;top:-0.6rem;left:0.75rem;background:#fff;padding:0 0.25rem;font-size:12px;font-weight:600;color:#6b7280;z-index:10">手機號</label>
+      <input placeholder="輸入手機號" style="width:100%;border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.6rem 0.75rem;height:42px;box-sizing:border-box;font-size:14px;color:#1f2937;font-family:'Microsoft JhengHei',sans-serif;outline:none">
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <div style="height:42px;padding:0 28px;border-radius:8px;background:#2088ea;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.08)" style-hover="background:#1a7acb">
+        <i class="ph-bold ph-magnifying-glass" style="font-size:16px"></i><span>搜尋</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+    <div style="overflow-x:auto">
+    <div style="min-width:920px">
+      <div style="display:flex;background:#f9fafb;border-bottom:1px solid #e5e7eb">
+        <div style="width:180px;flex:none;box-sizing:border-box;padding:12px 20px;font-size:12px;font-weight:700;color:#4b5563;white-space:nowrap">暱稱</div>
+        <div style="width:100px;flex:none;box-sizing:border-box;padding:12px 12px;font-size:12px;font-weight:700;color:#4b5563;white-space:nowrap">狀態</div>
+        <div style="width:110px;flex:none;box-sizing:border-box;padding:12px 12px;font-size:12px;font-weight:700;color:#4b5563;white-space:nowrap">VIP 階級</div>
+        <div style="width:130px;flex:none;box-sizing:border-box;padding:12px 20px;font-size:12px;font-weight:700;color:#4b5563;white-space:nowrap;text-align:right">代幣</div>
+        <div style="width:190px;flex:none;box-sizing:border-box;padding:12px 20px;font-size:12px;font-weight:700;color:#4b5563;white-space:nowrap">最後登入</div>
+        <div style="flex:1;min-width:0"></div>
+        <div style="width:96px;flex:none;box-sizing:border-box;position:sticky;right:0;z-index:14;background:#f9fafb;box-shadow:-6px 0 8px -5px rgba(0,0,0,0.10);padding:12px 20px;font-size:12px;font-weight:700;color:#4b5563;white-space:nowrap;text-align:center">操作</div>
+      </div>
+
+      <sc-for list="{{ rows }}" as="r" hint-placeholder-count="3">
+        <div style="display:flex;border-bottom:1px solid #f3f4f6;background:{{ r.bg }}" style-hover="background:#eff6ff">
+          <div style="width:180px;flex:none;box-sizing:border-box;display:flex;align-items:center;gap:6px;padding:11px 20px;font-size:13px;white-space:nowrap;overflow:hidden">
+            <i class="ph-fill ph-user-circle" style="font-size:17px;color:#9ca3af;flex:none"></i>
+            <span style="color:#2088ea;cursor:pointer;overflow:hidden;text-overflow:ellipsis" style-hover="color:#1a7acb" onClick="{{ r.open }}">{{ r.nick }}</span>
+          </div>
+          <div style="width:100px;flex:none;box-sizing:border-box;display:flex;align-items:center;padding:11px 12px">
+            <span style="padding:2px 9px;border-radius:9999px;background:{{ r.stBg }};border:1px solid {{ r.stBorder }};font-size:11px;font-weight:700;color:{{ r.stColor }};white-space:nowrap">{{ r.status }}</span>
+          </div>
+          <div style="width:110px;flex:none;box-sizing:border-box;display:flex;align-items:center;padding:11px 12px;font-size:13px;color:#4b5563;white-space:nowrap">{{ r.vip }}</div>
+          <div style="width:130px;flex:none;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-end;padding:11px 20px;font-size:13px;font-weight:700;color:#2088ea;white-space:nowrap;font-family:ui-monospace,monospace">{{ r.token }}</div>
+          <div style="width:190px;flex:none;box-sizing:border-box;display:flex;align-items:center;padding:11px 20px;font-size:13px;color:#4b5563;white-space:nowrap;font-family:ui-monospace,monospace">{{ r.lastLogin }}</div>
+          <div style="flex:1;min-width:0"></div>
+          <div style="width:96px;flex:none;box-sizing:border-box;position:sticky;right:0;z-index:12;background:#fff;box-shadow:-6px 0 8px -5px rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:center;padding:11px 20px">
+            <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer" style-hover="background:#e5e7eb;color:#2088ea" title="檢視" onClick="{{ r.open }}"><i class="ph-bold ph-caret-right" style="font-size:15px"></i></div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    </div>
+
+    <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;justify-content:flex-end;gap:16px">
+      <div style="display:flex;align-items:center;gap:8px;color:#9ca3af">
+        <i class="ph ph-skip-back" style="font-size:14px;cursor:pointer"></i>
+        <i class="ph ph-caret-left" style="font-size:14px;cursor:pointer"></i>
+      </div>
+      <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;background:#2088ea;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.1)">1</div>
+      <div style="display:flex;align-items:center;gap:8px;color:#9ca3af">
+        <i class="ph ph-caret-right" style="font-size:14px;cursor:pointer"></i>
+        <i class="ph ph-skip-forward" style="font-size:14px;cursor:pointer"></i>
+      </div>
+      <div style="font-size:12px;color:#9ca3af;font-weight:500;white-space:nowrap">1-4 / 4</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<sc-if value="{{ detailOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);padding:24px" onClick="{{ detailClose }}">
+    <div style="width:62vw;min-width:512px;max-width:840px;max-height:92vh;height:92vh;background:#fff;border-radius:8px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);display:flex;flex-direction:column;overflow:hidden" onClick="{{ stopClick }}">
+
+      <div style="padding:16px 24px;background:#f9fafb;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:10px;flex:none">
+        <span style="font-size:16px;font-weight:700;color:#1f2937">會員詳細</span>
+        <span style="font-size:13px;font-weight:700;color:#9ca3af">{{ dNick }}</span>
+      </div>
+
+      <div style="padding:0 8px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:stretch;flex:none">
+        <div style="padding:12px 20px;font-size:14px;font-weight:700;color:#2088ea;border-bottom:2px solid #2088ea;white-space:nowrap">個人資料</div>
+      </div>
+
+      <div style="flex:1;min-height:0;overflow-y:auto;background:#f9fafb;padding:16px;display:flex;flex-direction:column;gap:12px">
+
+        <div style="flex:none;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;box-shadow:0 1px 2px rgba(0,0,0,0.05)">
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">
+              <span style="font-size:12px;color:#9ca3af;font-weight:500">最後異動時間</span>
+              <div style="width:20px;height:20px;border-radius:4px;background:rgba(156,163,175,0.4);color:#4b5563;display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:#2088ea;color:#fff" title="異動歷程"><i class="ph ph-clock-counter-clockwise" style="font-size:12px"></i></div>
+            </div>
+            <div style="font-size:14px;color:#9ca3af;font-family:ui-monospace,monospace">—</div>
+          </div>
+          <div style="min-width:0">
+            <div style="font-size:12px;color:#9ca3af;font-weight:500;margin-bottom:4px">操作者</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <i class="ph ph-user-circle" style="font-size:16px;color:#9ca3af"></i>
+              <span style="font-size:14px;color:#9ca3af;font-weight:500">—</span>
+            </div>
+          </div>
+        </div>
+
+        <sc-for list="{{ cards }}" as="c" hint-placeholder-count="8">
+          <div style="flex:none;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" style-hover="background:#f9fafb" onClick="{{ c.toggle }}">
+              <div style="display:flex;align-items:center;gap:8px;font-size:16.5px;font-weight:700;color:#1f2937">
+                <i class="{{ c.icon }}" style="font-size:18px;color:#9ca3af"></i><span>{{ c.label }}</span>
+              </div>
+              <i class="{{ c.caret }}" style="font-size:14px;color:#9ca3af"></i>
+            </div>
+            <sc-if value="{{ c.open }}" hint-placeholder-val="{{ true }}">
+              <sc-if value="{{ c.noSubs }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:16px;min-height:72px;box-sizing:border-box;display:flex;align-items:center;justify-content:center">
+                <div style="width:100%;border:1px dashed #e5e7eb;border-radius:6px;padding:18px;box-sizing:border-box;text-align:center;font-size:12px;color:#d1d5db">（內容待填）</div>
+              </div>
+              </sc-if>
+              <sc-if value="{{ c.hasSubs }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+                <sc-for list="{{ c.subs }}" as="s" hint-placeholder-count="4">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                      <span style="flex:none;width:4px;height:16px;border-radius:2px;background:#334155"></span>
+                      <span style="font-size:16px;font-weight:700;color:#334155;letter-spacing:0.025em">{{ s.title }}</span>
+                      <sc-if value="{{ s.isMute }}" hint-placeholder-val="{{ false }}">
+                        <span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#2088ea;cursor:pointer" style-hover="color:#1a7acb" onClick="{{ goMute }}">
+                          <span>前往玩家禁言</span><i class="ph-bold ph-arrow-square-out" style="font-size:13px"></i>
+                        </span>
+                      </sc-if>
+                    </div>
+                    <sc-if value="{{ s.plain }}" hint-placeholder-val="{{ true }}">
+                      <div style="border:1px dashed #e5e7eb;border-radius:6px;padding:14px;box-sizing:border-box;text-align:center;font-size:12px;color:#d1d5db">（內容待填）</div>
+                    </sc-if>
+                    <sc-if value="{{ s.isCount }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px">
+                        <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                          <span style="font-size:14px;font-weight:700;color:#9ca3af">永久</span>
+                          <span style="font-size:16px;color:#374151;line-height:1.7">共 {{ mCount }} 筆</span>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ s.isMute }}" hint-placeholder-val="{{ false }}">
+                      <sc-if value="{{ mNone }}" hint-placeholder-val="{{ false }}">
+                        <div style="font-size:16px;color:#9ca3af">(無)</div>
+                      </sc-if>
+                      <sc-if value="{{ mMuted }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px">
+                          <sc-for list="{{ mFields }}" as="f" hint-placeholder-count="6">
+                            <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                              <span style="font-size:14px;font-weight:700;color:#9ca3af">{{ f.label }}</span>
+                              <sc-if value="{{ f.plain }}" hint-placeholder-val="{{ true }}">
+                                <span style="font-size:16px;color:#374151;line-height:1.7;word-break:break-word;white-space:{{ f.ws }};font-family:{{ f.mono }}">{{ f.value }}</span>
+                              </sc-if>
+                              <sc-if value="{{ f.isStatus }}" hint-placeholder-val="{{ false }}">
+                                <div style="display:flex;align-items:center;gap:8px;min-height:22px">
+                                  <span style="padding:2px 9px;border-radius:9999px;background:{{ mStBg }};border:1px solid {{ mStBorder }};font-size:11px;font-weight:700;color:{{ mStColor }};white-space:nowrap">{{ mStLabel }}</span>
+                                  <span style="font-size:12px;font-weight:700;color:{{ mLeftColor }}">{{ mLeft }}</span>
+                                </div>
+                              </sc-if>
+                            </div>
+                          </sc-for>
+                        </div>
+                      </sc-if>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              </sc-if>
+            </sc-if>
+          </div>
+        </sc-for>
+
+      </div>
+
+      <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;display:flex;align-items:center;gap:16px;flex:none">
+        <div style="display:flex;gap:12px;flex:none">
+          <sc-for list="{{ acts }}" as="a" hint-placeholder-count="6">
+            <div style="width:40px;height:40px;border-radius:50%;border:1px solid #d1d5db;background:#fff;color:#4b5563;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.05)" style-hover="color:#2088ea" title="{{ a.label }}"><i class="{{ a.icon }}" style="font-size:20px"></i></div>
+          </sc-for>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:12px;flex:none">
+          <div style="padding:8px 16px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#f9fafb" onClick="{{ detailClose }}">關閉</div>
+          <div style="padding:8px 16px;border-radius:6px;background:#f59e0b;color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)" style-hover="background:#d97706">編輯</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    detailOpen: false,
+    nick: '',
+    mute: null,
+    muteCount: 0,
+    shellRect: null,
+    open: { general: true, basic: true, passbook: true, game: true, bonus: true, activity: true, limit: true, other: true }
+  };
+
+  cardDefs = [
+    { id: 'general', label: '一般', icon: 'ph-fill ph-info' },
+    { id: 'basic', label: '基本', icon: 'ph-fill ph-user' },
+    { id: 'passbook', label: '存摺', icon: 'ph-fill ph-wallet' },
+    { id: 'game', label: '遊戲', icon: 'ph-fill ph-game-controller' },
+    { id: 'bonus', label: '獎金', icon: 'ph-fill ph-trophy' },
+    { id: 'activity', label: '活動', icon: 'ph-fill ph-gift' },
+    { id: 'limit', label: '限制', icon: 'ph-fill ph-prohibit', subs: ['最後禁言資訊', '禁言累積次數'] },
+    { id: 'other', label: '其他', icon: 'ph-fill ph-dots-three-circle' }
+  ];
+
+  data = [
+    { nick: '咖啡不加糖', status: '啟用', vip: 'VIP2', token: '$128,400', lastLogin: '2026/09/11 09:12:04', muteCount: 0, mute: null },
+    { nick: '發財小天使', status: '禁言中', vip: 'VIP1', token: '$3,120', lastLogin: '2026/09/10 22:48:31', muteCount: 2, mute: {
+      status: '禁言中',
+      period: '2026/08/16 15:47:02 ~ 2026/08/19 15:47:02',
+      left: '剩餘 47 分鐘',
+      reason: '不當發言',
+      reasonNote: '張貼外站廣告連結',
+      remark: '第 2 次禁言',
+      operator: 'john'
+    } },
+    { nick: '夜貓子2號', status: '啟用', vip: 'VIP0', token: '$0', lastLogin: '2026/08/29 03:05:17', muteCount: 1, mute: {
+      status: '已解除',
+      period: '2026/08/24 09:18:40 ~ 2026/08/25 09:18:40',
+      releaseType: '到期自動解除',
+      releaseAt: '2026/08/25 09:18:40',
+      releaseReason: '—',
+      reason: '不當發言',
+      reasonNote: '重複張貼相同訊息',
+      remark: '首次禁言',
+      operator: '系統'
+    } },
+    { nick: '路過的甲', status: '啟用', vip: 'VIP1', token: '$41,860', lastLogin: '2026/09/09 18:40:22', muteCount: 1, mute: {
+      status: '已解除',
+      period: '2026/08/09 20:15:08 ~ 2026/08/10 20:15:08',
+      releaseType: '手動解除',
+      releaseAt: '2026/08/09 21:02:37',
+      releaseReason: '誤判',
+      reason: '不當遊戲名稱',
+      reasonNote: '暱稱含不雅字詞',
+      remark: '誤判，已還原',
+      operator: 'john'
+    } }
+  ];
+
+  statusStyle(s) {
+    if (s === '啟用') return { stBg: '#dcfce7', stBorder: '#bbf7d0', stColor: '#15803d' };
+    if (s === '禁言中') return { stBg: '#fee2e2', stBorder: '#fecaca', stColor: '#dc2626' };
+    if (s === '錢包凍結') return { stBg: '#fef3c7', stBorder: '#fde68a', stColor: '#b45309' };
+    return { stBg: '#f3f4f6', stBorder: '#e5e7eb', stColor: '#6b7280' };
+  }
+
+  muteFields(m) {
+    if (!m) return [];
+    const active = m.status === '禁言中';
+    const f = [
+      { label: '狀態', isStatus: true, plain: false, value: '', mono: 'inherit' },
+      { label: '限制時間', isStatus: false, plain: true, value: m.period.replace(' ~ ', ' ~ \n'), mono: 'ui-monospace,monospace', ws: 'pre-line' },
+      { label: '原因', isStatus: false, plain: true, value: m.reason, mono: 'inherit' },
+      { label: '說明', isStatus: false, plain: true, value: m.reasonNote, mono: 'inherit' }
+    ];
+    if (!active) {
+      f.push({ label: '解除時間', isStatus: false, plain: true, value: m.releaseAt, mono: 'ui-monospace,monospace' });
+      f.push({ label: '解除原因', isStatus: false, plain: true, value: m.releaseReason, mono: 'inherit' });
+    }
+    f.push({ label: '備註', isStatus: false, plain: true, value: m.remark, mono: 'inherit' });
+    f.push({ label: '操作者', isStatus: false, plain: true, value: m.operator, mono: 'inherit' });
+    return f.map(x => ({ ws: 'normal', ...x }));
+  }
+
+  anyModal() { return !!this.state.detailOpen; }
+  postDim() {
+    const v = this.anyModal();
+    if (v === this._lastDim) return;
+    this._lastDim = v;
+    if (window.parent !== window) window.parent.postMessage({ dcModal: v }, '*');
+  }
+  syncBg() {
+    const float = this.anyModal() && !!this.state.shellRect;
+    const bg = float ? 'transparent' : '#f8fafc';
+    document.body.style.background = bg;
+    document.documentElement.style.background = bg;
+  }
+  rootFix() {
+    const r = this.state.shellRect;
+    if (!r || !this.anyModal()) return '';
+    return 'position:absolute;left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;min-height:0;overflow:hidden';
+  }
+  componentDidMount() {
+    this._onShellMsg = e => {
+      if (!e.data) return;
+      if (e.data.dcShell === 'dismiss') this.setState({ detailOpen: false });
+      if (e.data.dcShellRect) this.setState({ shellRect: e.data.dcShellRect });
+    };
+    window.addEventListener('message', this._onShellMsg);
+    if (window.parent !== window) window.parent.postMessage({ dcNeedRect: true }, '*');
+    this.postDim();
+  }
+  componentDidUpdate() { this.postDim(); this.syncBg(); }
+  componentWillUnmount() { window.removeEventListener('message', this._onShellMsg); }
+
+  renderVals() {
+    const st = this.state;
+    const mb = st.mute ? this.statusStyle(st.mute.status === '禁言中' ? '禁言中' : '') : {};
+    return {
+      rootFix: this.rootFix(),
+      rows: this.data.map((m, i) => ({
+        ...m,
+        ...this.statusStyle(m.status),
+        bg: '#fff',
+        open: () => this.setState({ detailOpen: true, nick: m.nick, mute: m.mute || null, muteCount: m.muteCount || 0 })
+      })),
+      detailOpen: st.detailOpen,
+      dNick: st.nick,
+      detailClose: () => this.setState({ detailOpen: false }),
+      stopClick: (e) => e.stopPropagation(),
+      cards: this.cardDefs.map(c => ({
+        label: c.label,
+        icon: c.icon,
+        open: !!st.open[c.id],
+        hasSubs: !!(c.subs && c.subs.length),
+        noSubs: !(c.subs && c.subs.length),
+        subs: (c.subs || []).map(t => ({
+          title: t,
+          isMute: t === '最後禁言資訊',
+          isCount: t === '禁言累積次數',
+          plain: t !== '最後禁言資訊' && t !== '禁言累積次數'
+        })),
+        caret: st.open[c.id] ? 'ph-bold ph-caret-up' : 'ph-bold ph-caret-down',
+        toggle: () => this.setState(s => ({ open: { ...s.open, [c.id]: !s.open[c.id] } }))
+      })),
+      goMute: () => {
+        const has = !!st.mute;
+        if (window.parent !== window) {
+          window.parent.postMessage({ dcGo: {
+            page: 'settings', sub: 'mute',
+            nickname: has ? st.nick : '',
+            openDetail: has
+          } }, '*');
+        } else {
+          location.hash = 'settings/mute';
+        }
+      },
+      mMuted: !!st.mute,
+      mNone: !st.mute,
+      mActive: !!st.mute && st.mute.status === '禁言中',
+      mStLabel: st.mute ? st.mute.status : '',
+      mStBg: mb.stBg,
+      mStBorder: mb.stBorder,
+      mStColor: mb.stColor,
+      mLeft: st.mute && st.mute.status === '禁言中' ? st.mute.left : (st.mute ? st.mute.releaseType : ''),
+      mLeftColor: st.mute && st.mute.status === '禁言中' ? '#dc2626' : '#6b7280',
+      mFields: this.muteFields(st.mute),
+      mCount: st.muteCount,
+      acts: [
+        { label: '踢人', icon: 'ph ph-user-minus' },
+        { label: '重置認證密碼', icon: 'ph ph-key' },
+        { label: '系統存提', icon: 'ph ph-currency-circle-dollar' },
+        { label: '免費旋轉', icon: 'ph ph-circles-three' },
+        { label: '序號兌換', icon: 'ph ph-ticket' },
+        { label: '寄送信件', icon: 'ph ph-envelope' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
