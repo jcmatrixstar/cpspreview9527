@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+<style>
+body { margin:0; background:#f3f4f6; color:#1f2937; font-family:'Microsoft JhengHei',sans-serif; }
+a { color:#2088ea; }
+a:hover { color:#1a7acb; }
+</style>
+</helmet>
+<div style="min-height:100vh;background:#f8fafc;padding:24px;box-sizing:border-box;font-family:'Microsoft JhengHei',sans-serif;color:#1f2937">
+<div style="max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding-bottom:40px">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+    <nav style="display:flex;align-items:center;gap:6px;font-size:14px">
+      <span style="font-weight:600;color:#2088ea">焦點資訊</span>
+    </nav>
+    <div style="padding:4px 10px;border-radius:9999px;background:#fff;border:1px solid #e5e7eb;color:#9ca3af;font-size:12px;font-weight:700;white-space:nowrap">v1.1</div>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <h2 style="margin:0;font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <i class="fas fa-chart-line" style="color:#3b82f6"></i> 今日焦點
+        <span onClick="{{ goSimple }}" style="font-size:14px;color:#2088ea;margin-left:16px;font-weight:400;cursor:pointer" style-hover="text-decoration:underline">簡易版 »</span>
+      </h2>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:9999px;font-size:12px;color:#6b7280;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+        <i class="fas fa-sync-alt" style="color:#9ca3af"></i>
+        <span>刷新頻率：5 分鐘</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px">
+      <div style="background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06);border-left:4px solid #3b82f6">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="color:#6b7280;font-size:14px;font-weight:500;text-decoration:underline dashed #9ca3af;text-underline-offset:3px;cursor:help">註冊人數</div>
+          <div style="padding:8px;border-radius:50%;background:#eff6ff;color:#3b82f6;flex:none;line-height:1"><i class="fas fa-user-plus"></i></div>
+        </div>
+        <div style="font-size:24px;font-weight:700;margin:4px 0;color:#1f2937">1,204</div>
+        <div style="font-size:12px;display:flex;align-items:center;gap:4px;margin-top:4px;color:#22c55e;font-weight:600"><i class="fas fa-arrow-up"></i> <span>12.5%</span></div>
+      </div>
+      <div style="background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06);border-left:4px solid #6366f1">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="color:#6b7280;font-size:14px;font-weight:500;text-decoration:underline dashed #9ca3af;text-underline-offset:3px;cursor:help">在線人數</div>
+          <div style="padding:8px;border-radius:50%;background:#eef2ff;color:#6366f1;flex:none;line-height:1"><i class="fas fa-users"></i></div>
+        </div>
+        <div style="font-size:24px;font-weight:700;margin:4px 0;color:#1f2937">8,540</div>
+        <div style="font-size:12px;display:flex;align-items:center;gap:4px;margin-top:4px;color:#22c55e;font-weight:600"><i class="fas fa-arrow-up"></i> <span>5.2%</span></div>
+      </div>
+      <div style="background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06);border-left:4px solid #22c55e">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="color:#6b7280;font-size:14px;font-weight:500">損益總額</div>
+          <div style="padding:8px;border-radius:50%;background:#f0fdf4;color:#22c55e;flex:none;line-height:1"><i class="fas fa-balance-scale"></i></div>
+        </div>
+        <div style="font-size:24px;font-weight:700;margin:4px 0;color:#1f2937">-$45,000</div>
+        <div style="font-size:12px;display:flex;align-items:center;gap:4px;margin-top:4px;color:#ef4444;font-weight:600"><i class="fas fa-arrow-down"></i> <span>2.4%</span></div>
+      </div>
+      <div style="background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06);border-left:4px solid #ef4444">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="color:#6b7280;font-size:14px;font-weight:500;text-decoration:underline dashed #9ca3af;text-underline-offset:3px;cursor:help">儲值總額</div>
+          <div style="padding:8px;border-radius:50%;background:#fef2f2;color:#ef4444;flex:none;line-height:1"><i class="fas fa-coins"></i></div>
+        </div>
+        <div style="font-size:24px;font-weight:700;margin:4px 0;color:#1f2937">$2.1M</div>
+        <div style="font-size:12px;display:flex;align-items:center;gap:4px;margin-top:4px;color:#22c55e;font-weight:600"><i class="fas fa-arrow-up"></i> <span>15.3%</span></div>
+      </div>
+      <div style="background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06);border-left:4px solid #ec4899">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="color:#6b7280;font-size:14px;font-weight:500">獎金派送</div>
+          <div style="padding:8px;border-radius:50%;background:#fdf2f8;color:#ec4899;flex:none;line-height:1"><i class="fas fa-gifts"></i></div>
+        </div>
+        <div style="font-size:24px;font-weight:700;margin:4px 0;color:#1f2937">$890k</div>
+        <div style="font-size:12px;display:flex;align-items:center;gap:4px;margin-top:4px;color:#22c55e;font-weight:600"><i class="fas fa-arrow-up"></i> <span>8.1%</span></div>
+      </div>
+      <div style="background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06);border-left:4px solid #eab308">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="color:#6b7280;font-size:14px;font-weight:500">大獎發出</div>
+          <div style="padding:8px;border-radius:50%;background:#fefce8;color:#eab308;flex:none;line-height:1"><i class="fas fa-trophy"></i></div>
+        </div>
+        <div style="font-size:24px;font-weight:700;margin:4px 0;color:#1f2937">$3</div>
+        <div style="font-size:12px;display:flex;align-items:center;gap:4px;margin-top:4px;color:#1f2937;font-weight:700"><i class="fas fa-minus"></i> 0%</div>
+      </div>
+    </div>
+  </section>
+
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px">
+    <div style="background:#fff;padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:16px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h3 style="margin:0;font-weight:700;font-size:18px;border-left:4px solid #2563eb;padding-left:12px;white-space:nowrap">金幣流向</h3>
+          <div style="background:#f3f4f6;border-radius:8px;padding:4px;display:flex;font-size:12px;white-space:nowrap">
+            <div style="padding:5px 12px;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1);color:#2563eb;font-weight:600"><i class="fas fa-chart-line" style="margin-right:4px"></i> 財務總覽</div>
+            <div style="padding:5px 12px;border-radius:6px;color:#6b7280"><i class="fas fa-wallet" style="margin-right:4px"></i> 支付來源</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:#6b7280">前期</span>
+            <span style="display:block;width:36px;height:20px;background:#d1d5db;border-radius:9999px;position:relative">
+              <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+            </span>
+          </div>
+          <div style="padding:4px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;color:#374151;white-space:nowrap;min-width:64px;text-align:center">近 7 日</div>
+        </div>
+      </div>
+      <div id="chart-money-flow" style="width:100%;height:350px"></div>
+    </div>
+
+    <div style="background:#fff;padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06);display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:8px">
+        <h3 style="margin:0;font-weight:700;font-size:18px;border-left:4px solid #eab308;padding-left:12px;white-space:nowrap">即時榜單</h3>
+        <div style="display:flex;gap:4px;background:#f3f4f6;padding:4px;border-radius:9999px;font-size:12px">
+          <div style="padding:4px 10px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1);color:#2563eb;font-weight:600">單局</div>
+          <div style="padding:4px 10px;border-radius:9999px;color:#6b7280">倍率</div>
+          <div style="padding:4px 10px;border-radius:9999px;color:#6b7280">富豪</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:10% 35% 25% 15% 15%;font-size:12px;color:#6b7280;padding-bottom:8px;border-bottom:1px solid #e5e7eb;font-weight:700;text-align:center">
+        <span>#</span><span style="text-align:left;padding-left:8px">玩家/遊戲</span><span>贏分</span><span>倍率</span><span>趨勢</span>
+      </div>
+      <div style="margin-top:8px;flex:1;max-height:280px;overflow-y:auto">
+        <sc-for list="{{ ranks }}" as="r" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:10% 35% 25% 15% 15%;padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:14px;align-items:center;text-align:center">
+            <div><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;background:{{ r.badgeBg }};color:{{ r.badgeColor }}">{{ r.rank }}</span></div>
+            <div style="text-align:left;padding-left:8px;overflow:hidden">
+              <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+              <div style="font-size:12px;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.game }}</div>
+            </div>
+            <div style="color:#ca8a04;font-weight:700">{{ r.v1 }}</div>
+            <div style="background:#f3f4f6;border-radius:4px;padding:0 4px;font-size:12px;margin:0 auto;width:fit-content">{{ r.v2 }}</div>
+            <div><i class="fas {{ r.trendIcon }}" style="color:{{ r.trendColor }}"></i></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px">
+    <div style="background:#fff;padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h3 style="margin:0;font-weight:700;font-size:18px;border-left:4px solid #22c55e;padding-left:12px;white-space:nowrap">熱門遊戲</h3>
+          <span style="font-size:12px;color:#9ca3af">(近 30 日)</span>
+        </div>
+        <div style="display:flex;gap:4px;background:#f3f4f6;padding:4px;border-radius:9999px">
+          <div style="padding:4px 10px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1);color:#16a34a;font-weight:600;font-size:12px">贏分率</div>
+          <div style="padding:4px 10px;border-radius:9999px;color:#6b7280;font-size:12px">注單量</div>
+        </div>
+      </div>
+      <div id="chart-game-main" style="width:100%;height:320px"></div>
+    </div>
+
+    <div style="background:#fff;padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:8px">
+        <h3 style="margin:0;font-weight:700;font-size:18px;border-left:4px solid #a855f7;padding-left:12px;white-space:nowrap">登入紀錄</h3>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:#9ca3af">前期</span>
+            <span style="display:block;width:36px;height:20px;background:#d1d5db;border-radius:9999px;position:relative">
+              <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+            </span>
+          </div>
+          <div style="display:flex;gap:4px;background:#f3f4f6;padding:4px;border-radius:9999px">
+            <div style="padding:4px 10px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1);color:#9333ea;font-weight:600;font-size:12px">裝置</div>
+            <div style="padding:4px 10px;border-radius:9999px;color:#6b7280;font-size:12px">來源</div>
+          </div>
+        </div>
+      </div>
+      <div id="chart-login" style="width:100%;height:320px"></div>
+    </div>
+
+    <div style="background:#fff;padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06);display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex:none">
+        <h3 style="margin:0;font-weight:700;font-size:18px;border-left:4px solid #dc2626;padding-left:12px">風險警示</h3>
+        <div style="display:flex;align-items:center;gap:8px;background:#f0fdf4;padding:4px 8px;border-radius:9999px;border:1px solid #dcfce7">
+          <span style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:block"></span>
+          <span style="font-size:12px;color:#16a34a;font-weight:700">系統監控中</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:16px;flex:none">
+        <div style="background:#fef2f2;padding:8px;border-radius:4px;border:1px solid #fee2e2;text-align:center">
+          <div style="color:#ef4444;font-size:18px;line-height:1.2"><i class="fas fa-exclamation-triangle"></i></div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px">異常押注</div>
+          <div style="font-size:14px;font-weight:700;color:#dc2626">3</div>
+        </div>
+        <div style="background:#fefce8;padding:8px;border-radius:4px;border:1px solid #fef9c3;text-align:center">
+          <div style="color:#eab308;font-size:18px;line-height:1.2"><i class="fas fa-bolt"></i></div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px">頻繁中獎</div>
+          <div style="font-size:14px;font-weight:700;color:#ca8a04">5</div>
+        </div>
+        <div style="background:#eff6ff;padding:8px;border-radius:4px;border:1px solid #dbeafe;text-align:center">
+          <div style="color:#3b82f6;font-size:18px;line-height:1.2"><i class="fas fa-coins"></i></div>
+          <div style="font-size:12px;color:#6b7280;margin-top:4px">金幣異常</div>
+          <div style="font-size:14px;font-weight:700;color:#2563eb">0</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#9ca3af;margin-bottom:8px;flex:none">即時監控紀錄</div>
+      <div style="overflow-y:auto;padding-right:4px;max-height:200px">
+        <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:8px">
+          <sc-for list="{{ risks }}" as="k" hint-placeholder-count="5">
+            <div style="display:flex;justify-content:space-between;padding:8px;background:#f9fafb;border-radius:4px;border-left:2px solid {{ k.color }}">
+              <div>
+                <div style="font-weight:700;font-size:12px;color:#374151">{{ k.name }}</div>
+                <div style="font-size:10px;color:#6b7280">{{ k.reason }}</div>
+              </div>
+              <span style="font-size:10px;color:#9ca3af">{{ k.time }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#fff;padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <h3 style="margin:0;font-weight:700;font-size:18px;border-left:4px solid #f97316;padding-left:12px;white-space:nowrap">餘額分布</h3>
+          <div style="background:#f3f4f6;border-radius:8px;padding:4px;display:flex;font-size:12px;white-space:nowrap">
+            <div style="padding:5px 12px;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1);color:#f97316;font-weight:600">人數</div>
+            <div style="padding:5px 12px;border-radius:6px;color:#6b7280">佔比</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:4px">
+              <span style="font-size:12px;color:#9ca3af">前期</span>
+              <span style="display:block;width:36px;height:20px;background:#d1d5db;border-radius:9999px;position:relative">
+                <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+              </span>
+            </div>
+            <div style="font-size:12px;border:1px solid #e5e7eb;border-radius:4px;padding:4px 6px;color:#4b5563;background:#fff;display:flex;align-items:center;gap:6px">今日 <i class="fas fa-chevron-down" style="font-size:10px;color:#9ca3af"></i></div>
+          </div>
+          <div style="font-size:12px;border:1px solid #e5e7eb;border-radius:4px;padding:4px 6px;background:#fff;color:#4b5563;display:flex;align-items:center;gap:6px;width:96px;justify-content:space-between">
+            <span>全部 VIP</span> <i class="fas fa-chevron-down" style="font-size:10px"></i>
+          </div>
+        </div>
+      </div>
+      <div id="chart-balance" style="width:100%;height:300px"></div>
+    </div>
+
+    <div style="background:#fff;padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:8px">
+        <h3 style="margin:0;font-weight:700;font-size:18px;border-left:4px solid #ec4899;padding-left:12px;white-space:nowrap">轉化率</h3>
+        <div style="display:flex;gap:4px;background:#f3f4f6;padding:4px;border-radius:9999px">
+          <div style="padding:4px 10px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.1);color:#db2777;font-weight:600;font-size:12px">活躍</div>
+          <div style="padding:4px 10px;border-radius:9999px;color:#6b7280;font-size:12px">有效</div>
+        </div>
+      </div>
+      <div id="chart-conversion" style="width:100%;height:300px"></div>
+    </div>
+
+    <div style="background:#fff;padding:20px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.06)">
+      <h3 style="margin:0 0 16px;font-weight:700;font-size:18px;border-left:4px solid #ef4444;padding-left:12px">留存率</h3>
+      <div id="chart-retention" style="width:100%;height:300px"></div>
+    </div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() { this.waitEcharts(); }
+
+  waitEcharts(n = 0) {
+    if (window.echarts) { this.drawAll(); return; }
+    if (n > 100) return;
+    setTimeout(() => this.waitEcharts(n + 1), 100);
+  }
+
+  dates() { return ['9/12', '9/13', '9/14', '9/15', '9/16', '9/17', '9/18']; }
+
+  drawAll() {
+    const ec = window.echarts;
+    const init = id => { const el = document.getElementById(id); return el ? ec.init(el) : null; };
+    const dates = this.dates();
+
+    const money = init('chart-money-flow');
+    if (money) money.setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['總收入', '總支出', '淨利'] },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { type: 'category', data: dates },
+      yAxis: [{ type: 'value', name: '金額' }],
+      series: [
+        { name: '總收入', type: 'bar', data: [18, 21, 17, 23, 20, 24, 19], itemStyle: { color: '#3b82f6' } },
+        { name: '總支出', type: 'bar', data: [13, 15, 11, 16, 12, 17, 14], itemStyle: { color: '#ef4444' } },
+        { name: '淨利', type: 'line', data: [5, 6, 6, 7, 8, 7, 5], itemStyle: { color: '#10b981' }, smooth: true }
+      ]
+    });
+
+    const game = init('chart-game-main');
+    if (game) {
+      const g = [['奧丁之寶', 98.6], ['大過年', 97.9], ['魔豆', 97.1], ['金錢豹', 96.4], ['西部風雲', 95.8], ['蜜糖爆擊1', 94.9], ['淘金樂', 93.7], ['羅賓漢', 92.5]];
+      game.setOption({
+        title: { text: '贏分率', left: 'center' },
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '12%', bottom: '3%', top: '15%', containLabel: true },
+        xAxis: { type: 'value', max: 100 },
+        yAxis: { type: 'category', data: g.map(i => i[0]), inverse: true },
+        series: [{
+          type: 'bar', data: g.map(i => i[1]),
+          itemStyle: { color: new ec.graphic.LinearGradient(0, 0, 1, 0, [{ offset: 0, color: '#83bff6' }, { offset: 1, color: '#188df0' }]) },
+          label: { show: true, position: 'right', formatter: '{c}%' }
+        }]
+      });
+    }
+
+    const login = init('chart-login');
+    if (login) {
+      const keys = ['PC', 'iOS', 'Android', 'Other'];
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+      const cur = { PC: [150, 200, 180, 220, 250, 300, 320], iOS: [120, 130, 110, 140, 160, 200, 210], Android: [220, 210, 230, 250, 280, 310, 330], Other: [20, 15, 30, 10, 25, 20, 15] };
+      login.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { type: 'scroll', bottom: 0, data: keys },
+        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        xAxis: { type: 'category', data: dates },
+        yAxis: { type: 'value' },
+        series: keys.map((k, i) => ({ name: k, type: 'bar', stack: 'cur', data: cur[k], itemStyle: { color: colors[i] } }))
+      });
+    }
+
+    const bal = init('chart-balance');
+    if (bal) bal.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: { bottom: 0 },
+      grid: { left: '3%', right: '4%', bottom: '10%', top: '10%', containLabel: true },
+      xAxis: { type: 'category', data: ['0', '1-10K', '10-100K', '100K-1M', '1M+'] },
+      yAxis: { type: 'value' },
+      series: [{ name: '本期', type: 'bar', data: [150, 400, 300, 100, 20], itemStyle: { color: '#f97316' }, label: { show: true, position: 'top', formatter: '{c}' } }]
+    });
+
+    const conv = init('chart-conversion');
+    if (conv) conv.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+      legend: { data: ['每日登入', '人均押注'] },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { type: 'category', data: dates },
+      yAxis: [{ type: 'value' }, { type: 'value' }],
+      series: [
+        { name: '每日登入', type: 'bar', data: [8500, 8200, 7900, 8800, 9100, 9500, 8540], itemStyle: { color: '#e5e7eb', borderRadius: [4, 4, 0, 0] } },
+        {
+          name: '人均押注', type: 'line', yAxisIndex: 1, data: [5500, 5800, 5600, 6200, 6500, 6800, 6300],
+          itemStyle: { color: '#db2777' }, lineStyle: { width: 3 }, smooth: true,
+          areaStyle: { color: new ec.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(219,39,119,0.3)' }, { offset: 1, color: 'rgba(219,39,119,0)' }]) }
+        }
+      ]
+    });
+
+    const ret = init('chart-retention');
+    if (ret) {
+      const retDates = ['9/18', '9/17', '9/16', '9/15', '9/14', '9/13', '9/12'];
+      const cols = ['新進用戶', '1日內', '3日內', '5日內', '7日內', '15日內', '30日內'];
+      const reg = [350, 420, 380, 500, 410, 360, 330].map((v, i) => [0, i, v]);
+      const matrix = [[48, 32, 25, 22, 15, 10], [45, 30, 24, 20, 14, 9], [42, 28, 22, 18, 12, 8], [40, 26, 20, 16, 10, 7], [38, 25, 19, 15, 9, 6], [35, 22, 18, 14, 8, 5], [33, 20, 16, 12, 7, 4]];
+      const cells = [];
+      matrix.forEach((r, y) => r.forEach((v, x) => cells.push([x + 1, y, v])));
+      ret.setOption({
+        tooltip: { position: 'top', formatter: p => p.seriesName === 'Registration' ? `新進用戶: ${p.data[2]} 人` : `留存率: ${p.data[2]}%` },
+        grid: { height: '70%', top: '15%', right: '2%', left: '3%', containLabel: true },
+        xAxis: { type: 'category', data: cols, splitArea: { show: false } },
+        yAxis: { type: 'category', data: retDates, inverse: true, splitArea: { show: false } },
+        visualMap: [
+          { seriesIndex: 1, min: 0, max: 50, inRange: { color: ['#eff6ff', '#1e40af'] }, right: 0, top: 0, orient: 'horizontal', text: ['留存率', ''], itemWidth: 10, itemHeight: 80 },
+          { seriesIndex: 0, min: 300, max: 500, inRange: { color: ['#fff7ed', '#ea580c'] }, right: 160, top: 0, orient: 'horizontal', text: ['新進用戶', ''], itemWidth: 10, itemHeight: 80 }
+        ],
+        series: [
+          { name: 'Registration', type: 'heatmap', data: reg, label: { show: true, color: '#333', formatter: p => p.data[2] }, itemStyle: { borderColor: '#fff', borderWidth: 2 } },
+          { name: 'Retention', type: 'heatmap', data: cells, label: { show: true, color: '#333', formatter: p => p.data[2] + '%' }, itemStyle: { borderColor: '#fff', borderWidth: 2 } }
+        ]
+      });
+    }
+
+    this._charts = [money, game, login, bal, conv, ret].filter(Boolean);
+    this._onResize = () => this._charts.forEach(c => c.resize());
+    window.addEventListener('resize', this._onResize);
+  }
+
+  componentWillUnmount() {
+    if (this._onResize) window.removeEventListener('resize', this._onResize);
+  }
+
+  renderVals() {
+    const base = [
+      { name: 'SkyWalker', game: '大過年', v1: '$50,000', v2: '500x', t: 'up' },
+      { name: 'BigBoss', game: '西部風雲', v1: '$42,000', v2: '120x', t: 'up' },
+      { name: 'LuckyDog', game: '魔豆', v1: '$31,000', v2: '80x', t: 'down' }
+    ];
+    const rows = [];
+    for (let i = 0; i < 9; i++) rows.push(base[i % 3]);
+    const badge = r => r === 1 ? ['#fbbf24', '#fff'] : r === 2 ? ['#94a3b8', '#fff'] : r === 3 ? ['#d97706', '#fff'] : ['#f3f4f6', '#6b7280'];
+
+    return {
+      goSimple: () => { try { window.parent.postMessage({ dcGo: { page: 'focus' } }, '*'); } catch (e) {} },
+      ranks: rows.map((r, i) => {
+        const b = badge(i + 1);
+        return {
+          rank: i + 1, name: r.name, game: r.game, v1: r.v1, v2: r.v2,
+          badgeBg: b[0], badgeColor: b[1],
+          trendIcon: r.t === 'up' ? 'fa-caret-up' : r.t === 'down' ? 'fa-caret-down' : 'fa-minus',
+          trendColor: r.t === 'up' ? '#ef4444' : r.t === 'down' ? '#22c55e' : '#d1d5db'
+        };
+      }),
+      risks: [
+        { name: 'SkyWalker', reason: '單筆 > 50k', time: '13:45', color: '#ef4444' },
+        { name: 'BigBoss', reason: '3次大獎', time: '13:42', color: '#eab308' },
+        { name: 'Guest_992', reason: '單筆 > 100k', time: '13:30', color: '#ef4444' },
+        { name: 'Winner01', reason: '連贏10局', time: '13:15', color: '#eab308' },
+        { name: 'DemoUser_2', reason: 'IP異常', time: '13:10', color: '#ef4444' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
